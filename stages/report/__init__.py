@@ -5,6 +5,7 @@ from contracts.report import Report,ReportRun,AcReport
 from stages.quality import read,write
 from harness.fakes import workspace_path
 from harness.http_retry import RateLimitExceeded
+from harness.llm_throttle import AdmissionLimitExceeded
 
 
 def execute(inp,workspace,llm,sandbox):
@@ -37,14 +38,14 @@ def execute(inp,workspace,llm,sandbox):
         elif not isinstance(value,list):placeholders['metric:'+prefix]='неизвестно' if value is None else str(value)
     flatten('',metrics)
     narrative='Связный текст не сформирован: бюджет модели недоступен.'
-    rate_limited=any(str(stage.get('error','')).startswith('RateLimitExceeded:') for stage in snapshot.get('stages',[]))
+    rate_limited=any(str(stage.get('error','')).startswith(('RateLimitExceeded:','AdmissionLimitExceeded:')) for stage in snapshot.get('stages',[]))
     if rate_limited:
         narrative='Прогон остановлен: исчерпан лимит запросов к модели. Фактические результаты приведены ниже.'
     else:
         try:
             narrative=llm(task_class='writer',system='Write a short Russian summary without numeric literals. Only use double-brace placeholders from allowed_placeholders. Never invent identifiers, success or measurements.',user=json.dumps({'status':report.run.status,'not_done':missing,'allowed_placeholders':list(placeholders)},ensure_ascii=False),output='text')
         except BudgetExceeded:pass
-        except RateLimitExceeded:
+        except (RateLimitExceeded,AdmissionLimitExceeded):
             narrative='Связный текст не сформирован: исчерпан лимит запросов к модели. Фактические результаты приведены ниже.'
     write(workspace,'reports/narrative.json',{'text':narrative})
     def replace(match):

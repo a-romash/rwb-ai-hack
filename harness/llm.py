@@ -18,6 +18,7 @@ from contracts.stage import BudgetExceeded, ContractError
 from harness import llm_config
 from harness.agent import MODEL
 from harness.http_retry import RateLimitExceeded, open_with_rate_limit_retry
+from harness.llm_throttle import AdmissionLimitExceeded
 
 # reasoning effort, reasoning tokens, temperature, answer tokens
 TASKS = {
@@ -167,9 +168,9 @@ class Gateway:
             try:
                 response = self.transport.complete(messages, schema=schema if structured else None, effort=effort,
                     reasoning_tokens=reasoning_tokens, temperature=temperature, max_tokens=max_tokens)
-            except (TransportError, RateLimitExceeded) as exc:
+            except (TransportError, RateLimitExceeded, AdmissionLimitExceeded, ContractError) as exc:
                 self.finish(record, {'status': 'provider_error', 'usage': getattr(exc,'usage',None), 'latency_ms': int((time.monotonic()-started)*1000)})
-                if isinstance(exc,RateLimitExceeded):
+                if isinstance(exc,(RateLimitExceeded,AdmissionLimitExceeded,ContractError)):
                     raise
                 if exc.unsupported_schema and structured:
                     structured = False

@@ -2,6 +2,7 @@
 import math
 import time
 import urllib.error
+from harness.llm_throttle import AdmissionLimitExceeded, open_throttled
 
 
 class RateLimitExceeded(RuntimeError):
@@ -19,7 +20,11 @@ def open_with_rate_limit_retry(opener, request, *, timeout, sleep=None, clock=No
             raise RateLimitExceeded() from None
         delay = 5
         try:
-            return opener(request, timeout=min(timeout, remaining))
+            return open_throttled(opener, request, timeout=min(timeout, remaining), sleep=sleep, clock=clock)
+        except AdmissionLimitExceeded:
+            if deadline is not None:
+                raise RateLimitExceeded() from None
+            raise
         except urllib.error.HTTPError as exc:
             if exc.code != 429 and (deadline is None or exc.code not in (500, 502, 503, 504)):
                 raise
