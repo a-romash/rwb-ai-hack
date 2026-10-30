@@ -4,7 +4,7 @@ LLM_BASE_URL   OpenAI-compatible endpoint, default OpenRouter (https://openroute
                a local vLLM is e.g. http://vllm:8000/v1
 LLM_API_KEY    key for the endpoint; OPENROUTER_API_KEY and OPENAI_API_KEY are accepted as fallbacks
 LLM_MODEL      model id, default qwen/qwen3.8-27b
-LLM_PROVIDER   OpenRouter provider to pin (no fallbacks), default DeepInfra; empty = do not pin.
+LLM_PROVIDER   OpenRouter provider to pin (no fallbacks), default Near AI (fastest strict-schema qwen endpoint in the 31.10 benchmark); empty = do not pin.
                Ignored for endpoints other than OpenRouter.
 Values are read on every call, so a .env loaded later (harness.agent.load_dotenv) still applies.
 """
@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
-DEFAULT_PROVIDER = "DeepInfra"
+DEFAULT_PROVIDER = "Near AI"
 KEY_NAMES = ("LLM_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY")
 
 

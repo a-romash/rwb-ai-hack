@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from contracts.analysis import Analysis
 from contracts.app import App
+from harness import llm_config
 from stages.analysis.compat import BudgetExceeded
 from stages.analysis.models import Extraction
 from stages.spec.eval import continue_context_limited_repair, evaluate, live_llm, prompt_hashes
@@ -97,7 +98,7 @@ class EvalTests(unittest.TestCase):
         self.assertEqual(llm.tokens_used, 30)
         self.assertEqual(len(sent[1]["messages"]), 2)          # one-shot: no history between calls
         self.assertNotIn("Input 0", str(sent[1]))
-        self.assertEqual(sent[0]["provider"]["order"], ["DeepInfra"])
+        self.assertEqual(sent[0]["provider"]["order"], [llm_config.provider()])
         self.assertNotIn("test-only-secret", str(llm.calls))
         self.assertEqual(llm.calls[0]["total_tokens"], 15)
         self.assertEqual(llm.context_window, 32000)              # profile M of the gateway

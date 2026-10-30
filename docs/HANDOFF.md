@@ -378,6 +378,18 @@ Docker-демона нет. Поэтому **не проверены**:
 - `verify`: backend, admin и PWA не собрались на слабой спецификации. Исправлено в scaffold (`7b847b3`): несуществующие типы входов хуков, enum с именем сущности, `null` в `model.ts`, пустые маршруты PWA. Проверено перегенерацией из настоящих `app.json`/`ui.json` прогона: все три собираются. Целиком прогон заново не запускался.
 - `report` зависал на 9p (раздел 9).
 
+### Провайдер qwen3.8-27b на OpenRouter
+С 31.10 по умолчанию стоит `Near AI` (fp8), вместо `DeepInfra` (bf16). Замер — одинаковый запрос извлечения требований через `HTTPTransport`: strict JSON-схема, reasoning low, по два прогона.
+
+| Провайдер | Время запроса | Скорость вывода |
+|---|---|---|
+| Near AI | 11,7 с | ~155 ток/с |
+| Wafer | 16–19 с | ~100 ток/с |
+| Mancer 2 | 18–21 с | ~92 ток/с |
+| DeepInfra | 33–47 с | ~50 ток/с |
+
+Alibaba, Novita, Cerebras, Tenstorrent, ModelRun и DekaLLM не принимают strict-схему: с `require_parameters` они отвечают 404. Вернуть прежнего провайдера: `LLM_PROVIDER=DeepInfra` в `.env`.
+
 ### P0 — до сдачи
 1. **Сквозная проверка на ветке интеграции:** фейковый прогон через API и Celery (раздел 7). Затем прогон с реальными этапами и `FakeLLM` на `tickets` через `run_stage_locally`: `analysis → spec → ui → scaffold → tests`. Дальше песочница нужна настоящая. Recorded-ответы для `analysis`/`spec` есть в `stages/*/tests/fixtures/*-responses.json`, через `stages/spec/eval.py::evaluate`.
 2. **Сборка образов инструментов.** Добавить в `compose.yaml` сервисы с `profiles: [tools]` и `build` из `templates/product/tools/Dockerfile.*`, `image: rwb/tool-dotnet:10`, `rwb/tool-node:22`, `rwb/tool-security:1`. В README — `docker compose --profile tools build`. `harness/doctor.py` уже подсказывает эту команду.

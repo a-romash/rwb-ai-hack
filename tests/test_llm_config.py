@@ -6,11 +6,11 @@ from harness import llm_config
 
 
 class LlmConfigTest(unittest.TestCase):
-    def test_defaults_are_openrouter_qwen_pinned_to_deepinfra(self):
+    def test_defaults_are_openrouter_qwen_pinned_to_near_ai(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(llm_config.base_url(), "https://openrouter.ai/api/v1")
             self.assertEqual(llm_config.model(), "qwen/qwen3.8-27b")
-            self.assertEqual(llm_config.provider(), "DeepInfra")
+            self.assertEqual(llm_config.provider(), "Near AI")
             self.assertEqual(llm_config.api_key(), "")
             self.assertTrue(llm_config.key_required())
 
