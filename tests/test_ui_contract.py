@@ -30,6 +30,14 @@ class UiContractTest(unittest.TestCase):
         self.assertIn("copy", dumped)
         self.assertEqual(UiSpec.model_validate(dumped), ui)
 
+    def test_names_follow_app_json_identifiers(self):
+        # app.json allows camelCase commands; the deterministic form builder writes Command.input from them.
+        from contracts.ui import Widget
+        self.assertEqual(Widget(kind="field", field="startSession.vehicle", testid="session-form.vehicle").field, "startSession.vehicle")
+        self.assertEqual(Widget(kind="action_button", command="startSession", testid="session-form.start-session").command, "startSession")
+        with self.assertRaises(ValidationError):
+            Widget(kind="field", field="no-dots", testid="session-form.vehicle")
+
     def test_fixture_screens_with_data_have_required_states(self):
         for name, screen in load_ui(FIXTURE).screens.items():
             if screen.has_data:

@@ -23,8 +23,9 @@ SourceKind = Literal["query", "entity", "command", "params"]
 Aggregate = Literal["count", "sum", "avg", "min", "max"]
 
 SCREEN_NAME = r"^[A-Z][A-Za-z0-9]*$"
-FIELD_PATH = r"^[A-Z][A-Za-z0-9]*\.[a-z][a-z0-9_]*$"          # Entity.field or Command.input
-OPERATION = r"^[A-Z][A-Za-z0-9]*(\.(create|read|update|delete))?$"  # command name or Entity.op
+# Names follow app.json, which allows any identifier (a spec may name a command startSession); G1.5 checks they exist.
+FIELD_PATH = r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$"   # Entity.field or Command.input
+OPERATION = r"^[A-Za-z_][A-Za-z0-9_]*(\.(create|read|update|delete))?$"  # command name or Entity.op
 TESTID = r"^[a-z][a-z0-9]*(-[a-z0-9]+)*\.[a-z][a-z0-9]*([.-][a-z0-9]+)*$"
 COPY_KEY = r"^[a-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*$"
 SEED_ROW = r"^[A-Z][A-Za-z0-9]*\[\d+\]$"
