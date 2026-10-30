@@ -1,0 +1,78 @@
+@let s = station();
+@let stage = info();
+<header class="head">
+  <p class="kicker">
+    <span class="num">Этап {{ s.position }} из {{ total() }}</span>
+    <span class="phase">{{ phase().name }}</span>
+  </p>
+  <div class="title-row">
+    <h2 class="title">{{ stage?.short ?? s.label }}</h2>
+    <app-status-chip [tone]="s.tone" [label]="s.statusLabel" [live]="s.live" />
+  </div>
+  @if (stage) {
+    <p class="question">{{ stage.question }}</p>
+    <p class="summary">{{ stage.summary }}</p>
+  }
+</header>
+
+@if (stage) {
+  <dl class="io">
+    <div>
+      <dt>На входе</dt>
+      <dd>{{ stage.input }}</dd>
+    </div>
+    <div>
+      <dt>На выходе</dt>
+      <dd>{{ stage.output }}</dd>
+    </div>
+    <div>
+      <dt>Проверка</dt>
+      <dd>{{ stage.check }}</dd>
+    </div>
+  </dl>
+}
+
+<section class="agent" aria-label="Исполнитель этапа">
+  @if (agent(); as a) {
+    <span class="agent-icon"><tui-icon [icon]="a.icon" /></span>
+    <div>
+      <p class="agent-name">{{ a.name }}</p>
+      <p class="agent-text">{{ a.summary }}</p>
+    </div>
+  } @else {
+    <span class="agent-icon is-off"><tui-icon icon="@tui.circle-dashed" /></span>
+    <div>
+      <p class="agent-name">Агент не подключён</p>
+      <p class="agent-text">Этап выполнит конвейер, когда для него появится исполнитель. Пока его можно только описать.</p>
+    </div>
+  }
+</section>
+
+@if (job(); as j) {
+  <section class="last" aria-label="Последний запуск">
+    <div class="last-head">
+      <p class="last-title">Последний запуск</p>
+      <app-status-chip [tone]="jobView()!.tone" [label]="jobView()!.label" [live]="jobView()!.live" [quiet]="true" />
+    </div>
+    <p class="last-meta">
+      <span>{{ j.createdAt | relTime: now() }}</span>
+      <span class="num">{{ jobView()!.live ? 'идёт ' : 'длился ' }}{{ elapsed() }}</span>
+    </p>
+    @if (excerpt(); as text) {
+      <p class="last-text">{{ text }}</p>
+    } @else {
+      <p class="last-text muted">{{ jobView()!.hint }}</p>
+    }
+  </section>
+}
+
+@if (agent() || job()) {
+  <footer class="actions">
+    @if (agent(); as a) {
+      <button tuiButton type="button" size="s" [iconStart]="a.icon" (click)="run.emit(s.key)">Запустить {{ a.accusative }}</button>
+    }
+    @if (job()) {
+      <button tuiButton type="button" size="s" appearance="flat" iconStart="@tui.history" (click)="openRuns.emit()">Все запуски</button>
+    }
+  </footer>
+}

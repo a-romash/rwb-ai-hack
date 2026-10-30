@@ -7,6 +7,13 @@
       "projectType": "application",
       "root": "",
       "sourceRoot": "src",
+      "prefix": "app",
+      "schematics": {
+        "@schematics/angular:component": {
+          "changeDetection": "OnPush",
+          "style": "less"
+        }
+      },
       "architect": {
         "build": {
           "builder": "@angular/build:application",
@@ -14,27 +21,66 @@
             "outputPath": "dist/pipeline-manager",
             "browser": "src/main.ts",
             "index": "src/index.html",
-            "polyfills": ["zone.js"],
+            "polyfills": [
+              "zone.js"
+            ],
             "tsConfig": "tsconfig.app.json",
-            "styles": ["src/styles.less"],
-            "assets": [{"glob": "**/*", "input": "node_modules/@taiga-ui/icons/src", "output": "assets/taiga-ui/icons"}]
+            "inlineStyleLanguage": "less",
+            "styles": [
+              "node_modules/@angular/cdk/overlay-prebuilt.css",
+              "node_modules/@fontsource-variable/inter/opsz.css",
+              "node_modules/@fontsource-variable/jetbrains-mono/index.css",
+              "src/styles.less"
+            ],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@taiga-ui/icons/src",
+                "output": "assets/taiga-ui/icons"
+              }
+            ]
           },
           "configurations": {
             "production": {
               "outputHashing": "all",
-              "budgets": [{"type": "initial", "maximumWarning": "1MB", "maximumError": "2MB"}]
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "900kB",
+                  "maximumError": "1.5MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "12kB",
+                  "maximumError": "24kB"
+                }
+              ]
             },
-            "development": {"optimization": false, "sourceMap": true}
+            "development": {
+              "optimization": false,
+              "sourceMap": true,
+              "extractLicenses": false
+            }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
-          "configurations": {"development": {"buildTarget": "pipeline-manager:build:development"}},
+          "configurations": {
+            "development": {
+              "buildTarget": "pipeline-manager:build:development"
+            }
+          },
           "defaultConfiguration": "development"
         }
       }
     }
   },
-  "cli": {"analytics": false}
+  "cli": {
+    "analytics": false
+  }
 }

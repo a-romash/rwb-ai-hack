@@ -1,0 +1,109 @@
+// Редактор требований: панель действий, лист для текста, счётчики.
+:host {
+  display: block;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-card);
+  transition:
+    border-color var(--p-fast) var(--p-ease),
+    box-shadow var(--p-fast) var(--p-ease);
+}
+
+:host(:focus-within) {
+  border-color: var(--p-focus);
+  box-shadow: 0 0 0 1px var(--p-focus);
+}
+
+:host(.is-invalid) {
+  border-color: var(--p-fail);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--p-line);
+}
+
+.sheet {
+  position: relative;
+}
+
+.area {
+  display: block;
+  width: 100%;
+  min-height: 320px;
+  padding: 16px 20px;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--p-ink);
+  font: 400 var(--p-text-read) / 1.5rem var(--p-font);
+  letter-spacing: -0.009em;
+  tab-size: 2;
+
+  &::placeholder {
+    color: var(--p-ink-2);
+  }
+}
+
+.drop {
+  position: absolute;
+  inset: 8px;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--p-accent);
+  border-radius: var(--p-radius-control);
+  background: var(--p-accent-soft);
+  color: var(--p-accent-text);
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--p-fast) var(--p-ease);
+}
+
+:host(.is-dragging) .drop {
+  opacity: 1;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 8px 20px;
+  border-top: 1px solid var(--p-line);
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+
+  [data-load='wait'] {
+    color: var(--p-wait-text);
+    font-weight: 500;
+  }
+
+  [data-load='fail'] {
+    color: var(--p-fail-text);
+    font-weight: 500;
+  }
+
+  [tuiHint] {
+    cursor: help;
+    text-decoration: underline dotted var(--p-line-strong);
+    text-underline-offset: 3px;
+  }
+}
+
+@media (max-width: 720px) {
+  .area {
+    padding: 14px 16px;
+  }
+
+  .stats {
+    padding: 8px 16px;
+  }
+}

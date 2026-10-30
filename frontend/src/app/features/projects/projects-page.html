@@ -1,0 +1,94 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <h1 class="page-title">Проекты</h1>
+      <p class="page-lead">Требования, этапы и запуски агентов для каждого продукта.</p>
+    </div>
+    @if (store.items().length) {
+      <a tuiButton size="s" iconStart="@tui.plus" routerLink="/projects/new">Новый проект</a>
+    }
+  </header>
+
+  @if (store.state() === 'error' && !store.items().length) {
+    @let error = store.error();
+    <div class="notice" data-tone="fail" role="alert">
+      <tui-icon icon="@tui.circle-alert" />
+      <p class="notice-title">{{ error?.title }}</p>
+      <p class="notice-text">{{ error?.hint }}</p>
+      <div class="notice-actions">
+        <button tuiButton type="button" size="s" appearance="secondary" iconStart="@tui.rotate-ccw" (click)="store.load()">Повторить</button>
+      </div>
+    </div>
+  } @else if (store.state() !== 'ready' && !store.items().length) {
+    <div class="table panel" aria-busy="true" aria-label="Загружаем проекты">
+      @for (item of [1, 2, 3]; track item) {
+        <div class="row is-skeleton">
+          <span class="sk sk-name" [tuiSkeleton]="true"></span>
+          <span class="sk sk-mini" [tuiSkeleton]="true"></span>
+          <span class="sk sk-status" [tuiSkeleton]="true"></span>
+        </div>
+      }
+    </div>
+  } @else if (!store.items().length) {
+    <section class="empty panel" aria-labelledby="empty-title">
+      <div class="empty-body">
+        <span class="empty-icon" aria-hidden="true"><tui-icon icon="@tui.folder-plus" /></span>
+        <h2 id="empty-title" class="empty-title">Проектов пока нет</h2>
+        <p class="empty-text">
+          Опишите продукт обычным текстом. Агенты проведут требования через {{ stageCount }} этапов — от&nbsp;бизнес-анализа
+          до&nbsp;документации.
+        </p>
+        <div class="empty-actions">
+          <a tuiButton size="m" iconStart="@tui.plus" routerLink="/projects/new">Создать проект</a>
+          <a tuiButton size="m" appearance="secondary" iconStart="@tui.file-text" routerLink="/projects/new" [queryParams]="{example: 'parking'}">
+            Открыть пример из кейса
+          </a>
+        </div>
+      </div>
+      <div class="empty-map">
+        <p class="label">Этапы, через которые пройдёт проект</p>
+        <app-flow-map [stations]="preview" [interactive]="false" />
+      </div>
+    </section>
+  } @else {
+    <div class="toolbar">
+      <tui-textfield class="search" iconStart="@tui.search" tuiTextfieldSize="s" [tuiTextfieldCleaner]="true">
+        <input tuiInput type="search" placeholder="Найти по названию" aria-label="Найти проект по названию" [ngModel]="query()" (ngModelChange)="query.set($event ?? '')" />
+      </tui-textfield>
+      <tui-segmented size="s" [activeItemIndex]="sort()" (activeItemIndexChange)="sort.set($event)" aria-label="Порядок">
+        <button type="button">Недавние</button>
+        <button type="button">По названию</button>
+      </tui-segmented>
+      <span class="count-label">{{ countLabel() }}</span>
+    </div>
+
+    <div class="table panel">
+      <div class="row head" aria-hidden="true">
+        <span>Название</span>
+        <span>Этапы</span>
+        <span>Последний запуск</span>
+        <span class="end">Изменён</span>
+      </div>
+      <ul class="rows">
+        @for (row of rows(); track row.project.id) {
+          <li>
+            <a class="row project" [routerLink]="['/projects', row.project.id]">
+              <span class="name">{{ row.project.name }}</span>
+              <span class="stages">
+                <app-flow-mini [stations]="row.stations" />
+                <span class="stages-count num" aria-hidden="true">{{ row.done }}/{{ row.stations.length }}</span>
+              </span>
+              <app-status-chip class="status" [tone]="row.status.tone" [label]="row.status.label" [live]="row.status.live" />
+              <span class="date end num" [attr.title]="fullDate(row.project.updated_at)">{{ row.project.updated_at | relTime: clock.now() }}</span>
+            </a>
+          </li>
+        } @empty {
+          <li class="nothing">
+            <p>Нет проектов с «{{ query() }}» в названии.</p>
+            <button tuiButton type="button" appearance="flat" size="s" (click)="query.set('')">Сбросить поиск</button>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</section>

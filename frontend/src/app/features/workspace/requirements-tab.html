@@ -1,0 +1,39 @@
+@let project = store.project();
+<div class="layout">
+  <div class="main">
+    <div class="head">
+      <h2 class="section-title"><label for="project-requirements">Требования проекта</label></h2>
+      @if (project) {
+        <p class="subtle">Сохранены {{ project.updated_at | relTime: clock.now() }}</p>
+      }
+    </div>
+    <app-requirements-editor
+      inputId="project-requirements"
+      [(value)]="draft"
+      [offerExample]="empty()"
+      (insertTemplate)="useTemplate()"
+      (insertExample)="useExample()"
+      (fileError)="onFileError($event)"
+    />
+  </div>
+
+  <aside class="side">
+    <div class="side-card">
+      <app-requirements-insights [text]="draft()" />
+    </div>
+  </aside>
+</div>
+
+@if (dirty()) {
+  <div class="savebar" role="region" aria-label="Несохранённые изменения">
+    <div class="savebar-inner">
+      <tui-icon icon="@tui.circle-alert" class="savebar-icon" />
+      <p class="savebar-text">Есть несохранённые изменения</p>
+      <span class="keys" aria-hidden="true"><kbd class="kbd">{{ isMac ? '⌘' : 'Ctrl' }}</kbd><kbd class="kbd">S</kbd></span>
+      <button tuiButton type="button" size="s" appearance="flat" (click)="discard()">Отменить изменения</button>
+      <button tuiButton type="button" size="s" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Сохраняем…' : 'Сохранить требования' }}
+      </button>
+    </div>
+  </div>
+}

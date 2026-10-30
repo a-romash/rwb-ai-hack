@@ -1,0 +1,75 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <h1 class="page-title">Новый проект</h1>
+      <p class="page-lead">Чем точнее требования, тем меньше допущений сделают агенты. Пишите как для нового коллеги.</p>
+    </div>
+  </header>
+
+  <form class="layout" novalidate (ngSubmit)="create()">
+    <div class="main">
+      <div class="field">
+        <label class="field-label" for="project-name">Название</label>
+        <tui-textfield tuiTextfieldSize="m" [invalid]="submitted() && !!nameError()">
+          <input
+            tuiInput
+            id="project-name"
+            name="name"
+            autocomplete="off"
+            maxlength="200"
+            placeholder="Например, парковочный помощник"
+            [attr.aria-invalid]="submitted() && !!nameError() ? 'true' : null"
+            [attr.aria-describedby]="submitted() && nameError() ? 'name-error' : null"
+            [ngModel]="name()"
+            (ngModelChange)="name.set($event ?? '')"
+          />
+        </tui-textfield>
+        @if (submitted() && nameError(); as message) {
+          <p id="name-error" class="field-error">{{ message }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="project-requirements">Требования</label>
+        <app-requirements-editor
+          inputId="project-requirements"
+          [(value)]="requirements"
+          [invalid]="submitted() && !!requirementsError()"
+          [describedBy]="submitted() && requirementsError() ? 'requirements-error' : null"
+          (insertExample)="useExample()"
+          (insertTemplate)="useTemplate()"
+          (fileError)="onFileError($event)"
+        />
+        @if (submitted() && requirementsError(); as message) {
+          <p id="requirements-error" class="field-error">{{ message }}</p>
+        }
+      </div>
+
+      <div class="submit">
+        @if (error(); as failure) {
+          <div class="notice" data-tone="fail" role="alert">
+            <tui-icon icon="@tui.circle-alert" />
+            <p class="notice-title">{{ failure.title }}</p>
+            <p class="notice-text">{{ failure.hint }}</p>
+          </div>
+        }
+        <div class="submit-bar">
+          <p class="submit-hint" aria-hidden="true">
+            <kbd class="kbd">{{ isMac ? '⌘' : 'Ctrl' }}</kbd><kbd class="kbd">↵</kbd>
+            <span>создать из любого поля</span>
+          </p>
+          <a tuiButton size="m" appearance="flat" routerLink="/projects">Отмена</a>
+          <button tuiButton type="submit" size="m" [disabled]="saving()">
+            {{ saving() ? 'Создаём проект…' : 'Создать проект' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="side-card">
+        <app-requirements-insights [text]="requirements()" />
+      </div>
+    </aside>
+  </form>
+</section>

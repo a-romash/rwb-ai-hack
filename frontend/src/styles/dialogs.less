@@ -1,0 +1,41 @@
+// Диалоги на @angular/cdk/dialog: затемнение и поверхность с рамкой.
+
+.dialog-backdrop {
+  background: var(--p-overlay);
+  animation: dialog-fade var(--p-base) var(--p-ease) both;
+}
+
+.dialog-panel {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+}
+
+.dialog-surface {
+  overflow: auto;
+  max-height: calc(100vh - 48px);
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-dialog);
+  background: var(--p-surface);
+  color: var(--p-ink);
+  box-shadow: var(--p-shadow-pop);
+  animation: dialog-in var(--p-base) var(--p-ease) both;
+}
+
+// Палитра команд прижата к верху, как поиск
+.palette-panel {
+  position: absolute !important;
+  top: 12vh;
+}
+
+@keyframes dialog-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}

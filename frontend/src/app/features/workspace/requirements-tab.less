@@ -1,0 +1,102 @@
+:host {
+  display: block;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 24px;
+}
+
+.main {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.side {
+  position: sticky;
+  top: 24px;
+}
+
+.side-card {
+  padding: 16px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-card);
+}
+
+// Панель сохранения прилипает к низу окна, пока есть что сохранять
+
+.savebar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 40;
+  margin-top: 16px;
+  animation: savebar-in var(--p-base) var(--p-ease) both;
+}
+
+.savebar-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-pop);
+}
+
+.savebar-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--p-wait);
+}
+
+.savebar-text {
+  margin-right: auto;
+  font-weight: 500;
+}
+
+.keys {
+  display: inline-flex;
+  gap: 2px;
+}
+
+@keyframes savebar-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .keys {
+    display: none;
+  }
+
+  .savebar-text {
+    width: 100%;
+  }
+}

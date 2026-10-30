@@ -1,0 +1,231 @@
+// Линия этапов: граф пайплайна. Ничего не светится и не движется само по себе,
+// кроме спиннера у этапа, где работает агент.
+
+:host {
+  display: block;
+  position: relative;
+  min-height: 1px;
+}
+
+:host(.is-static) {
+  pointer-events: none;
+}
+
+// Горизонтальный граф
+
+.graph {
+  position: relative;
+  margin: 0 auto;
+}
+
+.phase {
+  position: absolute;
+  top: 0;
+  height: 22px;
+  border-bottom: 1px solid var(--p-line);
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.edges {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+
+  path {
+    fill: none;
+    stroke: var(--p-line-strong);
+    stroke-width: 1.5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke var(--p-base) var(--p-ease);
+
+    &.is-dashed {
+      stroke-dasharray: 4 4;
+      stroke-linecap: butt;
+    }
+
+    &.is-done {
+      stroke: var(--p-ink-2);
+    }
+  }
+}
+
+.station {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  margin: 0;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-control);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-card);
+  color: var(--p-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--p-fast) var(--p-ease),
+    background-color var(--p-fast) var(--p-ease),
+    box-shadow var(--p-fast) var(--p-ease);
+
+  &:hover {
+    border-color: var(--p-line-strong);
+    background: var(--p-surface-2);
+  }
+
+  &.is-selected {
+    border-color: var(--p-accent);
+    background: var(--p-accent-soft);
+    box-shadow: inset 0 0 0 0.5px var(--p-accent);
+  }
+}
+
+.text {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-size: var(--p-text-s);
+  line-height: 1.125rem;
+  font-weight: 500;
+  letter-spacing: -0.003em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note {
+  overflow: hidden;
+  color: var(--tone-text, var(--p-ink-2));
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Статус: иконка и цвет слова
+
+.status {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--tone, var(--p-icon));
+}
+
+[data-tone='run'] {
+  --tone: var(--p-run);
+  --tone-text: var(--p-run-text);
+}
+
+[data-tone='wait'] {
+  --tone: var(--p-wait);
+  --tone-text: var(--p-wait-text);
+}
+
+[data-tone='ok'] {
+  --tone: var(--p-ok);
+  --tone-text: var(--p-ok-text);
+}
+
+[data-tone='fail'] {
+  --tone: var(--p-fail);
+  --tone-text: var(--p-fail-text);
+}
+
+.is-live .status {
+  animation: spin 0.9s linear infinite;
+}
+
+// Вертикальный таймлайн
+
+.timeline {
+  position: relative;
+  display: grid;
+  gap: 12px;
+
+  // рельс через все иконки
+  &::before {
+    content: '';
+    position: absolute;
+    top: 40px;
+    bottom: 22px;
+    left: 20.25px;
+    width: 1.5px;
+    background: var(--p-line-strong);
+  }
+}
+
+.tgroup {
+  display: grid;
+  gap: 2px;
+}
+
+.tgroup-name {
+  padding: 0 0 2px 45px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+
+  span {
+    margin-left: 6px;
+    font-weight: 400;
+  }
+}
+
+.vstation {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--p-radius-control);
+  background: none;
+  color: var(--p-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  .status {
+    position: relative;
+    z-index: 1;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px var(--rail-bg, var(--p-surface));
+    background: var(--rail-bg, var(--p-surface));
+  }
+
+  .name {
+    font-size: var(--p-text-m);
+  }
+
+  &:hover {
+    background: var(--p-hover);
+    --rail-bg: var(--p-hover);
+  }
+
+  &.is-selected {
+    border-color: var(--p-accent);
+    background: var(--p-accent-soft);
+    --rail-bg: var(--p-accent-soft);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

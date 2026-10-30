@@ -1,0 +1,172 @@
+// Повторяющиеся паттерны экранов: страница, заголовок, панель, уведомление, подписи полей.
+
+.page {
+  width: 100%;
+  max-width: calc(var(--p-content) + 2 * var(--p-gutter));
+  margin: 0 auto;
+  padding: 32px var(--p-gutter) 96px;
+}
+
+// Под хлебными крошками оболочки страница начинается ближе
+.crumbs ~ * > .page {
+  padding-top: 12px;
+}
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: var(--p-text-2xl);
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.019em;
+}
+
+.page-lead {
+  margin-top: 4px;
+  max-width: 68ch;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-m);
+  line-height: 1.25rem;
+}
+
+// Панель — главный контейнер: поверхность, тонкая рамка
+.panel {
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-card);
+}
+
+.section-title {
+  font-size: var(--p-text-l);
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.011em;
+}
+
+.label {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.muted {
+  color: var(--p-ink-2);
+}
+
+.subtle {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-s);
+  letter-spacing: -0.003em;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--p-ink);
+  font-size: var(--p-text-m);
+  font-weight: 500;
+}
+
+.field-error {
+  margin-top: 8px;
+  color: var(--p-fail-text);
+  font-size: var(--p-text-s);
+}
+
+// Уведомление внутри страницы: ошибка или предупреждение с действием
+.notice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 2px 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+
+  > tui-icon {
+    grid-row: span 3;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    color: var(--p-icon);
+  }
+
+  &[data-tone='fail'] {
+    border-color: var(--p-fail-line);
+    background: var(--p-fail-soft);
+
+    > tui-icon {
+      color: var(--p-fail);
+    }
+  }
+
+  &[data-tone='wait'] {
+    border-color: var(--p-wait-line);
+    background: var(--p-wait-soft);
+
+    > tui-icon {
+      color: var(--p-wait);
+    }
+  }
+}
+
+.notice-title {
+  font-weight: 500;
+}
+
+.notice-text {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-s);
+  line-height: 1.125rem;
+}
+
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+// Клавиша в подсказках
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--p-border);
+  border-radius: 5px;
+  background: var(--p-surface);
+  color: var(--p-ink-2);
+  font: 500 11px / 1 var(--p-font);
+  letter-spacing: 0;
+}
+
+// Счётчик рядом с подписью
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--p-radius-pill);
+  background: var(--p-hover);
+  color: var(--p-ink-2);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}

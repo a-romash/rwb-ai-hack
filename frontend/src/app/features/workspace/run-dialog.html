@@ -1,0 +1,66 @@
+<header class="head">
+  <div>
+    <h2 id="run-title" class="title">Запуск агента</h2>
+    @if (stage) {
+      <p class="subtitle">Этап «{{ stage.short }}»: {{ stage.question.toLowerCase() }}</p>
+    } @else {
+      <p class="subtitle">Агент получит требования проекта и вашу инструкцию.</p>
+    }
+  </div>
+  <button tuiIconButton type="button" appearance="flat" size="s" iconStart="@tui.x" (click)="close()">Закрыть</button>
+</header>
+
+<div class="body">
+  <div class="block">
+    <p class="label" id="agent-label">Агент</p>
+    <tui-segmented size="s" class="agents" aria-labelledby="agent-label" [activeItemIndex]="agentIndex()" (activeItemIndexChange)="agentIndex.set($event)">
+      @for (item of agents; track item.id) {
+        <button type="button">
+          <tui-icon [icon]="item.icon" class="agent-icon" />
+          {{ item.name }}
+        </button>
+      }
+    </tui-segmented>
+    <p class="hint">{{ agent().summary }}</p>
+  </div>
+
+  <div class="block">
+    <div class="label-row">
+      <label class="label" for="run-instruction">Инструкция</label>
+      @if (presetChanged() && stage?.preset) {
+        <button type="button" class="reset" (click)="resetInstruction()">Вернуть инструкцию этапа</button>
+      }
+    </div>
+    <textarea
+      id="run-instruction"
+      class="instruction"
+      rows="5"
+      placeholder="Например: «Выдели роли и сценарии, найди противоречия». Оставьте пустым, чтобы отправить только требования."
+      [value]="instruction()"
+      (input)="onInstruction($event)"
+    ></textarea>
+    <p class="hint">
+      К инструкции добавятся требования проекта: {{ requirementsSize() }} символов.
+      Всего уйдёт {{ size().label }} символов, около {{ size().tokens }} токенов.
+    </p>
+    @if (tooLong()) {
+      <p class="field-error" role="alert">Вместе с требованиями получается больше 50 000 символов. Сократите инструкцию или требования.</p>
+    }
+  </div>
+
+  @if (error(); as failure) {
+    <div class="notice" data-tone="fail" role="alert">
+      <tui-icon icon="@tui.circle-alert" />
+      <p class="notice-title">{{ failure.title }}</p>
+      <p class="notice-text">{{ failure.hint }}</p>
+    </div>
+  }
+</div>
+
+<footer class="foot">
+  <span class="keys" aria-hidden="true"><kbd class="kbd">{{ isMac ? '⌘' : 'Ctrl' }}</kbd><kbd class="kbd">↵</kbd></span>
+  <button tuiButton type="button" appearance="secondary" size="s" (click)="close()">Отмена</button>
+  <button tuiButton type="button" size="s" [iconStart]="agent().icon" [disabled]="sending() || tooLong()" (click)="start()">
+    {{ sending() ? 'Ставим в очередь…' : 'Запустить ' + agent().accusative }}
+  </button>
+</footer>
