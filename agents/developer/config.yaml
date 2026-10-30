@@ -1,6 +1,6 @@
 mode: tools
-thinking: true
-effort: xhigh
+thinking: false
+effort: medium
 max_turns: 6
 autonomy: auto
 write_roots:

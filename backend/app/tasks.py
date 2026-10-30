@@ -79,3 +79,9 @@ if __name__ == "__main__":
     assert value == {"status": "ok", "broker": "postgresql"}, value
     print(f"Queue check passed: {result.id}: {value}")
     result.forget()
+
+
+@celery_app.task(name="pipeline.run_stage", acks_late=True)
+def run_stage(stage_run_id: str):
+    from app.runner import execute
+    execute(stage_run_id)

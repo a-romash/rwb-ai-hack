@@ -49,12 +49,12 @@ def create_project(data: ProjectCreate, session: Database):
     session.add(project)
     session.commit()
     session.refresh(project)
-    return project
+    return project_view(project, session)
 
 
 @router.get("/{project_id}", response_model=ProjectRead)
 def get_project(project_id: UUID, session: Database):
-    return find_project(project_id, session)
+    return project_view(find_project(project_id, session), session)
 
 
 @router.patch("/{project_id}", response_model=ProjectRead)
@@ -64,7 +64,7 @@ def update_project(project_id: UUID, data: ProjectUpdate, session: Database):
         setattr(project, field, value)
     session.commit()
     session.refresh(project)
-    return project
+    return project_view(project, session)
 
 
 @router.post("/{project_id}/jobs", response_model=JobRead, status_code=202)
@@ -102,3 +102,19 @@ def get_job(project_id: UUID, job_id: str, session: Database):
         "result": payload.get("result"),
         "num_turns": payload.get("num_turns"),
     }
+
+
+def project_view(project, session):
+    from app.models import Run, StageRun
+    from harness.registry import STAGES as PIPELINE
+    result = ProjectRead.model_validate(project).model_dump()
+    run = session.scalar(select(Run).where(Run.project_id == project.id).order_by(Run.created_at.desc()).limit(1))
+    if not run:
+        return result
+    rows = session.scalars(select(StageRun).where(StageRun.run_id == run.id).order_by(StageRun.attempt)).all()
+    latest = {row.stage: row for row in rows}
+    for area in result['stages']:
+        states = [latest[stage.key].status for stage in PIPELINE if area['key'] in stage.participants and stage.key in latest]
+        if states:
+            area['status'] = next((state for state in ('failed','running','waiting_input','waiting_human','queued','stale','pending') if state in states), 'succeeded')
+    return result

@@ -33,7 +33,7 @@ class StageRead(BaseModel):
     key: str
     name: str
     position: int
-    status: Literal["not_started"]
+    status: Literal["not_started", "pending", "queued", "running", "succeeded", "failed", "waiting_input", "waiting_human", "skipped", "stale"]
 
 
 class ProjectSummary(BaseModel):
