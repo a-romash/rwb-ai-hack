@@ -29,4 +29,6 @@ class WorkspaceTest(unittest.TestCase):
             before = describe(a, 'product')
             (a / 'product' / 'web' / 'node_modules' / 'pkg').mkdir(parents=True)
             (a / 'product' / 'web' / 'node_modules' / 'pkg' / 'index.js').write_text('dependency')
+            (a / 'product' / '.publish').mkdir()
+            (a / 'product' / '.publish' / 'App.Api.dll').write_bytes(b'compiled')
             self.assertEqual(describe(a, 'product'), before)

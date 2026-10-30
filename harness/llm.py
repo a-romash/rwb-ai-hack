@@ -17,6 +17,7 @@ from pydantic import BaseModel, ValidationError
 from contracts.stage import BudgetExceeded, ContractError
 from harness import llm_config
 from harness.agent import MODEL
+from harness.http_retry import RateLimitExceeded, open_with_rate_limit_retry
 
 # reasoning effort, reasoning tokens, temperature, answer tokens
 TASKS = {
@@ -43,7 +44,8 @@ class HTTPTransport:
     """OpenAI-compatible endpoint; provider-specific parameters only for OpenRouter."""
     def __init__(self, *, base_url=None, api_key=None, model=None, provider=None, timeout=120, opener=None):
         self.base_url = (base_url or llm_config.base_url()).rstrip('/')
-        self.api_key = api_key if api_key is not None else llm_config.api_key()
+        self.is_openrouter = llm_config.is_openrouter(self.base_url)
+        self.api_key = api_key if api_key is not None else llm_config.api_key(self.base_url)
         self.model = model or llm_config.model()
         self.provider = provider if provider is not None else llm_config.provider(self.base_url)
         self.timeout, self.opener = timeout, opener or urllib.request.urlopen
@@ -52,7 +54,7 @@ class HTTPTransport:
         if not self.api_key and llm_config.key_required(self.base_url):
             raise TransportError('LLM_API_KEY не задан', usage={'prompt_tokens': 0, 'completion_tokens': 0})
         payload = {'model': self.model, 'messages': messages, 'temperature': temperature, 'max_tokens': max_tokens}
-        if self.provider:
+        if self.is_openrouter and self.provider:
             payload['provider'] = {'order': [self.provider], 'allow_fallbacks': False, 'require_parameters': True}
             payload['reasoning'] = {'enabled': bool(effort)}
             if effort:
@@ -67,7 +69,7 @@ class HTTPTransport:
         request = urllib.request.Request(self.base_url + '/chat/completions', data=json.dumps(payload).encode(),
             headers=headers, method='POST')
         try:
-            with self.opener(request, timeout=self.timeout) as response:
+            with open_with_rate_limit_retry(self.opener, request, timeout=self.timeout) as response:
                 body = json.loads(response.read())
             returned = str(body.get('model') or self.model)
             if self.provider and returned.casefold() != self.model.casefold():
@@ -165,8 +167,10 @@ class Gateway:
             try:
                 response = self.transport.complete(messages, schema=schema if structured else None, effort=effort,
                     reasoning_tokens=reasoning_tokens, temperature=temperature, max_tokens=max_tokens)
-            except TransportError as exc:
-                self.finish(record, {'status': 'provider_error', 'usage': exc.usage, 'latency_ms': int((time.monotonic()-started)*1000)})
+            except (TransportError, RateLimitExceeded) as exc:
+                self.finish(record, {'status': 'provider_error', 'usage': getattr(exc,'usage',None), 'latency_ms': int((time.monotonic()-started)*1000)})
+                if isinstance(exc,RateLimitExceeded):
+                    raise
                 if exc.unsupported_schema and structured:
                     structured = False
                     messages[0]['content'] += '\nВерни только JSON по схеме: ' + json.dumps(schema, ensure_ascii=False)

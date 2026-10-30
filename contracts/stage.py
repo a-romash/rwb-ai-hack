@@ -4,7 +4,7 @@ from typing import Literal, Protocol
 from pydantic import BaseModel, Field
 
 Autonomy = Literal["A0", "A1", "A2"]
-SandboxKind = Literal["build", "test", "lint", "scan", "up", "smoke", "e2e", "down"]
+SandboxKind = Literal["build", "publish", "test", "lint", "scan", "up", "smoke", "e2e", "down"]
 SandboxTarget = Literal["backend", "admin", "pwa", "stack"]
 
 

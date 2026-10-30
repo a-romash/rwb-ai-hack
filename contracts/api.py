@@ -54,6 +54,7 @@ class RunSummary(BaseModel):
 
 
 class RunRead(RunSummary):
+    prototype_url: str | None = None
     budget: BudgetRead
     stages: list[StageRunRead]
     flags: list[ElementFlag] = Field(default_factory=list)

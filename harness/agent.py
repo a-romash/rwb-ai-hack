@@ -19,6 +19,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from harness.http_retry import open_with_rate_limit_retry
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -264,7 +265,7 @@ def run(
             events.append(_event("llm_error", error=_redact(str(exc))))
             return _result("error", _redact(str(exc)), turns, usage, denials, events, root, messages, assumptions, started, prompt_sha)
         model_name = str(resp.get("model") or "")
-        if model_name and not model_name.startswith(MODEL):
+        if model_name and not model_name.startswith(getattr(api, "model", MODEL)):
             events.append(_event("model_mismatch", model=model_name))
             return _result("error", "model mismatch: " + model_name, turns, usage, denials, events, root, messages, assumptions, started, prompt_sha)
         msg = resp["message"]
@@ -401,9 +402,10 @@ class OpenRouter:
     ):
         thinking, effort = _apply_task_class(task_class, thinking, effort)
         load_dotenv()
-        self.api_key = api_key or llm_config.api_key()
         self.model = model or llm_config.model()
         self.base_url = (base_url or llm_config.base_url()).rstrip("/")
+        self.is_openrouter = llm_config.is_openrouter(self.base_url)
+        self.api_key = api_key if api_key is not None else llm_config.api_key(self.base_url)
         self.thinking = thinking
         self.effort = effort
         self.task_class = task_class
@@ -422,19 +424,15 @@ class OpenRouter:
         payload: dict = {
             "model": self.model,
             "messages": messages,
-            "top_k": 20,
         }
-        if self.provider:
-            payload["provider"] = self.provider
-        if self.thinking:
-            payload.update(temperature=1.0, top_p=0.95, reasoning={"enabled": True, "effort": self.effort})
-        else:
-            payload.update(
-                temperature=0.7,
-                top_p=0.8,
-                presence_penalty=1.5,
-                reasoning={"enabled": False},
-            )
+        if self.is_openrouter:
+            payload['top_k'] = 20
+            if self.provider:
+                payload['provider'] = self.provider
+            if self.thinking:
+                payload.update(temperature=1.0, top_p=0.95, reasoning={"enabled": True, "effort": self.effort})
+            else:
+                payload.update(temperature=0.7, top_p=0.8, presence_penalty=1.5, reasoning={"enabled": False})
         if self.max_output_tokens:
             payload["max_tokens"] = self.max_output_tokens
         if tools:
@@ -456,7 +454,7 @@ class OpenRouter:
             )
             try:
                 with _GATE:
-                    with self.opener(req, timeout=120) as resp:
+                    with open_with_rate_limit_retry(self.opener, req, timeout=120, sleep=self.sleep) as resp:
                         body = json.loads(resp.read().decode())
                 choice = body["choices"][0]
                 return {
@@ -919,9 +917,9 @@ def _text(content) -> str:
 
 
 def _redact(text: str, secret: str | None = None) -> str:
-    secret = secret or llm_config.api_key()
-    if secret:
-        text = text.replace(secret, "***")
+    for value in (secret, *(os.environ.get(name) for name in llm_config.KEY_NAMES)):
+        if value:
+            text = text.replace(value, "***")
     return text
 
 

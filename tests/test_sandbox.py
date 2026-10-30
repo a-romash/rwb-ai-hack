@@ -9,6 +9,17 @@ from harness.sandbox import DockerSandbox
 
 
 class SandboxTest(unittest.TestCase):
+    def test_build_and_publish_ignore_previous_test_failures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'junit.xml').write_text('<testsuite><testcase name="old"><failure message="old failure"/></testcase></testsuite>')
+            manifest = {'targets': {'backend': {'image': 'tool', 'build': ['build'], 'publish': ['publish'], 'reports': {'junit': 'junit.xml'}}}}
+            sandbox = DockerSandbox(root, 'abc', manifest)
+            with patch('harness.sandbox.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='')):
+                for operation in ('build', 'publish'):
+                    with self.subTest(operation=operation):
+                        self.assertTrue(sandbox.run(operation, 'backend').ok)
+
     def test_command_isolated_and_filter_is_literal(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = {"targets": {"backend": {"image": "tool:1", "test": ["dotnet", "test"], "filter": ["--filter", "AC={filter}"]}}}

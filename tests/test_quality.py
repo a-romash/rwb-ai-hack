@@ -10,6 +10,24 @@ from stages.report import execute
 from gates.g5_docs import check
 
 class QualityTests(unittest.TestCase):
+    def test_report_survives_unknown_model_placeholder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            inp=StageInput(run_id='r',stage='report',attempt=1,requirements='r',artifacts={},snapshot={'status':'failed'})
+            output=execute(inp,root,FakeLLM({'writer':['Не выполнено {{ac:AC-ID}}.']}),FakeSandbox({}))
+            text=(root/output.artifacts['report_markdown']).read_text()
+            self.assertNotIn('{{',text)
+            self.assertTrue(check(root,output.artifacts).passed)
+
+    def test_report_after_rate_limit_does_not_call_model_again(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            llm=FakeLLM({})
+            inp=StageInput(run_id='r',stage='report',attempt=1,requirements='r',artifacts={},snapshot={'status':'failed','stages':[{'stage':'spec','status':'failed','error':'RateLimitExceeded: HTTP 429, ожидание 60 с'}]})
+            output=execute(inp,root,llm,FakeSandbox({}))
+            self.assertEqual(llm.calls,[])
+            self.assertIn('лимит',(root/output.artifacts['report_markdown']).read_text().lower())
+
     def test_lint_and_mutations(self):
         self.assertIn('TEST_NO_AC',lint('Assert.True(true);','AC-1'))
         self.assertIn('TEST_FORBIDDEN',lint('AC-1 DateTime.Now','AC-1'))

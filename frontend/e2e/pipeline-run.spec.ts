@@ -1,7 +1,23 @@
 import {expect, test} from '@playwright/test';
 import {makeProject, makeRun, mockApi} from './fixtures';
+import AxeBuilder from '@axe-core/playwright';
 
 test.describe('Прогон конвейера', () => {
+  test('показывает ссылку прототипа из API и скрывает её без публикации', async ({page}) => {
+    const project = makeProject('Готовый прототип');
+    const run: ReturnType<typeof makeRun> & {prototype_url: string | null} = {...makeRun(project.id, [], 'succeeded'), prototype_url: '/generated-demo/?run=server-value'};
+    await mockApi(page, {projects: [project], runs: [run]});
+    await page.goto(`/projects/${project.id}/flow`);
+    const link = page.getByRole('link', {name: 'Открыть прототип', exact: true});
+    await expect(link).toHaveAttribute('href', run.prototype_url!);
+    await expect(link).toHaveAttribute('target', '_blank');
+    const result = await new AxeBuilder({page}).include('app-run-panel').analyze();
+    expect(result.violations.filter(v => ['critical', 'serious'].includes(v.impact ?? ''))).toEqual([]);
+    run.prototype_url = null;
+    await page.reload();
+    await expect(page.locator('app-run-panel')).toBeVisible();
+    await expect(link).toHaveCount(0);
+  });
   test('статусы этапов и ворот из прогона, находки, решение человека и перезапуск', async ({page}) => {
     const project = makeProject('Заявки на ремонт');
     const run = makeRun(

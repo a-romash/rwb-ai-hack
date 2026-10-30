@@ -32,6 +32,24 @@ class RunnerIntegration(unittest.TestCase):
             session.delete(project)
         self.temp.cleanup()
 
+    def test_report_retry_preserves_ready_prototype(self):
+        import os
+        from harness import prototype
+        from harness.workspace import commit
+        with SessionLocal.begin() as session:
+            run = session.get(Run, self.run_id)
+            run.status = 'failed'
+            root = Path(run.workspace_path)
+            revision = commit(root, 'verified')
+            for stage in session.scalars(select(StageRun).where(StageRun.run_id == self.run_id)):
+                stage.status = 'failed' if stage.stage == 'report' else 'succeeded'
+                stage.output_commit = revision
+        with patch.dict(os.environ, {'PROTOTYPE_ENABLED': '1', 'WORKSPACES_DIR': self.temp.name}), patch('app.tasks.run_stage.apply_async'):
+            prototype.claim(str(self.run_id))
+            prototype.mark_ready(str(self.run_id))
+            runner.retry(self.run_id, 'report')
+            self.assertIsNotNone(prototype.url(str(self.run_id)))
+
     def test_fake_run_and_duplicate_delivery(self):
         queued = []
         with patch('app.tasks.run_stage.apply_async', side_effect=lambda args, queue: queued.append(args[0])):

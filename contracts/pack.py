@@ -11,6 +11,7 @@ class Target(BaseModel):
     env: dict[str, str] | None = None
     restore: list[str] | None = None
     build: list[str] | None = None
+    publish: list[str] | None = None
     test: list[str] | None = None
     filter: list[str] | None = None
     reports: dict[str, str] | None = None

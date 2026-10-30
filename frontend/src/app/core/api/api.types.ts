@@ -145,6 +145,7 @@ export interface RunSummary {
 }
 
 export interface RunRead extends RunSummary {
+  prototype_url?: string | null;
   budget: {tokens_used: number | null; tokens_limit: number; minutes_used: number; minutes_limit: number};
   stages: StageRunRead[];
   flags: {path: string; status: string; reason: string; gate: string | null}[];

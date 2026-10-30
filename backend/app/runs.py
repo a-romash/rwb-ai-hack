@@ -64,6 +64,7 @@ def metrics(session, run_id):
 
 
 def run_read(session, run):
+    from harness import prototype
     stage_rows = session.scalars(select(StageRun).where(StageRun.run_id == run.id).order_by(StageRun.attempt.desc())).all()
     latest = {}
     for row in stage_rows:
@@ -84,7 +85,8 @@ def run_read(session, run):
     tokens = None if used["unknown_usage_calls"] else (used["tokens_in"] or 0) + (used["tokens_out"] or 0)
     start = run.started_at or run.created_at
     end = run.finished_at or datetime.now(timezone.utc)
-    return {**summary(run), "budget": {"tokens_used": tokens, "tokens_limit": run.tokens_limit,
+    return {**summary(run), "prototype_url": prototype.url(str(run.id)) if run.status != 'cancelled' else None,
+           "budget": {"tokens_used": tokens, "tokens_limit": run.tokens_limit,
            "minutes_used": max(0, (end - start).total_seconds() / 60), "minutes_limit": run.minutes_limit},
            "stages": items, "flags": [{"path": f.path, "status": f.status, "reason": f.reason, "gate": f.gate} for f in flags],
            "questions": [q.payload for q in questions]}
@@ -95,6 +97,11 @@ def create_run(project_id: UUID, data: RunCreate, session: Database):
     project = session.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Проект не найден")
+    from app.prototype import reserve
+    try:
+        reserve(session)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
     run_id = uuid4()
     base = Path(os.environ.get("WORKSPACES_DIR", "workspaces")).resolve()
     workspace = None
@@ -115,6 +122,9 @@ def create_run(project_id: UUID, data: RunCreate, session: Database):
             shutil.rmtree(workspace)
         raise
     from app.runner import advance
+    from harness import prototype
+    if prototype.enabled() and not run.config.get('fake_stages'):
+        prototype.claim(str(run_id))
     advance(run_id)
     session.expire_all()
     return run_read(session, get_run(session, run_id))

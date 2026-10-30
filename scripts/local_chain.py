@@ -41,6 +41,11 @@ def main(argv: list[str] | None = None) -> int:
     base = Path(os.environ.get("WORKSPACES_DIR", ROOT / "workspaces")).resolve()
     root = base / "local" / args.fixture
     run_id = f"local-{args.fixture}"
+    from harness import prototype
+    if prototype.enabled():
+        prototype.claim(run_id)
+        if 'scaffold' in args.stages.split(','):
+            prototype.reset(run_id)
     fixture = ROOT / "contracts" / "fixtures" / args.fixture
     if "scaffold" in args.stages.split(","):
         shutil.rmtree(root, ignore_errors=True)

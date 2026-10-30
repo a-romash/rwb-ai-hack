@@ -22,6 +22,10 @@
         "--nologo",
         "--no-restore"
       ],
+      "publish": [
+        "sh", "-c",
+        "dotnet publish src/App.Api/App.Api.csproj -c Debug --no-restore -o /work/.publish/backend && dotnet publish src/App.Worker/App.Worker.csproj -c Debug --no-restore -o /work/.publish/worker"
+      ],
       "test": [
         "dotnet",
         "test",

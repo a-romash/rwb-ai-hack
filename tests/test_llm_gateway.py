@@ -170,3 +170,26 @@ class Tests(unittest.TestCase):
         with self.assertRaises(BudgetExceeded):
             gateway(task_class='qa',system='s',user='different',output=Output)
         self.assertEqual(client.calls,2)
+
+class LocalEndpointConfigurationTests(unittest.TestCase):
+    def test_agent_and_transport_use_local_credentials_without_openrouter_fields(self):
+        import json
+        from unittest.mock import patch
+        from harness.agent import OpenRouter
+        from harness.llm import HTTPTransport
+        class Response:
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def read(self): return json.dumps({'model': 'local-model', 'choices': [{'message': {'content': '{}'}, 'finish_reason': 'stop'}]}).encode()
+        requests = []
+        def opener(request, timeout):
+            requests.append(request)
+            return Response()
+        with patch.dict('os.environ', {'LLM_BASE_URL': 'http://10.10.10.10:4000/v1', 'LLM_API_KEY': 'local-secret', 'LLM_MODEL': 'local-model', 'OPENROUTER_API_KEY': 'other-secret'}):
+            OpenRouter(opener=opener).complete([], None)
+            HTTPTransport(opener=opener).complete([], schema=None, effort='high', reasoning_tokens=100, temperature=.2, max_tokens=20)
+        for req in requests:
+            self.assertEqual(req.get_header('Authorization'), 'Bearer local-secret')
+            self.assertEqual(json.loads(req.data)['model'], 'local-model')
+            self.assertNotIn('provider', json.loads(req.data))
+            self.assertNotIn('reasoning', json.loads(req.data))

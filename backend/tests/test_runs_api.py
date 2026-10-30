@@ -96,3 +96,27 @@ class RunApiTest(unittest.TestCase):
         self.assertEqual(self.client.get(f"/api/projects/{uuid4()}/runs").status_code, 404)
         self.assertEqual(self.client.post(f"/api/projects/{uuid4()}/runs", json={}).status_code, 404)
         self.assertEqual(self.client.post(f"/api/projects/{self.project.id}/runs", json={"budget": {"tokens": 0}}).status_code, 422)
+
+    def test_prototype_url_and_global_single_run(self):
+        from harness import prototype
+        with patch.dict(os.environ, {'PROTOTYPE_ENABLED': '1', 'PROTOTYPE_PUBLIC_PATH': '/generated-demo/'}), \
+             patch.dict('sys.modules', {'app.runner': SimpleNamespace(advance=Mock())}):
+            first = self.client.post(f'/api/projects/{self.project.id}/runs', json={})
+            self.assertEqual(first.status_code, 201, first.text)
+            run_id = first.json()['id']
+            self.assertIsNone(first.json().get('prototype_url'))
+            prototype.mark_ready(run_id)
+            self.assertEqual(self.client.get(f'/api/runs/{run_id}').json().get('prototype_url'), '/generated-demo/')
+            other = Project(name='Other', requirements='other')
+            self.db.add(other)
+            self.db.flush()
+            response = self.client.post(f'/api/projects/{other.id}/runs', json={})
+            self.assertEqual(response.status_code, 409, response.text)
+            self.assertIn('прогон', response.json()['detail'])
+            from app.models import Run
+            from uuid import UUID
+            self.db.get(Run, UUID(run_id)).status = 'succeeded'
+            self.db.flush()
+            second = self.client.post(f'/api/projects/{other.id}/runs', json={})
+            self.assertEqual(second.status_code, 201, second.text)
+            self.assertIsNone(self.client.get(f'/api/runs/{run_id}').json()['prototype_url'])

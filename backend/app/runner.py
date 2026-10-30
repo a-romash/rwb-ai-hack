@@ -71,6 +71,12 @@ def stage_flag_gate(stage):
     return f'stage:{stage}'
 
 
+def stage_queue(stage):
+    from harness import prototype
+    # The first stage resets the previous runtime and therefore needs the build worker's socket.
+    return 'build' if stage == 'analysis' and prototype.enabled() else STAGES_BY_KEY[stage].queue
+
+
 def advance(run_id):
     from app.tasks import run_stage
     pending = None
@@ -97,7 +103,7 @@ def advance(run_id):
             run.status = 'running'
             run.started_at = run.started_at or utc_now()
             _event(session, run.id, 'stage.queued', {'stage': candidate.stage, 'attempt': candidate.attempt})
-            pending = (str(candidate.id), STAGES_BY_KEY[candidate.stage].queue)
+            pending = (str(candidate.id), stage_queue(candidate.stage))
         else:
             run.status = 'failed' if failed or report.status == 'failed' else result_status(session, run_id, stages)
             run.finished_at = utc_now()
@@ -117,6 +123,9 @@ def _reuse(session, run, latest, candidate):
     same workspace tree the earlier attempt started from; its commit tree is then the output.
     """
     stage = candidate.stage
+    from harness import prototype
+    if stage == 'verify' and prototype.enabled() and not run.config.get('fake_stages'):
+        return False
     candidate.input_hash = input_hash(session, run, latest, stage)
     if stage == 'report' or (STAGES_BY_KEY[stage].gates and (run.autonomy == 'A0' or (run.autonomy == 'A1' and stage == 'spec'))):
         return False
@@ -202,6 +211,9 @@ def _execute(stage_id):
         fake = bool(run.config.get('fake_stages'))
         _event(session, run.id, 'stage.started', {'stage': stage, 'attempt': attempt})
     try:
+        from harness import prototype
+        if not fake and stage == 'analysis' and prototype.enabled():
+            prototype.reset(str(run_id))
         for path, digest in frozen:
             if describe(root, path)[0] != digest:
                 raise ContractError(f'Замороженный артефакт изменён: {path}')
@@ -216,6 +228,7 @@ def _execute(stage_id):
         else:
             class LazySandbox:
                 _instance = None
+                keep_stand = prototype.enabled()
                 def approve_test_change(self, path, dispute_id, gate):
                     from app.test_integrity import approve_test_change
                     with SessionLocal.begin() as session:
@@ -266,6 +279,8 @@ def _execute(stage_id):
             run = session.get(Run, run_id)
             if run.status == 'cancelled':
                 row.status, row.finished_at = 'skipped', utc_now()
+                if not fake and stage == 'verify' and prototype.enabled():
+                    prototype.stop(str(run_id))
                 return
             metadata = [(name, path, *describe(root, path)) for name, path in output.artifacts.items()]
             # Re-entry after a question replaces this attempt's accepted output atomically.
@@ -349,7 +364,7 @@ def reconcile():
     with SessionLocal.begin() as session:
         rows = session.scalars(select(StageRun).where(StageRun.status == 'queued', StageRun.queued_at < utc_now() - timedelta(seconds=30))).all()
         for row in rows:
-            queue = STAGES_BY_KEY[row.stage].queue
+            queue = stage_queue(row.stage)
             logging.warning('Шаг %s ждёт воркера очереди %s дольше 30 с, задача отправлена повторно', row.stage, queue)
             run_stage.apply_async(args=[str(row.id)], queue=queue)
             # The claim in execute() is atomic, so duplicates are harmless; this only bounds them to one per 30 s.
@@ -362,6 +377,8 @@ def retry(run_id, key):
         run = session.get(Run, run_id)
         if not run or run.status in ('running', 'waiting', 'cancelled'):
             raise ValueError('Повтор доступен только для неактивного прогона')
+        from app.prototype import reserve
+        reserve(session, run_id)
         latest = _latest(session, run_id)
         # Restarting a succeeded stage reruns it; stages below are reused while their input is unchanged.
         if key not in latest or latest[key].status not in ('failed', 'succeeded'):
@@ -387,7 +404,11 @@ def retry(run_id, key):
             old.status = 'stale' if old.status not in ('failed', 'pending') else old.status
             session.add(StageRun(run_id=run_id, stage=stage.key, attempt=old.attempt + 1, status='pending'))
         run.status, run.finished_at = 'pending', None
+        claim_prototype = key != 'report' and not run.config.get('fake_stages')
         _event(session, run_id, 'run.retry', {'stage': key})
+    from harness import prototype
+    if prototype.enabled() and claim_prototype:
+        prototype.claim(str(run_id))
     advance(run_id)
 
 
@@ -423,7 +444,7 @@ def answer(run_id, answers):
         stage.status, stage.finished_at = 'queued', None
         stage.queued_at = utc_now()
         run.status = 'running'
-        stage_id, queue = str(stage.id), STAGES_BY_KEY[stage.stage].queue
+        stage_id, queue = str(stage.id), stage_queue(stage.stage)
         _event(session, run_id, 'stage.queued', {'stage': stage.stage, 'attempt': stage.attempt})
     from app.tasks import run_stage
     run_stage.apply_async(args=[stage_id], queue=queue)

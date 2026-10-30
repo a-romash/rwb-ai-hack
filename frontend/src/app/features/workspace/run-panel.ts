@@ -53,6 +53,13 @@ import {WorkspaceStore} from './workspace.store';
       }
     </div>
 
+    @if (run?.prototype_url; as prototypeUrl) {
+      <section class="prototype" aria-label="Результат прогона" aria-live="polite">
+        <a tuiButton appearance="secondary" size="s" iconStart="@tui.external-link" [href]="prototypeUrl" target="_blank" rel="noopener noreferrer">Открыть прототип</a>
+        <p class="why">Доступен до следующего запуска конвейера</p>
+      </section>
+    }
+
     <section class="attachments" aria-label="Данные к требованиям">
       <div class="attach-head">
         <p class="section-title">Данные к требованиям</p>
@@ -128,6 +135,7 @@ import {WorkspaceStore} from './workspace.store';
     .title { font-size: var(--p-text-m); line-height: 1.25rem; font-weight: 600; }
     .meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--p-ink-2); font-size: var(--p-text-xs); line-height: 1rem; }
     .controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; }
+    .prototype { display: grid; justify-items: start; gap: 8px; }
     .field { display: grid; gap: 4px; color: var(--p-ink-2); font-size: var(--p-text-xs); }
     select {
       min-height: 32px;

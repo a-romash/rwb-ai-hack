@@ -38,6 +38,11 @@ class DockerSandbox:
         if not _RUN.fullmatch(run_id):
             raise ContractError("Недопустимый идентификатор прогона")
         self.project = f"run-{run_id}"
+        self.run_id = run_id
+        from harness import prototype
+        self.keep_stand = prototype.enabled()
+        if self.keep_stand:
+            self.project = 'rwb-prototype'
         self._restored: set[str] = set()
 
     def run(self, kind: SandboxKind, target: SandboxTarget, *,
@@ -65,6 +70,20 @@ class DockerSandbox:
             return combined
         if kind in ("up", "smoke", "down") and target != "stack":
             raise ContractError("Команда стенда доступна только для stack")
+        if self.keep_stand and target == 'stack' and kind in ('up', 'down'):
+            from harness import prototype
+            started = time.monotonic()
+            if kind == 'up':
+                published = self.run('publish', 'backend', timeout_s=timeout_s)
+                if not published.ok:
+                    return published
+                prototype.deploy(self.workspace, self.run_id)
+            else:
+                prototype.stop(self.run_id)
+            result = SandboxResult(ok=True, exit_code=0, duration_ms=int((time.monotonic() - started) * 1000), failed=[], output_tail='Runtime прототипа обновлён')
+            if self.record:
+                self.record(kind, target, result)
+            return result
         if kind in ("build", "test", "e2e") and target not in self._restored and config.get("restore"):
             # Dependencies are fetched once with network access; build and tests then run offline.
             restored = self._execute("restore", target, config, config["restore"], None, timeout_s, network="bridge")
@@ -84,6 +103,9 @@ class DockerSandbox:
         if not isinstance(command, list) or not command or not all(isinstance(v, str) and v for v in command):
             raise ContractError(f"Нет допустимой команды {kind}/{target} в pack.json")
         args = list(command)
+        if self.keep_stand and kind == 'build' and target in ('admin', 'pwa'):
+            from harness import prototype
+            args += ['--', '--base-href', prototype.public_path() + ('mobile/' if target == 'pwa' else '')]
         if filter is not None:
             template = config.get("filter")
             if not isinstance(template, list) or not all(isinstance(v, str) and v.count("{filter}") <= 1 for v in template) or not any("{filter}" in v for v in template):
@@ -139,7 +161,7 @@ class DockerSandbox:
         elapsed = int((time.monotonic() - start) * 1000)
         failed = [line.strip() for line in output.splitlines() if _ERROR.search(line)][:100]
         report_failures: list[str] = []
-        reports = self._reports(config, report_failures, target)
+        reports = self._reports(config, report_failures, target) if kind in ('test', 'e2e', 'scan', 'smoke') else {}
         failed.extend(report_failures)
         if report_failures and exit_code == 0:
             exit_code = 1

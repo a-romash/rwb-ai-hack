@@ -4,6 +4,16 @@ from harness.workspace import describe
 from stages.quality import read,write,junit
 
 
+def _smoke(workspace, sandbox, roles):
+    import json
+    from harness.fakes import workspace_path
+    smoke=sandbox.run('smoke','stack')
+    evidence=json.loads(workspace_path(workspace,smoke.reports['json']).read_text()) if smoke.reports.get('json') else {}
+    results=evidence.get('roles',{})
+    passed=smoke.ok and bool(roles) and all(results.get(role,{}).get('login') is True and results.get(role,{}).get('request') is True for role in roles)
+    return passed,results
+
+
 def execute(inp,workspace,llm,sandbox):
     workspace=workspace.resolve()
     plan=TestsManifest.model_validate(read(workspace,inp.artifacts,'tests'))
@@ -34,21 +44,27 @@ def execute(inp,workspace,llm,sandbox):
     from stages.verify.parsers import scan_results,playwright
     scans=scan_results(workspace,scan)
     try:
-        stand['up']=sandbox.run('up','stack').ok
+        if not getattr(sandbox,'keep_stand',False) or all(build.values()):
+            stand['up']=sandbox.run('up','stack').ok
         if stand['up']:
-            smoke=sandbox.run('smoke','stack')
-            from harness.fakes import workspace_path
-            import json
-            evidence=json.loads(workspace_path(workspace,smoke.reports['json']).read_text()) if smoke.reports.get('json') else {}
             roles=[r['id'] for r in analysis.get('roles',[])]
-            stand['roles']=evidence.get('roles',{})
-            stand['smoke']=smoke.ok and bool(roles) and all(stand['roles'].get(role,{}).get('login') is True and stand['roles'].get(role,{}).get('request') is True for role in roles)
+            stand['smoke'],stand['roles']=_smoke(workspace,sandbox,roles)
             for target in [t for t in targets if t!='backend' and build.get(t)]:
                 evidence=playwright(workspace,sandbox.run('e2e',target))
                 stand['e2e'][target]=evidence['ok']
                 stand.setdefault('e2e_results',{})[target]=evidence
+            if getattr(sandbox,'keep_stand',False) and stand['smoke']:
+                from harness import prototype
+                prototype.reset_data(inp.run_id)
+                stand['smoke'],stand['roles']=_smoke(workspace,sandbox,roles)
+                stand['data_reset']=True
     finally:
-        stand['down']=sandbox.run('down','stack').ok
+        if getattr(sandbox,'keep_stand',False) and stand['up'] and stand['smoke'] and stand.get('data_reset'):
+            from harness import prototype
+            prototype.mark_ready(inp.run_id)
+            stand['url']=prototype.url(inp.run_id)
+        else:
+            stand['down']=sandbox.run('down','stack').ok
     status={}
     for ac in analysis.get('acceptance',[]):
         ident=ac['id'];tests=[c for c in cases if c.ac==ident];planned=[t for t in plan.tests if t.ac==ident]

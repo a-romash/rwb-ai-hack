@@ -9,6 +9,7 @@ LLM_PROVIDER   OpenRouter provider to pin (no fallbacks), default DeepInfra; emp
 Values are read on every call, so a .env loaded later (harness.agent.load_dotenv) still applies.
 """
 import os
+from urllib.parse import urlsplit
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "qwen/qwen3.8-27b"
@@ -20,8 +21,12 @@ def base_url() -> str:
     return (os.getenv("LLM_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
 
 
-def api_key() -> str:
-    return next((os.environ[name] for name in KEY_NAMES if os.environ.get(name)), "")
+def api_key(url: str | None = None) -> str:
+    target = url or base_url()
+    names = KEY_NAMES if is_openrouter(target) else ('LLM_API_KEY', 'OPENAI_API_KEY')
+    if is_openrouter(target) and not is_openrouter(base_url()):
+        names = ('OPENROUTER_API_KEY',)
+    return next((os.environ[name] for name in names if os.environ.get(name)), "")
 
 
 def model() -> str:
@@ -29,7 +34,7 @@ def model() -> str:
 
 
 def is_openrouter(url: str | None = None) -> bool:
-    return "openrouter.ai" in (url or base_url())
+    return urlsplit(url or base_url()).hostname == 'openrouter.ai'
 
 
 def provider(url: str | None = None) -> str | None:

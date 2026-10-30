@@ -27,6 +27,8 @@ x-backend: &backend
     LLM_API_KEY: ${LLM_API_KEY:-}
     LLM_MODEL: ${LLM_MODEL:-qwen/qwen3.8-27b}
     LLM_PROVIDER: ${LLM_PROVIDER-DeepInfra}
+    PROTOTYPE_ENABLED: ${PROTOTYPE_ENABLED:-0}
+    PROTOTYPE_PUBLIC_PATH: ${PROTOTYPE_PUBLIC_PATH:-/agent-prototype/}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   volumes:
     - ./workspaces:/app/workspaces

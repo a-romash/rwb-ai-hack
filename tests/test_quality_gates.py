@@ -69,6 +69,23 @@ class GateCoverage(unittest.TestCase):
         self.assertFalse(g3(self.root,out.artifacts).passed)
         self.assertFalse(g4(self.root,out.artifacts).passed)
         self.assertEqual(sandbox.calls[-1]['kind'],'down')
+
+    def test_warm_runtime_never_publishes_stale_output_after_failed_build(self):
+        from stages.verify import execute as verify
+        write(self.root,'analysis.json',{'roles':[],'acceptance':[]})
+        write(self.root,'tests.json',{'tests':[],'hashes':{},'acceptance':[],'build_ok':True})
+        for app in ('admin-web','mobile-web'):
+            write(self.root,f'product/{app}/package.json',{})
+            old=self.root/f'product/{app}/dist/{app}/browser/index.html'
+            old.parent.mkdir(parents=True);old.write_text('previous attempt')
+        ok=SandboxResult(ok=True,exit_code=0,duration_ms=1,failed=[],output_tail='')
+        bad=SandboxResult(ok=False,exit_code=1,duration_ms=1,failed=['build failed'],output_tail='build failed')
+        sandbox=FakeSandbox({('build','backend'):[ok],('test','backend'):[ok],('build','admin'):[bad],
+                             ('build','pwa'):[bad],('scan','stack'):[ok],('down','stack'):[ok]})
+        sandbox.keep_stand=True
+        output=verify(StageInput(run_id='r',stage='verify',attempt=1,requirements='r',artifacts={'analysis':'analysis.json','tests':'tests.json'}),self.root,FakeLLM({}),sandbox)
+        self.assertFalse(any(call['kind']=='up' for call in sandbox.calls))
+        self.assertFalse(json.loads((self.root/output.artifacts['verification']).read_text())['stand']['up'])
     def test_dispute_rejection_and_single_attempt(self):
         from stages.tests.dispute import resolve
         from contracts.verification import Dispute

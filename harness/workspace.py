@@ -37,6 +37,7 @@ def input_attachments(root: Path) -> list[str]:
 IGNORED = """node_modules/
 .nuget/
 .npm/
+.publish/
 bin/
 obj/
 dist/
