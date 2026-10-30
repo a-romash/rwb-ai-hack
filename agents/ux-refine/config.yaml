@@ -1,0 +1,4 @@
+task_class: ui
+repair_task_class: patch
+output: stages.ui.llm_io.Patch
+stage: ui

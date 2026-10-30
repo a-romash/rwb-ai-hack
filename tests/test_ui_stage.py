@@ -90,8 +90,9 @@ class StageTest(unittest.TestCase):
             (workspace / "spec" / "analysis.json").write_text(json.dumps(ANALYSIS), encoding="utf-8")
             inp = StageInput(run_id="t", stage="ui", attempt=1, requirements="r",
                              artifacts={"app": "spec/app.json", "analysis": "spec/analysis.json"})
-            out = run_stage_locally(ui_stage, inp, workspace, FakeLLM({}), FakeSandbox({}))
+            out = run_stage_locally(ui_stage, inp, workspace, FakeLLM({}, budget_after=0), FakeSandbox({}))
             self.assertEqual(out.artifacts, {"ui": "spec/ui.json"})
+            self.assertIn("частично", out.summary)               # no model budget: base only
             self.assertIn("TicketList", load_ui(workspace / "spec" / "ui.json").screens)
 
     def test_missing_input_is_contract_error(self):

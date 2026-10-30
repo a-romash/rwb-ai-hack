@@ -92,7 +92,7 @@ class AppView:
                 if "timer" in (t.get("trigger") or {})}
 
     def events(self, entity: str | None = None) -> set[str]:
-        """Explicit events plus the ones the generator derives from transitions (TicketTaken, …)."""
+        """Explicit events plus the ones the generator derives from transitions (OrderShipped, …)."""
         names = set() if entity else set(self._section("events"))
         for machine in self.machines.values():
             if entity and machine.get("entity") != entity:
@@ -118,7 +118,7 @@ def _pascal(name: str) -> str:
 
 
 def derived_event(entity: str, transition: str) -> str:
-    """take -> TicketTaken, expire -> TicketExpired, resolve -> TicketResolved, stop -> TicketStopped."""
+    """take -> OrderTaken, expire -> OrderExpired, close -> OrderClosed, stop -> OrderStopped."""
     irregular = {"take": "taken", "give": "given", "write": "written", "send": "sent", "begin": "begun",
                  "set": "set", "put": "put", "get": "got", "make": "made", "hold": "held", "leave": "left"}
     verb, sep, rest = transition.partition("_")
