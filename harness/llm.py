@@ -91,12 +91,13 @@ class Gateway:
     def __init__(self, *, start: Callable, finish: Callable, budget: Callable,
                  transport=None, profile='M', cache_dir: Path | None = None,
                  tokenizer: Callable[[str], int] | None = None, event: Callable | None = None,
-                 sleep=time.sleep, structured=True):
+                 sleep=time.sleep, structured=True, budget_excluding=None):
         if profile not in PROFILES:
             raise ValueError('Неизвестный профиль контекста')
         self.start, self.finish, self.budget = start, finish, budget
         self.transport, self.profile, self.cache_dir = transport or HTTPTransport(), profile, cache_dir
         self.tokenizer, self.event, self.sleep, self.structured = tokenizer, event or (lambda *a: None), sleep, structured
+        self.budget_excluding = budget_excluding
 
     def __call__(self, *, task_class: str, system: str, user: str,
                  output: type[BaseModel] | Literal['code', 'text'], task_id: str | None = None) -> BaseModel | str:
@@ -112,10 +113,11 @@ class Gateway:
         messages = [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]
         identity = [getattr(self.transport, 'base_url', ''), getattr(self.transport, 'provider', ''), getattr(self.transport, 'model', MODEL), task_class, TASKS[task_class], self.profile, messages, schema, self.structured]
         key = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        prompt_sha = hashlib.sha256(json.dumps(messages, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         cached = self.cache_dir / (key + '.json') if self.cache_dir else None
         if cached and cached.is_file():
             value = json.loads(cached.read_text(encoding='utf-8'))
-            record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started', 'from_cache': True})
+            record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started', 'from_cache': True, 'prompt_sha': prompt_sha})
             self.finish(record, {'status': 'ok', 'from_cache': True, 'latency_ms': 0})
             self.event('llm.cache_hit', {'task_class': task_class, 'task_id': task_id})
             return output.model_validate(value) if schema else value
@@ -124,6 +126,7 @@ class Gateway:
             messages[0]['content'] += '\nВерни только JSON по схеме: ' + json.dumps(schema, ensure_ascii=False)
         repairs = continuations = retries = 0
         content = ''
+        own_requests = []
         while True:
             encoded = json.dumps(messages, ensure_ascii=False)
             if self.tokenizer:
@@ -136,12 +139,13 @@ class Gateway:
             max_tokens = limit + reasoning_tokens
             if count > input_cap or count + max_tokens > window:
                 raise ContractError('Контекст и резерв ответа превышают профиль окна')
-            used, token_limit, elapsed, minute_limit = self.budget()
+            used, token_limit, elapsed, minute_limit = self.budget_excluding(own_requests) if self.budget_excluding else self.budget()
             if used is None or used >= token_limit or elapsed >= minute_limit:
                 raise BudgetExceeded('Бюджет прогона исчерпан или расход неизвестен')
             if used >= token_limit * .8 or elapsed >= minute_limit * .8:
                 self.event('llm.budget_warning', {})
-            record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started'})
+            record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started', 'prompt_sha': prompt_sha})
+            own_requests.append(record)
             started = time.monotonic()
             try:
                 response = self.transport.complete(messages, schema=schema if structured else None, effort=effort,

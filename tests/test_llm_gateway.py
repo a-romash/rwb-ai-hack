@@ -126,4 +126,25 @@ class Tests(unittest.TestCase):
         gateway = self.gateway(Client(['bad', '<<<CODE\nhello\nCODE>>>']))
         self.assertEqual(gateway(task_class='hook_1', system='s', user='u', output='code'), 'hello')
 
-if __name__ == '__main__': unittest.main()
+
+
+    def test_unknown_usage_allows_only_bounded_retry_inside_same_call(self):
+        class Retry:
+            calls=0
+            def complete(self,*args,**kwargs):
+                self.calls+=1
+                if self.calls==1:
+                    raise TransportError('HTTP 429',retryable=True)
+                return {'content':'{"count":7}','usage':{'prompt_tokens':2,'completion_tokens':3},'finish_reason':'stop'}
+        client=Retry()
+        gateway=self.gateway(client,sleep=lambda _:None)
+        def budget(excluded=()):
+            unknown=[i for i,r in enumerate(self.records) if r.get('status')=='provider_error']
+            return (None if any(i not in excluded for i in unknown) else 0,1000,0,10)
+        gateway.budget=budget
+        gateway.budget_excluding=budget
+        self.assertEqual(gateway(task_class='qa',system='s',user='u',output=Output).count,7)
+        self.assertIsNone(self.records[0]['usage'])
+        with self.assertRaises(BudgetExceeded):
+            gateway(task_class='qa',system='s',user='different',output=Output)
+        self.assertEqual(client.calls,2)

@@ -104,3 +104,48 @@ class RunnerIntegration(unittest.TestCase):
         with patch.dict(sys.modules, {'contracts.app': SimpleNamespace(dependents=lambda *_: 'wrong')}):
             with self.assertRaises(ContractError):
                 runner._dependent_paths(root, {'app': 'app.json'}, 'entities.E')
+    def test_report_snapshot_final_status_hash_and_project_projection(self):
+        from app.models import Artifact
+        from app.projects import project_view
+        queued=[]
+        with patch('app.tasks.run_stage.apply_async', side_effect=lambda args,queue:queued.append(args[0])):
+            runner.advance(self.run_id)
+            while queued:
+                runner.execute(queued.pop(0))
+        with SessionLocal() as session:
+            run=session.get(Run,self.run_id)
+            report=session.scalar(select(Artifact).where(Artifact.run_id==self.run_id,Artifact.name=='report'))
+            import json
+            data=json.loads((Path(run.workspace_path)/report.path).read_text())
+            self.assertEqual(data['snapshot']['status'],'partial')
+            self.assertIn('metrics',data['snapshot'])
+            rows=session.scalars(select(StageRun).where(StageRun.run_id==self.run_id)).all()
+            self.assertTrue(all(len(row.input_hash)==64 for row in rows))
+            from app.models import Stage
+            project=session.get(Project,self.project_id)
+            project.stages.append(Stage(key='business_analysis',name='Анализ',position=1,status='not_started'))
+            session.flush()
+            self.assertEqual(project_view(project,session)['stages'][0]['status'],'succeeded')
+    def test_resume_preserves_checkpoint_artifact(self):
+        from app.models import Artifact
+        from harness.fake_stages import analysis
+        from contracts.stage import StageOutput, Question as StageQuestion
+        calls=[]
+        def execute(inp,root,llm,sandbox):
+            calls.append(inp)
+            if not inp.answers:
+                (root/'checkpoint.json').write_text('{}')
+                return StageOutput(artifacts={'checkpoint':'checkpoint.json'},summary='waiting',questions=[StageQuestion(id='Q-1',text='?',options=['yes'],default='yes',why='test')])
+            self.assertEqual(inp.artifacts['checkpoint'],'checkpoint.json')
+            self.assertEqual(inp.answers,{'Q-1':'yes'})
+            return StageOutput(artifacts={'analysis':'checkpoint.json'},summary='done')
+        with SessionLocal.begin() as session:
+            session.get(Run,self.run_id).autonomy='A1'
+        queue=[]
+        with patch.object(analysis,'execute',side_effect=execute),patch('app.tasks.run_stage.apply_async',side_effect=lambda args,queue=None:queue_ids.append(args[0])):
+            queue_ids=[]
+            runner.advance(self.run_id)
+            runner.execute(queue_ids.pop(0))
+            runner.answer(self.run_id,{'Q-1':'yes'})
+            runner.execute(queue_ids.pop(0))
+        self.assertEqual(len(calls),2)

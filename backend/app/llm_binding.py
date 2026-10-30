@@ -25,7 +25,7 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
         with SessionLocal.begin() as session:
             call = LLMCall(run_id=run_id, stage_run_id=stage_run_id, task_id=meta.get('task_id'),
                            task_class=meta['task_class'], provider=provider, model=meta['model'],
-                           context_profile=meta['context_profile'], status='started',
+                           context_profile=meta['context_profile'], prompt_sha=meta.get('prompt_sha'), status='started',
                            from_cache=meta.get('from_cache', False))
             session.add(call)
             session.flush()
@@ -48,15 +48,15 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
             call.ts_end = datetime.now(timezone.utc)
             session.add(Event(run_id=run_id, type='llm.call', payload={'id': str(call_id), 'status': call.status, 'from_cache': call.from_cache}))
 
-    def budget():
+    def budget(exclude_unknown=()):
         with SessionLocal() as session:
             run = session.get(Run, run_id)
             if run is None:
                 raise LookupError('Прогон не найден')
             calls = session.scalars(select(LLMCall).where(LLMCall.run_id == run_id, LLMCall.from_cache.is_(False))).all()
             # An interrupted request or response without usage cannot be charged as zero.
-            unknown = any(call.status == 'started' or call.tokens_in is None or call.tokens_out is None for call in calls)
-            used = None if unknown else sum(call.tokens_in + call.tokens_out for call in calls)
+            unknown = any((call.status == 'started' or call.tokens_in is None or call.tokens_out is None) and call.id not in exclude_unknown for call in calls)
+            used = None if unknown else sum(call.tokens_in + call.tokens_out for call in calls if call.tokens_in is not None and call.tokens_out is not None)
             elapsed = (datetime.now(timezone.utc) - (run.started_at or run.created_at)).total_seconds() / 60
             return used, run.tokens_limit, elapsed, run.minutes_limit
 
@@ -76,5 +76,5 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
                 event('llm.tokenizer_unavailable', {'method': 'chars/3'})
 
     return Gateway(start=start, finish=finish, budget=budget, event=event, transport=client,
-                   profile=config.get('context_profile', 'M'), cache_dir=cache_dir, tokenizer=tokenizer,
+                   profile=config.get('context_profile', 'M'), cache_dir=cache_dir, tokenizer=tokenizer, budget_excluding=budget,
                    structured=config.get('structured_output', True))

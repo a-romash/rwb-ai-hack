@@ -66,6 +66,7 @@ def advance(run_id):
         else:
             candidate = next((stages[x.key] for x in STAGES if stages[x.key].status == 'pending'), None)
         if candidate:
+            candidate.input_hash = input_hash(session, run, stages, candidate.stage)
             candidate.status = 'queued'
             candidate.queued_at = utc_now()
             run.status = 'running'
@@ -100,7 +101,7 @@ def _execute(stage_id):
         run_id, stage, attempt = run.id, row.stage, row.attempt
         root = Path(run.workspace_path)
         latest = _latest(session, run.id)
-        accepted_ids = [item.id for item in latest.values() if item.status == 'succeeded']
+        accepted_ids = [item.id for item in latest.values() if item.status == 'succeeded' or (item.id == row.id and answers_present(session, row.id))]
         accepted_artifacts = session.scalars(select(Artifact).where(Artifact.run_id == run.id, Artifact.stage_run_id.in_(accepted_ids)).order_by(Artifact.created_at)).all()
         artifacts = {a.name: a.path for a in accepted_artifacts}
         frozen = [(a.path, a.hash) for a in accepted_artifacts if a.name in ('app', 'ui')]
@@ -108,7 +109,8 @@ def _execute(stage_id):
         if stage == 'report':
             calls = session.scalars(select(LLMCall).where(LLMCall.run_id == run.id)).all()
             tools = session.scalars(select(ToolRun).where(ToolRun.run_id == run.id)).all()
-            snapshot = {'status': 'failed' if any(x.status == 'failed' for k, x in latest.items() if k != 'report') else run.status, 'stages': [{'stage': x.stage, 'status': x.status, 'attempt': x.attempt, 'error': x.error} for x in latest.values()],
+            from app.runs import metrics
+            snapshot = {'metrics': metrics(session, run.id), 'status': result_status(session, run.id, latest), 'stages': [{'stage': x.stage, 'status': x.status, 'attempt': x.attempt, 'error': x.error} for x in latest.values()],
                 'flags': [{'path': x.path, 'status': x.status, 'reason': x.reason, 'gate': x.gate} for x in session.scalars(select(SpecFlag).where(SpecFlag.run_id == run.id))],
                 'gates': [{'gate': x.gate, 'passed': x.passed, 'findings': x.findings} for x in session.scalars(select(GateResult).join(StageRun).where(StageRun.run_id == run.id))],
                 'llm_calls': [{'task_class': x.task_class, 'status': x.status, 'tokens_in': x.tokens_in, 'tokens_out': x.tokens_out, 'from_cache': x.from_cache} for x in calls],
@@ -157,7 +159,7 @@ def _execute(stage_id):
             sandbox = LazySandbox()
         output = run_stage_locally(module, inp, root, llm, sandbox)
         gates = []
-        for name in STAGES_BY_KEY[stage].gates:
+        for name in (() if output.questions and inp.autonomy in ('A0', 'A1') else STAGES_BY_KEY[stage].gates):
             output, results = run_gate(name, module, inp, root, llm, output, allow_missing=fake)
             gates.extend((name, n, value) for n, value in enumerate(results))
         for path, digest in frozen:
@@ -177,13 +179,16 @@ def _execute(stage_id):
                 row.status, row.finished_at = 'skipped', utc_now()
                 return
             metadata = [(name, path, *describe(root, path)) for name, path in output.artifacts.items()]
+            # Re-entry after a question replaces this attempt's accepted output atomically.
+            session.execute(delete(Artifact).where(Artifact.stage_run_id == row.id))
+            session.execute(delete(GateResult).where(GateResult.stage_run_id == row.id))
             if stage == 'tests' and not fake:
-                session.execute(delete(TestHash).where(TestHash.run_id == run_id))
-                for pattern in ('product/backend/tests/App.Acceptance.Tests/**/*.cs', 'product/admin-web/e2e/**/*.spec.ts', 'product/mobile-web/e2e/**/*.spec.ts'):
-                    for test_file in root.glob(pattern):
-                        relative = str(test_file.relative_to(root))
-                        digest = describe(root, relative)[0]
-                        session.add(TestHash(run_id=run_id, path=relative, hash=digest, reason='redproof'))
+                from app.test_integrity import accept_manifest
+                accept_manifest(session, run_id, root, output.artifacts.get('tests', 'reports/tests.json'))
+            for name, path, digest, size, kind in metadata:
+                if name in ('app', 'ui'):
+                    from harness.fakes import workspace_path
+                    workspace_path(root, path).chmod(0o444)
             revision = commit(root, f'stage({stage}): {output.summary}')
             for name, path, digest, size, kind in metadata:
                 session.add(Artifact(run_id=run_id, stage_run_id=row.id, name=name, path=path, hash=digest, size=size, kind=kind))
@@ -312,8 +317,7 @@ def answer(run_id, answers):
             question.answer, question.answered_by = answers[question.qid], 'user'
         # Re-enter execute with saved answers; stages must preserve their own checkpoint
         # to avoid repeating model work. The interface has no generic continuation state.
-        session.execute(delete(Artifact).where(Artifact.stage_run_id == stage.id))
-        session.execute(delete(GateResult).where(GateResult.stage_run_id == stage.id))
+        # Preserve this attempt's artifacts as the stage's resume checkpoint.
         stage.status, stage.finished_at = 'queued', None
         stage.queued_at = utc_now()
         run.status = 'running'
@@ -339,3 +343,29 @@ def decide(run_id, gate, decision, comment):
         run.status = 'waiting' if stage.status == 'waiting_human' else 'running'
         _event(session, run_id, 'gate.result', {'stage': stage.stage, 'gate': gate, 'decision': decision})
     advance(run_id)
+
+
+def answers_present(session, stage_id):
+    return session.scalar(select(Question.id).where(Question.stage_run_id == stage_id, Question.answer.is_not(None)).limit(1)) is not None
+
+
+def result_status(session, run_id, latest):
+    if any(row.status == 'failed' for key, row in latest.items() if key != 'report'):
+        return 'failed'
+    ids = [row.id for row in latest.values()]
+    checks = session.scalars(select(GateResult).where(GateResult.stage_run_id.in_(ids))).all()
+    flags = session.scalar(select(SpecFlag.id).where(SpecFlag.run_id == run_id).limit(1))
+    return 'partial' if flags or any(f.get('code') == 'GATE_MISSING' for g in checks for f in g.findings) else 'succeeded'
+
+
+def input_hash(session, run, latest, key):
+    ids = [row.id for row in latest.values() if row.status == 'succeeded']
+    artifacts = session.scalars(select(Artifact).where(Artifact.stage_run_id.in_(ids))).all()
+    files = []
+    repo = Path(__file__).resolve().parents[2]
+    for directory in ('agents', 'templates', 'contracts'):
+        for path in sorted((repo / directory).rglob('*')):
+            if path.is_file() and '__pycache__' not in path.parts:
+                files.append((str(path.relative_to(repo)), hashlib.sha256(path.read_bytes()).hexdigest()))
+    payload = [run.requirements, key, sorted((a.name, a.hash) for a in artifacts), files]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
