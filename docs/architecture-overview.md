@@ -548,3 +548,61 @@ docs/         сайт документации (§12)
 - Все плейсхолдеры разрешены; внутренние ссылки сайта живые.
 - В тексте модели нет чисел, совпадающих с метриками отчёта или значениями `params` (они должны идти через плейсхолдеры).
 - Скриншоты соответствуют последнему зелёному прогону E2E.
+
+## 13. Дирижёр: модель данных и `advance()`
+
+Состояние прогона живёт в Postgres, артефакты — в git-workspace прогона. Celery — только транспорт: потеря задачи или воркера не теряет прогон, потому что истина в таблицах.
+
+### 13.1 Таблицы
+
+| Таблица | Ключевые поля | Назначение |
+|---|---|---|
+| `runs` | `id`, `mode` (`interactive` / `auto`), `status`, `workspace_path`, `config` (JSON: лимиты, модели), `created_at`, `finished_at` | Прогон |
+| `stage_runs` | `id`, `run_id`, `stage` (`e1`…`e7`, `gen`, `tests`, `redproof`, `ci`…), `status`, `attempt`, `input_hash`, `output_commit`, `lease_until`, `worker`, `started_at`, `finished_at`, `error` | Экземпляр этапа; уникален по (`run_id`, `stage`, `attempt`) |
+| `stage_deps` | `run_id`, `stage`, `depends_on` | DAG прогона; строится из шаблона DAG при создании |
+| `tasks` | `id`, `stage_run_id`, `kind` (`hook`, `custom`, `test`, `ci_fix`…), `target`, `status`, `steps`, `attempts`, `result` | Подзадачи этапа, идущие параллельно |
+| `artifacts` | `run_id`, `path`, `hash`, `stage_run_id`, `kind` (`analysis`, `app`, `ui`, `openapi`, `report`…) | Что произвёл этап; вход для `input_hash` следующих |
+| `gate_results` | `stage_run_id`, `gate`, `passed`, `details` (JSON) | Итог каждого гейта: схема, линтер, тесты, сканеры |
+| `questions` | `id`, `run_id`, `stage_run_id`, `payload` (вопрос, варианты, ответ по умолчанию), `answer`, `answered_by` (`user` / `default`), `deadline` | Вопросы Э1 |
+| `test_hashes` | `run_id`, `path`, `hash`, `reason` (`redproof` / `dispute:<id>`) | Целостность тестов (§10.3) |
+| `disputes` | `id`, `task_id`, `test`, `reason`, `decision`, `decided_at` | Споры `dispute_test` |
+| `ci_pipelines` | `run_id`, `gitlab_id`, `commit`, `status`, `repair_round`, `failed_job`, `log_excerpt` | Пайплайны и круги починки |
+| `events` | `id` (bigserial), `run_id`, `type`, `payload`, `ts` | Журнал только на добавление: источник SSE для Студии и аудита |
+| `llm_calls` | §14.3 | Каждый вызов модели |
+
+**Статусы `stage_runs`:** `pending` → `queued` → `running` → `succeeded` | `failed` | `waiting_input` | `waiting_ci` | `waiting_human` | `skipped` | `stale`.
+
+### 13.2 `advance(run_id)`
+
+Единственная функция, которая двигает прогон. Вызывается после создания прогона, после завершения любого этапа, после ответа пользователя, по вебхуку CI и по периодической задаче-сторожу. Идемпотентна: лишний вызов ничего не ломает.
+
+```python
+def advance(run_id):
+    with tx(), advisory_lock(run_id):                # один advance на прогон в момент времени
+        reclaim_expired_leases(run_id)               # running с истёкшим lease_until → pending, attempt+1
+        for st in stages(run_id, status="pending"):
+            deps = deps_of(st)
+            if any(d.status in FAILED_OR_BLOCKED for d in deps):
+                continue
+            if not all(d.status in ("succeeded", "skipped") for d in deps):
+                continue
+            h = input_hash(st)                       # хэш артефактов всех входов + версия промптов и шаблонов
+            prev = last_success(run_id, st.stage)
+            if prev and prev.input_hash == h:        # вход не изменился — результат переиспользуем
+                mark(st, "skipped", output_commit=prev.output_commit)
+                continue
+            mark(st, "queued", input_hash=h)
+            after_commit(lambda: enqueue(QUEUE[st.stage], run_stage, st.id))
+        finalize_if_done(run_id)                     # все этапы зелёные → runs.status = succeeded
+```
+
+**Исполнение этапа (`run_stage`)** на воркере: взять этап, только если он `queued` (`UPDATE … WHERE status='queued' RETURNING`), выставить `running` и `lease_until`; продлевать lease сердцебиением; выполнить шаги и гейты; закоммитить артефакты в workspace; записать `artifacts`, `gate_results`, `output_commit`, событие; выставить итоговый статус; вызвать `advance`. Celery-задачи — с `acks_late` и без ретраев на уровне Celery: повтор решает `advance` через `attempt`.
+
+**Ожидание.** Этап, которому нужен пользователь или CI, сохраняет состояние, выставляет `waiting_*` и завершает задачу. Ответ через API или вебхук переводит этап обратно в `queued`; этап продолжает с сохранённой точки (например, с шага 5 Э1 при уже полученных ответах).
+
+**Возобновление и перезапуск.**
+- Перезапуск с этапа X: X и все этапы ниже по DAG помечаются `stale`, создаются новые `attempt` в `pending`, workspace откатывается к `output_commit` входов X. Благодаря `input_hash` неизменившиеся ветки DAG не пересчитываются (например, правка `ui.yaml` не перезапускает тесты из AC).
+- Падение воркера: lease истекает, сторож вызывает `advance`, этап повторяется со следующим `attempt`. Внутри этапа долгие подзадачи (`tasks`) тоже идемпотентны: готовые хуки не переписываются.
+- Лимит `attempt` на этап (по умолчанию 3) → `failed` и `waiting_human` в интерактивном режиме.
+
+**События для Студии.** Каждое изменение статуса, вопрос, гейт, вызов модели пишет строку в `events` и публикует её id в Redis pub/sub; SSE-эндпоинт отдаёт поток с `Last-Event-ID`, поэтому переподключение Студии ничего не теряет.
