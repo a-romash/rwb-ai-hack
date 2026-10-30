@@ -1,0 +1,367 @@
+# Передача контекста: интеграция веток и исправления (30.10.2026)
+
+Документ для того, кто продолжает работу: человек или ИИ-агент. В нём собраны ТЗ, устройство кода, принятые решения, сделанное, способ проверки и список дел. Сначала прочитайте разделы 1, 3 и 8.
+
+- Репозиторий: `a-romash/rwb-ai-hack` (GitHub).
+- Рабочая ветка интеграции: **`claude/review-docs-branches-48sc58`**. В ней влиты все ветки команды и исправления. Последний коммит — `d24de66`.
+- Ревью со всеми находками: issue **#3** (https://github.com/a-romash/rwb-ai-hack/issues/3), с комментариями-дополнениями.
+- Открытые PR: #2 (`feat/artem-ui-contract` → `main`), #4 (`feature/studio-frontend` → `main`). Обе ветки уже влиты в ветку интеграции. Отдельно их сливать не нужно, если в `main` уйдёт ветка интеграции.
+- Старые ветки **не удалены**, так попросил владелец: `docs`, `docs-80s7c7`, `feat/maxim-platform`, `feat/timofey-quality`, `feat/artem-ui-stage`, `feat/artem-ui-contract`, `feat/sanya-contracts`, `ivan`, `feature/studio-frontend`.
+- В `main` ничего не пушилось. Следующий шаг — PR из ветки интеграции в `main`.
+
+---
+
+## 1. Что строим (ТЗ хакатона Russtech / RWB)
+
+**Кейс:** «Агентский ИИ-пайплайн полного цикла разработки корпоративных приложений». Нужно сделать не одно приложение, а **универсальный конвейер**. На входе только бизнес-требования. На выходе:
+- анализ и системный анализ;
+- интерфейс и код;
+- тесты, инфраструктура, CI/CD;
+- документация;
+- развёрнутый прототип;
+- отчёт о расходе токенов, времени и попыток.
+
+- **7 этапов по ТЗ:** приём и анализ требований → системный анализ → проектирование интерфейса → разработка → тестирование и безопасность → сборка и развёртывание → документация.
+- **Оценка (100 баллов):** анализ 20, продукт и интерфейс 15, архитектура и разработка 20, тесты и безопасность 15, инфраструктура 10, документация 10, эффективность пайплайна 10. Отсутствующие этапы не дисквалифицируют, но баллов за них нет.
+- **Кейс №1 (открыт):** «Парковочный помощник для технических служб» (СПб). Нужно определять нахождение машины в платной зоне, отслеживать сессию, предупреждать за 10 минут, фиксировать смену зоны, вести историю и админку. **Кейс №2 скрыт:** жюри запустит конвейер на нём при оценке. Поэтому в коде конвейера **нельзя зашивать домен**.
+- **Стек генерируемого приложения по ТЗ:** Angular 20.1.6, C# 14 / ASP.NET Core 10, PostgreSQL 17.9 + PostGIS, Kotlin 2.2.21 (Android), Kafka + REST, Docker Compose, GitLab CI 19.4.2, LLM Qwen3.8-27B.
+- **Решения команды по стеку** (зафиксированы в `docs/architecture-v2.md`, R17 и R18):
+  - **вместо Kafka** — события через PostgreSQL (outbox, `SKIP LOCKED`, `LISTEN/NOTIFY`);
+  - **вместо нативного Android** — **PWA** на Angular (`mobile-web/`).
+
+  Это отступление от ТЗ и риск по баллам: в слайде «Ожидаемые компоненты» явно указаны «Мобильное приложение на Kotlin» и Kafka. Отступление нужно громко вынести в README и отчёт.
+- **Требования к сдаче:** работающий пайплайн, репозиторий в **локальном GitLab**, документы, код, тесты, Docker-окружение, CI/CD, прототип, пользовательская документация, отчёт о токенах, времени и попытках, видео.
+
+### Данные кейса
+Владелец присылал `spb.json` (6867 зон) и `response.json` (Москва, 16656 зон). В репозиторий они не входят. Формат: `{result, message, data: {city, zones: [...]}}`. У зоны:
+- `externalZoneId` (строка);
+- `displayName`;
+- `geometry` — WKT, порядок `lon lat`;
+- `price` в копейках;
+- `priceDescription`, `minTime`, `timeStep`;
+- `tariff.periods[]`: `from`/`to` — минуты суток (480–1200 = 08:00–20:00), `type` — car/truck/bus;
+- `hasHolidays`.
+
+**В СПб полигонов нет:** 6563 `LINESTRING`, 299 `MULTILINESTRING`, 5 `GEOMETRYCOLLECTION`. Поэтому «машина в зоне» требует буфера вокруг линии (`detect_area`, решение R10). Профайлер Сани пока видит `geometry` как строку и WKT не разбирает (см. раздел 8).
+
+---
+
+## 2. Команда и владение
+
+Так в `docs/tasks/*.md`. Ветки, если важно авторство, смотреть в `git log`.
+
+| Участник | Зона | Файлы |
+|---|---|---|
+| Максим (zurgenius) | Платформа: раннер, API прогонов, шлюз LLM, песочница, механизм гейтов | `backend/app/`, `harness/` (кроме `agent.py`), `gates/core.py`, `contracts/{stage,gates,api}.py`, `compose.yaml` |
+| Саня (Hausmaster333) | `analysis`, `spec`, G0, G1 | `stages/analysis`, `stages/spec`, `gates/g0_inputs.py`, `gates/g1_spec.py`, `contracts/{analysis,app}.py`, `agents/analyst-*`, `agents/system-analyst-*` |
+| Артём (a-romash) | `ui`, G1.5, Студия | `stages/ui`, `gates/g15_ui.py`, `contracts/ui.py`, `agents/ux-*`, `frontend/` |
+| Иван (streamferow) | `scaffold`, `develop`, шаблон продукта | `stages/scaffold`, `stages/develop`, `templates/product`, `contracts/{hooks,pack}.py`, `harness/agent.py` |
+| Тимофей | `tests`, `verify`, `report`, G2–G5 | `stages/tests`, `stages/verify`, `stages/report`, `stages/quality.py`, `gates/g2..g5`, `contracts/{verification,report}.py` |
+
+Ветку `feat/timofey-quality` коммитил zurgenius. Студию (`feature/studio-frontend`) сделал Тимофей Семикин, хотя по tasks это зона Артёма. Договоритесь о владельце Студии.
+
+---
+
+## 3. Архитектура (как устроено сейчас)
+
+### 3.1 Источник истины в документах
+- `docs/architecture-v2.md` + `docs/tasks/*.md` — **актуальные**. Контракты описаны в §3 каждого task-файла, во всех пяти файлах одинаково.
+- `docs/architecture-overview.md` — **устаревший** MVP-план. Он противоречит v2: только web, остановка на первом упавшем этапе. Надо пометить его устаревшим (раздел 8).
+- `docs/trassa/p1–p11` — справочник «Трасса», откуда взяты идеи.
+- В v2 местами остались `*.yaml` (`analysis.yaml`, `app.yaml`, `ui.yaml`). **Принято: всё, что генерирует конвейер, — JSON** (решение владельца и Максима, 30.10). Docker и GitLab-файлы остаются YAML, иначе их не прочитают.
+
+### 3.2 Платформа (Python)
+- **Стек:** FastAPI + SQLAlchemy/Alembic + Celery. Брокер — тот же PostgreSQL через Kombu SQLAlchemy transport; Redis и RabbitMQ нет. Студия — Angular 20.1.6 + Taiga UI 5.
+- **Сервисы** (`compose.yaml`): `postgres`, `api`, `worker-llm` (очереди `llm,celery`), `worker-build` (`build`, с Docker-сокетом), `worker-io` (`io`), `frontend`.
+- **Цепочка этапов** — фиксированная (`harness/registry.py`):
+  `analysis(G0) → spec(G1) → ui(G1.5) → scaffold → tests(G2) → develop → verify(G3,G4) → report(G5)`.
+  Шаг `report` выполняется всегда.
+- **Граница этапа** (`contracts/stage.py`): `execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> StageOutput`, опционально `repair(...)`. Этап не знает про HTTP, Celery и БД.
+- **Раннер** (`backend/app/runner.py`): `advance()` ставит следующий этап, `_execute()` выполняет этап, гоняет гейты (`gates/core.py::run_gate`, до двух кругов `repair`), коммитит workspace, пишет артефакты, `gate_results`, `spec_flags`, события.
+- **Понижение вместо падения (R13):**
+  - error-находки гейта в последнем круге становятся `spec_flags`, прогон получает статус `partial`;
+  - зависимые элементы ищутся через `contracts.app.dependents` **только для путей `app.json`** (`_is_app_path`);
+  - флаги, которые возвращают сами этапы (`StageOutput.flags`), тоже сохраняются (`gate = "stage:<key>"`).
+- **Рабочая папка прогона:** `WORKSPACES_DIR/<project_id>/runs/<run_id>/` — это git-репозиторий (`harness/workspace.py`). Создаётся `.gitignore` для `node_modules`, `.nuget`, `bin`, `obj`, `dist`. Git работает со своим глобальным конфигом (`safe.directory=*`), потому что API и воркеры могут работать от разных пользователей.
+- **Шлюз LLM** (`harness/llm.py` + `backend/app/llm_binding.py`):
+  - классы задач (`TASKS`) и профили окна XS–L;
+  - structured JSON с фолбэком;
+  - код из модели — между `<<<CODE`/`CODE>>>`;
+  - кэш по хэшу, в ключе номер попытки (`cache_salt`);
+  - учёт в `llm_calls`;
+  - бюджет: стоп только если ответ пришёл без usage; ошибки транспорта бюджет не «отравляют».
+- **Песочница** (`harness/sandbox.py::DockerSandbox`):
+  - команды только из доверенного `templates/product/pack.json`;
+  - `restore` — один раз на цель, с сетью (`bridge`); `build` и `test` — без сети;
+  - env цели из манифеста;
+  - контейнер работает от владельца workspace;
+  - несколько JUnit склеиваются в `reports/junit-merged/<target>.xml`, устаревшие удаляются перед запуском;
+  - compose продукта валидируется (`$` запрещён, кроме `$$`, без bind-монтирований, сборка с `network: none`);
+  - путь workspace на хосте: `HOST_WORKSPACES_DIR` или `docker inspect` собственного контейнера (`host_workspaces_dir`).
+- **API Студии:** `backend/app/runs.py` (`/api/projects/{id}/runs`, `/api/runs/{id}`, `/artifacts`, `/files`, `/events`, `/events/stream` (SSE), `/metrics`, `/retry`, `/answers`, `/gates/{gate}/decision`, `/cancel`). Модели — `contracts/api.py`.
+
+### 3.3 Этапы
+- **`analysis`/`spec` (Саня):** цепочки узких шагов с моделью, проверкой и JSON Patch-ремонтом. Выходы — `spec/analysis.json` и `spec/app.json`. Модели `contracts/analysis.py`, `contracts/app.py`. Классы задач `req_extract`, `req_lint`, `spec_step`, `patch`. Свои промпты лежат в `agents/analyst-*` и `agents/system-analyst-*`.
+- **`ui` (Артём):** база выводится кодом из `app.json`, модель её дорабатывает (платформы, патчи, проходы US, тексты, устройства). Выход — `spec/ui.json` по строгой схеме `contracts/ui.py` (`extra="forbid"`). Гейт G1.5 — `gates/g15_ui.py`.
+- **`scaffold` (Иван + мои доработки):** детерминированный, без модели. Копирует `templates/product` в `product/` и генерирует:
+  - `backend/src/App.Domain/Generated/Model.cs` — перечисления, состояния машин (`<Machine>State`), сущности (`[JsonRequired]` на обязательных полях), команды (`record`);
+  - `.../Generated/Params.cs` — `App.Domain.Params`: пороги правил (`TimeSpan` для duration, `int[]` для списков);
+  - интерфейсы `I<Hook>Hook` и нейтральные заглушки `Hooks/<Hook>Hook.cs`; заглушки при повторной генерации не перезаписываются;
+  - `src/App.Api/Features/Generated/Endpoints.cs` — `Access` (роли и гранты) и `GeneratedEndpoints` (CRUD, команды);
+  - `src/App.Infrastructure/Generated/AppDbContext.Model.cs`;
+  - `tests/App.Generated.Tests/cases/api.json`, `infra/roles.json`;
+  - `hooks.json` (с `method`/`returns`/`parameters`), `openapi.json`;
+  - маршруты админки и page objects.
+
+  Генератор: `stages/scaffold/generate.py`, `domain.py`, `api.py`.
+- **`tests` (переписан):** см. раздел 4.
+- **`develop` (Иван + правки):** лестница из четырёх попыток (`hook_1..hook_4`) на хук. Модель возвращает тело файла хука, затем `build` и `test --filter-trait AC=<первый AC>`. Хук без единого прогнанного теста не принимается. `task_id` = id хука.
+- **`verify` (Тимофей + правки):**
+  - сборка целей по платформам из `ui.json`: backend всегда, admin при web-экранах, pwa при mobile;
+  - тесты, мутации хуков, сканеры, `up` стенда, smoke, E2E, `down`;
+  - результат — `reports/verification.json`.
+- **`report` (Тимофей):** `reports/report.json` и `.md`, `product/docs/`. Числа считает код, модель пишет только связный текст.
+
+### 3.4 Шаблон продукта (`templates/product`)
+- **`backend/`** — ASP.NET Core 10:
+  - проекты `App.{Api,Application,Domain,Infrastructure,Worker}`;
+  - тесты `App.{Acceptance,Generated,Architecture}.Tests` + `App.TestKit`;
+  - xunit.v3 в режиме Microsoft.Testing.Platform (`UseMicrosoftTestingPlatformRunner` + `global.json test.runner`).
+- **`Program.cs`:**
+  - JSON в snake_case, enum — snake_case-строки, `RespectNullableAnnotations`/`RespectRequiredConstructorParameters`, `ThrowOnBadRequest=false` (неполное тело — 400);
+  - JWT, у которого и выдача, и проверка срока идут через `TimeProvider`;
+  - dev-вход `POST /api/auth/login {role}` и `GET /api/auth/me`;
+  - `EnsureCreated()` (миграций нет);
+  - `--healthcheck` для контейнера.
+- **`App.TestKit`:** `AppFactory` (InMemory-БД, `As(role)` логинится через API), `TestClock`, `Json.Options` (snake_case, `IsRequired` снят для кейсов).
+- **`admin-web/`** — Angular 20 + Material: собирается, jest проходит. Экраны из `ui.json` пока **не** генерируются, только маршруты.
+- **`mobile-web/`** (PWA) — **отсутствует** в шаблоне.
+- **`infra/`:**
+  - `docker-compose.yml`: `db` (postgis), `mock` (wiremock), `backend`, `worker`, `admin`; сборка из workspace с `network: none`, эфемерные порты, без Kafka;
+  - `smoke.py`: `BASE_URL=http://backend:8080`, логин каждой ролью, отчёт `reports/smoke.json`.
+- **`backend/Dockerfile`** (цели `api`/`worker`, контекст — корень продукта) и `admin-web/Dockerfile` (+ `nginx.conf`, прокси `/api`).
+- **`tools/Dockerfile.{dotnet,node,security}`** → образы `rwb/tool-dotnet:10`, `rwb/tool-node:22` (на базе playwright), `rwb/tool-security:1`. **Сборка этих образов нигде не автоматизирована** (раздел 8).
+- **`pack.json`** — манифест песочницы:
+  - цели `backend`, `admin`, `pwa`, `stack`; команды `restore`/`build`/`test`/`filter`/`e2e`/`up`/`smoke`/`down`, `env`, `reports`;
+  - `scan`;
+  - `write_roots` (куда модели можно писать) и `readonly`.
+- **`.gitlab-ci.yml`** продукта — **устарел**: команды старые, деплой через `echo` (раздел 8).
+
+---
+
+## 4. Тесты продукта: принятый подход
+
+Решение владельца и Максима: **модель не пишет C#. Кейсы — JSON, тесты строятся детерминированно.**
+
+### 4.1 Тесты бизнес-правил (хуков) — этап `tests`
+- `stages/tests/cases.py`:
+  - `examples()` достаёт строки таблиц `Примеры:` из Gherkin критериев (через `stages.spec.semantics`);
+  - `direct()` — если колонки называются как входные параметры хука и есть колонка ожиданий (`expected`/`result`/`результат`/`ожидается`/`итог`), кейсы строятся **без модели**;
+  - иначе `ask()` — **один structured-вызов на хук** (`task_class="qa"`, `task_id=<hook>`, `output=ModelCases`). Модель только переводит строки во входы хука; при < 3 примерах добавляет граничные N−1/N/N+1;
+  - `check()` требует, чтобы были все строки таблицы и правильные имена входов;
+  - `BudgetExceeded` → источник `budget`, этап продолжается.
+- **Файлы:**
+  - `product/backend/tests/App.Acceptance.Tests/cases/hooks/<Hook>.json`: `{schema_version, hook, method, cases: [{id, ac, inputs: {<param>: ...}, expected}]}`. Входы — объекты с именами полей из `app.json` (snake_case), enum и состояния — их значения, даты — ISO 8601;
+  - `Generated/AC_xx.cs` — класс на критерий, генерирует код (`test_class()`): `[Theory, Trait("AC","AC-xx"), MemberData]` → `HookCases.Run`.
+- **Раннер** `App.Acceptance.Tests/HookCases.cs` (в шаблоне):
+  - находит `App.Domain.Hooks.<Hook>Hook` и метод;
+  - параметры, имя которых совпадает с полем `App.Domain.Params`, берутся оттуда, остальные — из `inputs`;
+  - `Assert.Equal(expected, actual)`.
+- **Red-proof:** на нейтральной заглушке кейс с не нейтральным ожиданием падает на `Assert.Equal`; это и есть доказательство. Манифест — `reports/tests.json` (`TestsManifest`) с хэшами всех файлов тестов, включая кейсы. После этого тесты защищены от `develop`.
+- **Сводка источников кейсов:** `reports/test-cases.json` (`gherkin` / `model` / `mixed` / `budget` / `none`).
+- **Критерии без хуков** (например, CRUD и уведомления: AC-01, AC-02, AC-07 в `tickets`) unit-тестов не получают. G2 сообщает `AC_NO_TEST`, прогон уходит в `partial`. Это честно, но такие AC стоит покрыть API-сценариями (раздел 8).
+
+### 4.2 API-тесты — этап `scaffold`
+- `stages/scaffold/api.py::api_cases()` строит из матрицы прав `cases/api.json`:
+  - роль × (`read`, `create`) → 200/201/403;
+  - аноним → 401;
+  - тело без обязательного поля → 400;
+  - команды → 404 (записи нет, но доступ есть) или 403.
+- **Раннер** `App.Generated.Tests/ApiCases.cs` гоняет кейсы через `AppFactory` (InMemory).
+- **Проверено:** на фикстуре `tickets` **22/22 зелёные** (21 API + архитектурный).
+
+### 4.3 E2E
+`stages/tests/e2e.py` компилирует проходы `walks` из `ui.json` (схема Артёма) в Playwright-спеки:
+- маршрут `/<ScreenName>`;
+- селекторы — только `testid` виджетов и действий;
+- значения из `seed`/`params`;
+- неоднозначный шаг — `ContractError`.
+
+Админка пока не генерирует экраны с этими `testid`, поэтому E2E будут красными до генерации экранов (раздел 8).
+
+---
+
+## 5. Хронология сделанного
+
+| Коммит | Что |
+|---|---|
+| `997723f`…`2cfe263` | Слияние веток: `docs` (`--allow-unrelated-histories`), maxim, timofey, artem-ui-contract, sanya, ivan, studio-frontend |
+| `da55d38` | Саня: `attempt` с 1; `dependents()` принимает dict; `gherkin-official`/`lxml`/`PyMuPDF`/`python-docx` в `backend/requirements` (пересобрано через `uv pip compile`) |
+| `8846d59` | Платформа: R13 в раннере; `StageOutput.flags`; бюджет; кэш с номером попытки; git `safe.directory` + `.gitignore`; compose (`.env`, `./workspaces`, один builder, `user 0:0`); песочница (`restore`, env, владелец, JUnit, `$$`, `host_workspaces_dir`) |
+| `50be5c1` | `scaffold`: `Model.cs`/`Params.cs`; `hooks.in` с `Entity.field` и скалярами; `StageOutput`; починен шаблон (`Microsoft.Extensions.Hosting`, MTP) |
+| `ca88d9d` | Новый этап `tests` (JSON-кейсы, раннер `HookCases`); E2E под схему Артёма; JUnit-матчинг; `verify` по платформам; `hooks.json` + `method`/`returns`/`parameters` |
+| `d24de66` | Генерация API + API-кейсы; стенд продукта (Dockerfile, compose, smoke, healthcheck); PWA вместо Android; `pack.yaml` → `pack.json`; правки `develop`; `agent.py` |
+
+### Как решены конфликты слияния
+- `contracts/fixtures/tickets/ui.json` — версия Артёма (владелец).
+- `contracts/fixtures/{tickets,equipment}/{analysis,app}.json` — версии Сани. Фикстуры Тимофея перенесены в `tests/fixtures/quality/{tickets,equipment}/`.
+- `contracts/fixtures/tickets/hooks.json` — версия Ивана.
+- `contracts/__init__.py` — версия `main`.
+- `agents/developer/config.yaml` — `thinking: false` (R9).
+
+### Что удалено и почему
+- `templates/product/pack.yaml` — заменён на `pack.json`, удалён самописный YAML-парсер в `contracts/pack.py`.
+- `templates/product/tools/Dockerfile.android` и цель `mobile` — решение R18 (PWA).
+- `tests/test_qa_lint_repair.py` — тест старого цикла «модель пишет C# + линтер».
+- `App.Generated.Tests/PlaceholderTests.cs` и генератор `PermissionsAndTransitions.cs` — тавтология (таблица сравнивалась сама с собой), заменены `ApiCases`.
+- `App.Domain/Params/.gitkeep` — `Params` теперь класс в `Generated/`.
+
+---
+
+## 6. Решения, которые стоит знать команде
+
+1. **JSON для всего, что генерирует конвейер,** включая кейсы тестов и манифест `pack.json`. YAML остаётся только у Docker Compose и GitLab CI.
+2. **Модель не пишет тесты кодом.** Кейсы — JSON (из Gherkin кодом, с моделью только как переводчиком строк); C# генерирует код.
+3. **Сервисы платформы работают от root** (`user: "0:0"` в `x-backend`). У воркера сборки есть Docker-сокет, это и так root на хосте. Зато у файлов workspace один владелец. Контейнеры песочницы запускаются от владельца workspace с `--cap-drop ALL`.
+4. **Образ платформы собирает только `api`** (`pull_policy: build`), воркеры `pull_policy: never`. Это убрало гонку «image already exists».
+5. **API продукта:**
+   - права — роль × операция из `permissions`; области `own`/`team` **не фильтруются**;
+   - guard-хуки и вычисляемые поля вызываются, только если все аргументы хука доступны (команда, запись, `Params`, `time`), иначе в коде остаётся комментарий;
+   - миграций нет, `EnsureCreated()`;
+   - вход — демо по роли (JWT).
+6. **API-тесты на InMemory-БД:** Testcontainers в песочнице без сети невозможны.
+7. **Сборка без сети:** песочница делает `restore` с сетью в workspace (`.nuget`, `node_modules`), дальше и тесты, и `docker compose build` (`network: none`) работают офлайн. Пути одинаковые (`/work/...`), поэтому `obj/project.assets.json` валиден внутри Dockerfile.
+8. **`dotnet test` в .NET 10** требует MTP:
+   - `dotnet test --solution backend/App.sln --no-restore --report-xunit-junit --results-directory /work/reports/junit/backend --ignore-exit-code 8`;
+   - фильтр `--filter-trait AC=<id>`;
+   - код 8 = «тестов не найдено»; его игнорирует команда, а реальное отсутствие тестов ловят `develop` (по JUnit) и G2.
+9. **В JUnit от xunit.v3 нет trait'ов,** поэтому AC сопоставляется по имени класса `AC_xx_Tests` (`stages/quality.py::_mentions`).
+
+---
+
+## 7. Как проверять локально
+
+### Python
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt pyflakes
+```
+
+PostgreSQL для backend-тестов (Docker здесь не было, ставился системный PG 16, `pg_ctl` от пользователя `postgres`, сокет `/tmp`, пользователь `pipeline`/`pipeline` superuser):
+```bash
+POSTGRES_HOST=localhost PYTHONPATH=backend .venv/bin/python -m unittest discover -s tests
+cd backend && POSTGRES_HOST=localhost PYTHONPATH=.:.. ../.venv/bin/alembic upgrade head && POSTGRES_HOST=localhost PYTHONPATH=.:.. ../.venv/bin/python -m unittest discover -s tests
+```
+
+Тесты этапов (модули, папки `stages` нет как пакета discovery):
+```bash
+.venv/bin/python -m unittest stages.analysis.tests.test_analysis_stage stages.analysis.tests.test_inputs stages.spec.tests.test_contracts stages.spec.tests.test_eval stages.spec.tests.test_spec_stage gates.tests.test_gates stages.scaffold.tests.test_generate stages.develop.tests.test_ladder contracts.tests.test_hooks_pack
+```
+
+Smoke шаблона:
+```bash
+cd templates/product/infra && ../../../.venv/bin/python -m unittest test_smoke
+```
+
+На коммите `d24de66` всё зелёное: root — 92 теста, backend — 28, остальные наборы OK.
+
+**Важно:** корневые тесты требуют `PYTHONPATH=backend`. Без него тест манифеста тестов не находит `app`.
+
+### .NET (генерируемый продукт)
+- **SDK:** `apt-get install dotnet-sdk-10.0` (Ubuntu 24.04). Скрипт `dot.net/v1/dotnet-install.sh` за прокси не работает (`builds.dotnet.microsoft.com` закрыт), а **nuget.org открыт**.
+- **Сгенерировать продукт и прогнать тесты:**
+```bash
+mkdir -p /tmp/gen/spec && cp contracts/fixtures/tickets/{app,ui}.json /tmp/gen/spec/
+.venv/bin/python -c "from pathlib import Path; from contracts.stage import StageInput; from stages.scaffold import execute; print(execute(StageInput(run_id='x',stage='scaffold',attempt=1,requirements='r',artifacts={'app':'spec/app.json','ui':'spec/ui.json'}), Path('/tmp/gen'), None, None).summary)"
+cd /tmp/gen/product/backend && dotnet build App.sln && dotnet test --solution App.sln --no-build
+```
+- **Admin-web:** `cd templates/product/admin-web && npm ci && npm run build && npx jest --ci` — проходит. npm registry за прокси открыт.
+
+### Фейковый сквозной прогон платформы
+Проверялся на ветке Максима **до** слияния; на ветке интеграции **ещё не перепроверен** (раздел 8). Шаги:
+1. Запустить uvicorn `app.main:app` и celery worker с `-Q llm,build,io,celery`, окружение `PIPELINE_FAKE_STAGES=1 POSTGRES_HOST=localhost WORKSPACES_DIR=<dir>`.
+2. `POST /api/projects`.
+3. `POST /api/projects/{id}/runs {"autonomy":"A2"}`.
+4. Через ~20 с `GET /api/runs/{id}` — ожидается 8 этапов `succeeded`, прогон `partial`.
+
+### Чего не было в среде
+Docker-демона нет. Поэтому **не проверены**:
+- `docker compose up` платформы;
+- песочница с образами `rwb/tool-*`;
+- сборка образов продукта с `network: none`;
+- подъём стенда, smoke и E2E.
+
+Офлайн-публикацию (`restore` в `/work`, затем `publish --no-restore`) тоже не проверил: команду с `rm -rf /work` заблокировала защита.
+
+---
+
+## 8. Что дальше (по приоритету)
+
+### P0 — до сдачи
+1. **Сквозная проверка на ветке интеграции:** фейковый прогон через API и Celery (раздел 7). Затем прогон с реальными этапами и `FakeLLM` на `tickets` через `run_stage_locally`: `analysis → spec → ui → scaffold → tests`. Дальше песочница нужна настоящая. Recorded-ответы для `analysis`/`spec` есть в `stages/*/tests/fixtures/*-responses.json`, через `stages/spec/eval.py::evaluate`.
+2. **Сборка образов инструментов.** Добавить в `compose.yaml` сервисы с `profiles: [tools]` и `build` из `templates/product/tools/Dockerfile.*`, `image: rwb/tool-dotnet:10`, `rwb/tool-node:22`, `rwb/tool-security:1`. В README — `docker compose --profile tools build`. `harness/doctor.py` уже подсказывает эту команду.
+3. **Проверка на машине с Docker:**
+   - `docker compose up --build` платформы (обратить внимание на `pull_policy: never` у воркеров: образ должен собраться раньше их создания);
+   - песочница: `restore`, `build`, `test` на продукте `tickets`;
+   - `docker compose -f infra/docker-compose.yml up -d --build --wait` стенда;
+   - smoke.
+4. **CI продукта** (`templates/product/.gitlab-ci.yml`) переписать:
+   - команды из `pack.json`: `restore`, `build --no-restore`, `test` с MTP-флагами;
+   - `npm ci`/`build`/`jest`;
+   - `package`/`deploy` — `docker compose -f infra/docker-compose.yml up -d --build --wait` (нужен раннер с Docker);
+   - `e2e` после `deploy`;
+   - образы инструментов должны быть доступны раннеру (registry или локальные).
+
+   Пункт ТЗ — «GitLab CI/CD 19.4.2». Платформа тоже должна жить в локальном GitLab; своего CI у платформы нет, нужен хотя бы `unittest`.
+5. **PR в `main`** из `claude/review-docs-branches-48sc58`. В описании — итог из разделов 5 и 6 и список нерешённого. После — комментарий в issue #3 со статусами.
+
+### P1 — качество и баллы
+6. **Экраны админки из `ui.json`.** Генерировать компоненты `list`/`detail`/`form` с `data-testid` из `ui.json` на Angular Material (каталог виджетов уже есть в `templates/product/admin-web/src/app/ui`). Без этого E2E и балл «продукт и интерфейс» не набираются.
+7. **PWA `mobile-web/`.** Добавить шаблон: Angular + service worker, Geolocation и Notification API. Для кейса №1 водитель — mobile. Сейчас цель `pwa` в `pack.json` есть, но шаблона нет, и `verify` честно ставит «не собрано».
+8. **API-сценарии для критериев без хуков** (CRUD, переходы, уведомления). Детерминированно из Gherkin + `app.json` (`seed`, команды, переходы) или через structured JSON от модели. Формат — как `cases/api.json`, но с шагами.
+9. **Планировщик переходов `timer`/`schedule`** (например, `expire` → `overdue`) в `App.Worker`: опрос по `TimeProvider`, вызов guard-хука. Сейчас такие переходы не исполняются.
+10. **События и уведомления** (outbox `domain_events`, SSE): по v2 §10.1 модули `events`/`notify`. В генераторе их нет.
+11. **Студия на `/runs`.** Сейчас `frontend` работает через старый `/api/projects/{id}/jobs` (один агент, история в `localStorage`), см. `frontend/CONTRACT.md`. Нужно:
+    - таймлайн из `RunRead.stages`, гейты из `StageRunRead.gate`;
+    - SSE `/events/stream`;
+    - артефакты `/artifacts` и `/files`, кнопки `retry`, `answers`, `decision`;
+    - быстро: статусы `pending`, `waiting_human`, `stale` в `frontend/src/app/core/pipeline/status.ts` и подсказку `worker-llm`/`worker-build` вместо `worker`.
+12. **Артём, S10:** `derived_event('Ticket','take_overdue')` даёт `TicketTakenOverdue`, а `appview.event_exists` его не признаёт. Нужно согласовать соглашение об именах событий с генератором.
+
+### P2 — долги из ревью (issue #3)
+13. **S3 `dependents()` слишком широкий** (`contracts/app.py`): один хук помечает почти всю спецификацию. Ограничить транзитивность.
+14. **C11 споры по тестам:** `develop` собирает `// DISPUTE:` в `develop.json`, но не вызывает `stages/tests/dispute.resolve`. Раннер тоже. Связать или упростить.
+15. **Мутации** (`stages/verify/mutations.py`) гоняют только первый AC хука. Мутанты на C# работают, а для data-driven кейсов можно мутировать `Params`.
+16. **Саня, S7:** профайлер (`stages/analysis/profiling.py`) не разбирает WKT (типы геометрий, линии vs полигоны) и не выводит единицы (копейки, минуты суток). `externalZoneId` ошибочно помечен как `int`.
+17. **Саня, S8/S9:**
+    - около 106 тыс. строк логов eval (`stages/spec/delivery/*`, `EVAL*.json`, `eval-history/`) — вынести из репо;
+    - свои шлюз (`eval_gateway.py`) и заглушки (`stages/analysis/testing.py`) — перейти на `harness/llm.py` и `harness/fakes.py`;
+    - в `stages/spec/README.md` личный путь `/home/haus/...`.
+18. **Вложения к прогону:** API прогонов не принимает файлы, `StageInput.attachments` всегда пуст. Нужна загрузка в `input/`, чтобы приложить `spb.json`.
+19. **Метрики:**
+    - `README.md` основной всё ещё упоминает `docker compose logs worker`;
+    - `input_hash` считается, но для пропуска не используется;
+    - `reconcile` переотправляет `queued` раз в 10 с бесконечно, если воркер очереди не запущен.
+20. **Документация:**
+    - пометить `docs/architecture-overview.md` устаревшим;
+    - в `architecture-v2.md` заменить `*.yaml` на `*.json`;
+    - в `docs/tasks/*.md` заменить `pack.yaml` на `pack.json`, цель `mobile` на `pwa`, описать новый подход к тестам (раздел 4);
+    - обновить `stages/QUALITY.md` и `frontend/CONTRACT.md`;
+    - README: запуск, профиль `tools`, стенд, отступления от стека ТЗ.
+21. **Линтер:** `pyflakes` даёт мелочи (неиспользуемые импорты в `backend/app/models.py`, `stages/report/documents.py`, `gates/g5_docs.py`, f-string без плейсхолдеров в `gates/g15_ui.py`). Не баги.
+
+---
+
+## 9. Подводные камни среды и процесса
+- **Прокси:**
+  - открыты: GitHub, nuget.org, npm registry, PyPI, apt;
+  - закрыты: `builds.dotnet.microsoft.com`, отсюда SDK из apt.
+- **Защита Claude Code** блокирует `rm -rf` по корневым и неразрешимым путям (`/work`, `cd dir && rm -rf *`). Удалять только по абсолютным путям во временных каталогах.
+- **Права на scratchpad:** однажды сбросились, и PostgreSQL упал с `Permission denied`. Данные PG держите в `/var/lib/postgresql/...`.
+- **Воркер сессии перезапускался.** Незакоммиченное выжило, но коммитьте и пушьте чаще.
+- **Коммиты:**
+  - сообщения на русском, в теле — что и почему;
+  - в конце строки `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` и `Claude-Session: https://claude.ai/code/session_01BVMh1mqEFn4QysVPTvv8Nu` (для сессий Claude);
+  - пушить только в `claude/review-docs-branches-48sc58`: `git push -u origin claude/review-docs-branches-48sc58`.
+- **Комментарии на GitHub** от агента заканчиваются подписью `_Generated by [Claude Code](https://claude.ai/code)_`.
+- **Стиль кода:** как в окружающем файле. Код Тимофея плотный (`;`, однострочники); новый код в его модулях я писал в обычном стиле. Если будете переписывать — приводите к общему.
