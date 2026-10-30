@@ -1,0 +1,182 @@
+{
+  "targets": {
+    "backend": {
+      "image": "rwb/tool-dotnet:10",
+      "env": {
+        "NUGET_PACKAGES": "/work/.nuget/packages",
+        "DOTNET_CLI_HOME": "/tmp",
+        "HOME": "/tmp",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+        "DOTNET_NOLOGO": "1"
+      },
+      "restore": [
+        "dotnet",
+        "restore",
+        "backend/App.sln"
+      ],
+      "build": [
+        "dotnet",
+        "build",
+        "backend/App.sln",
+        "--nologo",
+        "--no-restore"
+      ],
+      "test": [
+        "dotnet",
+        "test",
+        "--solution",
+        "backend/App.sln",
+        "--no-restore",
+        "--report-xunit-junit",
+        "--results-directory",
+        "/work/reports/junit/backend",
+        "--ignore-exit-code",
+        "8"
+      ],
+      "filter": [
+        "--filter-trait",
+        "AC={filter}"
+      ],
+      "reports": {
+        "junit": "reports/junit/backend/*.xml"
+      }
+    },
+    "admin": {
+      "image": "rwb/tool-node:22",
+      "workdir": "admin-web",
+      "env": {
+        "HOME": "/tmp",
+        "npm_config_cache": "/work/.npm",
+        "CI": "1"
+      },
+      "restore": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "build": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "test": [
+        "npx",
+        "jest",
+        "--ci"
+      ],
+      "e2e": [
+        "npx",
+        "playwright",
+        "test"
+      ],
+      "filter": [
+        "--grep",
+        "@{filter}"
+      ]
+    },
+    "pwa": {
+      "image": "rwb/tool-node:22",
+      "workdir": "mobile-web",
+      "env": {
+        "HOME": "/tmp",
+        "npm_config_cache": "/work/.npm",
+        "CI": "1"
+      },
+      "restore": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "build": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "test": [
+        "npx",
+        "jest",
+        "--ci"
+      ],
+      "e2e": [
+        "npx",
+        "playwright",
+        "test"
+      ],
+      "filter": [
+        "--grep",
+        "@{filter}"
+      ]
+    },
+    "stack": {
+      "image": "python:3.12-slim",
+      "env": {
+        "BASE_URL": "http://backend:8080"
+      },
+      "up": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.yml",
+        "up",
+        "-d",
+        "--build",
+        "--wait"
+      ],
+      "smoke": [
+        "python3",
+        "infra/smoke.py",
+        "--report",
+        "reports/smoke.json"
+      ],
+      "down": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.yml",
+        "down",
+        "-v"
+      ],
+      "reports": {
+        "json": "reports/smoke.json"
+      }
+    }
+  },
+  "scan": {
+    "image": "rwb/tool-security:1",
+    "commands": [
+      [
+        "gitleaks",
+        "detect",
+        "--source",
+        ".",
+        "--no-git"
+      ],
+      [
+        "trivy",
+        "fs",
+        "--severity",
+        "HIGH,CRITICAL",
+        "--exit-code",
+        "1",
+        "--skip-dirs",
+        "node_modules,.nuget,.npm",
+        "."
+      ]
+    ]
+  },
+  "write_roots": [
+    "backend/src/App.Domain/Hooks",
+    "backend/src/App.Api/Custom",
+    "admin-web/src/app/custom",
+    "mobile-web/src/app/custom",
+    "db/seed"
+  ],
+  "readonly": [
+    "backend/tests",
+    "admin-web/e2e",
+    "mobile-web/e2e",
+    "spec"
+  ]
+}

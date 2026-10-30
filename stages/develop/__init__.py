@@ -3,30 +3,27 @@
 from __future__ import annotations
 
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
-try:
-    from contracts.stage import BudgetExceeded
-except ImportError:
-    class BudgetExceeded(Exception):
-        """Raised by the LLM gateway when the run budget is spent."""
+from contracts.stage import BudgetExceeded, StageOutput
 
 
 LADDER = ("hook_1", "hook_2", "hook_3", "hook_4")
 
 
-def execute(inp, workspace: Path, llm, sandbox) -> dict:
+def execute(inp, workspace: Path, llm, sandbox) -> StageOutput:
     workspace = Path(workspace)
     hooks = _load_hooks(workspace)
     system = _system()
-    task_id = _task_id(inp)
     rows: list[dict] = []
     budget = False
     for hook in hooks:
         if budget:
             rows.append(_row(hook, "stub", 0, False, _zeros(), [], "бюджет исчерпан"))
             continue
-        row, budget = _one(hook, workspace, llm, sandbox, system, task_id)
+        # Accounting and recorded answers are per hook, not per run.
+        row, budget = _one(hook, workspace, llm, sandbox, system, str(hook.get("id") or _task_id(inp)))
         rows.append(row)
     summary = {
         "total": len(rows),
@@ -44,7 +41,7 @@ def execute(inp, workspace: Path, llm, sandbox) -> dict:
     )
     if budget:
         text += " Бюджет исчерпан, оставшиеся хуки оставлены заглушками."
-    return {"artifacts": {"develop": "reports/develop.json"}, "summary": text}
+    return StageOutput(artifacts={"develop": "reports/develop.json"}, summary=text)
 
 
 def _one(hook, workspace, llm, sandbox, system, task_id):
@@ -74,7 +71,7 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
                 disputes.append(dispute)
                 previous = raw
                 continue
-            ok, tests, failures = _apply(path, raw, sandbox, ac)
+            ok, tests, failures = _apply(path, raw, sandbox, ac, workspace)
             previous = raw
             if ok:
                 accepted = True
@@ -86,12 +83,16 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
     return _row(hook, "stub", attempts, False, tests, disputes, _fail_reason(hook, attempts, failures, disputes)), False
 
 
-def _apply(path: Path, body: str, sandbox, ac: str | None):
+def _apply(path: Path, body: str, sandbox, ac: str | None, workspace: Path | None = None):
     before = path.read_bytes() if path.is_file() else None
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
     build = sandbox.run("build", "backend", timeout_s=600)
-    test = sandbox.run("test", "backend", filter=ac, timeout_s=600)
+    test = sandbox.run("test", "backend", filter=ac, timeout_s=600) if build.ok else build
+    # A filter that matches no test exits 0: a hook without a single test is not accepted.
+    ran = _ran(workspace, test) if build.ok and workspace is not None else None
+    if ran == 0:
+        test = test.model_copy(update={"ok": False, "failed": [f"нет ни одного теста для {ac or 'хука'}"]})
     ok = bool(build.ok) and bool(test.ok)
     if not ok:
         if before is None:
@@ -99,6 +100,17 @@ def _apply(path: Path, body: str, sandbox, ac: str | None):
         else:
             path.write_bytes(before)
     return ok, _counts(build, test), _failure_text(build, test)
+
+
+def _ran(workspace: Path, result) -> int | None:
+    """Number of test cases in the JUnit report, None when the sandbox gave no report."""
+    report = (getattr(result, "reports", None) or {}).get("junit")
+    if not report:
+        return None
+    try:
+        return sum(1 for _ in ET.parse(Path(workspace) / report).iter("testcase"))
+    except (OSError, ET.ParseError):
+        return None
 
 
 def _load_hooks(workspace: Path) -> list[dict]:

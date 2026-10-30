@@ -80,7 +80,9 @@ def _property(name: str, spec: dict, app: dict) -> str:
     if _nullable(cs_type, spec):
         return f"    public {cs_type}? {pascal(name)} {{ get; set; }}"
     default = ' = "";' if cs_type in _REFERENCE else ""
-    return f"    public {cs_type} {pascal(name)} {{ get; set; }}{default}"
+    # The API rejects a body without fields the client must send (computed and state are server-side).
+    required = "    [System.Text.Json.Serialization.JsonRequired]\n" if not spec.get("computed_by") else ""
+    return f"{required}    public {cs_type} {pascal(name)} {{ get; set; }}{default}"
 
 
 def param_type(declared: dict) -> str:

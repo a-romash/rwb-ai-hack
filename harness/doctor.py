@@ -71,21 +71,18 @@ def _model():
 def _docker(manifest: Path):
     if not manifest.is_file():
         raise RuntimeError(f"Манифест инструментов отсутствует: {manifest}")
-    try:
-        import yaml
-    except ImportError as exc:
-        raise RuntimeError("Установите PyYAML для чтения pack.yaml") from exc
-    data = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+    data = json.loads(manifest.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
-        raise RuntimeError("Некорректный pack.yaml")
+        raise RuntimeError("Некорректный pack.json")
     images = {target.get("image") for target in data.get("targets", {}).values() if isinstance(target, dict) and target.get("image")}
     if isinstance(data.get("scan"), dict) and data["scan"].get("image"):
         images.add(data["scan"]["image"])
     if not images:
-        raise RuntimeError("В pack.yaml нет образов инструментов")
+        raise RuntimeError("В pack.json нет образов инструментов")
     subprocess.run(["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=15)
     for image in sorted(images):
-        subprocess.run(["docker", "image", "inspect", image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=15)
+        if subprocess.run(["docker", "image", "inspect", image], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15).returncode:
+            raise RuntimeError(f"Нет образа {image}: соберите docker compose --profile tools build")
     return f"Docker доступен; найдены образы: {', '.join(sorted(images))}"
 
 
@@ -101,7 +98,7 @@ def _disk(workspaces: Path):
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Проверка готовности платформы")
-    parser.add_argument("--manifest", type=Path, default=Path("templates/product/pack.yaml"))
+    parser.add_argument("--manifest", type=Path, default=Path("templates/product/pack.json"))
     parser.add_argument("--workspace", type=Path, default=Path(os.environ.get("WORKSPACES_DIR", "workspaces")))
     args = parser.parse_args(argv)
     checks = [("БД и миграции", _database), ("Очередь", _broker), ("Модель", _model),

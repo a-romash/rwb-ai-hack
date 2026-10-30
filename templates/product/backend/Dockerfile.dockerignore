@@ -1,0 +1,5 @@
+# Context is the product root; the backend image needs only backend/ and the NuGet cache.
+**
+!backend/**
+!.nuget/**
+backend/**/bin/

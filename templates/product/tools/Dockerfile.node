@@ -1,6 +1,4 @@
-# rwb/tool-node:22-ng20.1.6
-FROM node:22-bookworm
+# rwb/tool-node:22 — Node 22 with Playwright browsers for build, jest and E2E of admin-web/mobile-web.
+FROM mcr.microsoft.com/playwright:v1.64.1-noble
 
-RUN npm install -g @angular/cli@20.1.6
-
-WORKDIR /src
+WORKDIR /work

@@ -6,7 +6,6 @@ The C# side is fixed: a shared data-driven runner in the product template plus o
 class per criterion that carries the AC trait.
 """
 import hashlib
-import json
 
 from contracts.stage import StageOutput, ContractError
 from contracts.verification import TestsManifest, PlannedTest

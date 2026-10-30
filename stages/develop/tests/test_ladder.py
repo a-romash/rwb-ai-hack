@@ -95,8 +95,8 @@ class LadderTest(unittest.TestCase):
         self.assertNotIn("reason", hook)
         self.assertEqual(saved["summary"], {"total": 1, "implemented": 1, "stub": 0, "first_pass": 1})
         self.assertEqual(saved["custom"], [])
-        self.assertEqual(result["artifacts"], {"develop": "reports/develop.json"})
-        self.assertIn("Реализовано 1 из 1", result["summary"])
+        self.assertEqual(result.artifacts, {"develop": "reports/develop.json"})
+        self.assertIn("Реализовано 1 из 1", result.summary)
         self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1"])
         self.assertEqual(llm.calls[0]["output"], "code")
         self.assertEqual(sandbox.calls[0]["kind"], "build")
@@ -159,7 +159,7 @@ class LadderTest(unittest.TestCase):
         self.assertEqual(llm.calls[0]["user"].count(signature), 1)
         self.assertGreaterEqual(llm.calls[2]["user"].count(signature), 2)
         self.assertEqual(llm.calls[3]["user"], llm.calls[4]["user"])
-        self.assertEqual(llm.calls[0]["task_id"], "run-1")
+        self.assertEqual(llm.calls[0]["task_id"], "ResolutionRequired")
         self.assertEqual(llm.replies, [])
 
     def test_budget_stops_later_hooks(self):
@@ -198,7 +198,7 @@ class LadderTest(unittest.TestCase):
         self.assertEqual(by_id["ZHook"]["reason"], "бюджет исчерпан")
         self.assertEqual(by_id["ZHook"]["attempts"], 0)
         self.assertEqual(saved["summary"], {"total": 3, "implemented": 1, "stub": 2, "first_pass": 1})
-        self.assertIn("Бюджет исчерпан", result["summary"])
+        self.assertIn("Бюджет исчерпан", result.summary)
         self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1", "hook_1"])
         self.assertEqual(len(sandbox.calls), 2)
 
@@ -276,14 +276,14 @@ class AgentRootsTest(unittest.TestCase):
                 self.assertEqual(seen["effort"], "medium")
                 seen.clear()
                 agent.run("x", cwd=tmp, max_turns=0, agent=REPO / "agents" / "developer")
-                self.assertTrue(seen["thinking"])
+                self.assertFalse(seen["thinking"])  # R9: no reasoning for code
                 self.assertEqual(seen["effort"], "medium")
         finally:
             agent.OpenRouter = original
         loaded = agent.load_agent(REPO / "agents" / "developer")
         self.assertEqual(loaded["config"]["effort"], "medium")
-        self.assertIn("mobile/app/src/main/java/app/hooks", loaded["config"]["write_roots"])
-        self.assertIn("mobile/app/src/main/java/app/hooks", agent.WRITE_ROOTS)
+        self.assertIn("mobile-web/src/app/custom", loaded["config"]["write_roots"])
+        self.assertIn("mobile-web/src/app/custom", agent.WRITE_ROOTS)
         gate = agent.OpenRouter(task_class="hook_4", api_key="test")
         self.assertFalse(gate.thinking)
         self.assertEqual(gate.effort, "medium")
@@ -294,7 +294,7 @@ class AgentRootsTest(unittest.TestCase):
     def test_pack_roots_and_backend_commands(self):
         import harness.agent as agent
 
-        mobile = "mobile/app/src/main/java/app/hooks/A.java"
+        mobile = "mobile-web/src/app/custom/a.ts"
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             client = Script([
@@ -323,8 +323,8 @@ class AgentRootsTest(unittest.TestCase):
             with patch("harness.agent.subprocess.run", return_value=proc) as mocked:
                 agent.run("test", cwd=root, client=tester, max_turns=4)
             argv = mocked.call_args.args[0]
-            self.assertIn("--logger", argv)
-            self.assertIn("junit;LogFilePath=/work/reports/junit/backend/{assembly}.xml", argv)
+            self.assertIn("--report-xunit-junit", argv)
+            self.assertIn("/work/reports/junit/backend", argv)
 
             custom = Script([
                 _step(tools=[_call("run_tests", {"target": "backend"})]),

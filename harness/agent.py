@@ -29,11 +29,11 @@ WRITE_ROOTS = (
     "backend/src/App.Domain/Hooks",
     "backend/src/App.Api/Custom",
     "admin-web/src/app/custom",
-    "mobile/app/src/main/java/app/hooks",
+    "mobile-web/src/app/custom",
     "db/seed",
 )
 HOOK_EFFORT = {"hook_1", "hook_2", "hook_3", "hook_4"}
-TARGETS = ("backend", "admin", "mobile")
+TARGETS = ("backend", "admin", "pwa")
 SECRET_ENV = ("OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "GITLAB_TOKEN")
 SECRET_NAMES = {".env", ".env.local", "id_rsa", "credentials.json"}
 LIMIT_HIT = (
@@ -116,13 +116,9 @@ def _apply_task_class(task_class: str | None, thinking: bool, effort: str) -> tu
 
 
 def _pack_path(cwd: Path) -> Path | None:
-    local = cwd / "templates" / "product" / "pack.yaml"
-    if local.is_file():
-        return local
-    bundled = Path(__file__).resolve().parents[1] / "templates" / "product" / "pack.yaml"
-    if bundled.is_file():
-        return bundled
-    return None
+    """Only the platform's own template is trusted; the run workspace is model territory."""
+    bundled = Path(__file__).resolve().parents[1] / "templates" / "product" / "pack.json"
+    return bundled if bundled.is_file() else None
 
 
 def _pack_overrides(cwd: Path) -> tuple[list[str] | None, dict]:
@@ -731,13 +727,13 @@ def _default_argv(kind: str, target: str) -> list[str]:
         return ["dotnet", "build", "backend/App.sln", "--nologo"]
     if kind == "build" and target == "admin":
         return ["npm", "run", "build", "--prefix", "admin-web"]
-    if kind == "build" and target == "mobile":
-        return ["gradle", "-p", "mobile", "assembleDebug"]
+    if kind == "build" and target == "pwa":
+        return ["npm", "run", "build", "--prefix", "mobile-web"]
     if kind == "test" and target == "backend":
-        return ["dotnet", "test", "backend/App.sln", "--nologo"]
+        return ["dotnet", "test", "--solution", "backend/App.sln"]
     if kind == "test" and target == "admin":
-        return ["npx", "playwright", "test"]
-    return ["gradle", "-p", "mobile", "test"]
+        return ["npx", "jest", "--ci", "--rootDir", "admin-web"]
+    return ["npx", "jest", "--ci", "--rootDir", "mobile-web"]
 
 
 def _schemas(names: list[str]) -> list[dict]:
@@ -766,7 +762,7 @@ def _schemas(names: list[str]) -> list[dict]:
         "read_file": "Read a text file. Required before write_file of an existing file.",
         "search_code": "Search file contents with a regex.",
         "write_file": "Write a file under Hooks/, custom/ or seed/.",
-        "build": "Build backend, admin or mobile with a fixed command. No shell.",
+        "build": "Build backend, admin or pwa with a fixed command. No shell.",
         "run_tests": "Run tests. Returns only failures. Optional ac id filters the run.",
         "ask": "Ask the analyst. In autonomous mode the default answer is used.",
         "finish": "Finish the hook. Succeeds only when its tests are green.",

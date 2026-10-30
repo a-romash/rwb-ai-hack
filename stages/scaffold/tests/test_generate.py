@@ -16,7 +16,9 @@ EQUIPMENT_FILES = [
     "product/backend/src/App.Domain/Generated/Model.cs",
     "product/backend/src/App.Domain/Generated/Params.cs",
     "product/backend/src/App.Domain/Hooks/MaxLaptopsHook.cs",
-    "product/backend/tests/App.Generated.Tests/PermissionsAndTransitions.cs",
+    "product/backend/src/App.Api/Features/Generated/Endpoints.cs",
+    "product/backend/src/App.Infrastructure/Generated/AppDbContext.Model.cs",
+    "product/backend/tests/App.Generated.Tests/cases/api.json",
     "product/hooks.json",
     "product/infra/roles.json",
     "product/openapi.json",
@@ -68,18 +70,15 @@ class GenerateTests(unittest.TestCase):
             page = (workspace / "product/admin-web/e2e/pages/TicketList.ts").read_text(encoding="utf-8")
             self.assertIn("ticket-list.due", page)
             self.assertIn("ticket-list.take", page)
-            tests = (
-                workspace / "product/backend/tests/App.Generated.Tests/PermissionsAndTransitions.cs"
-            ).read_text(encoding="utf-8")
-            self.assertIn("Role_engineer_Op_Ticket_read_Returns200", tests)
-            self.assertIn("Role_engineer_Op_Ticket_delete_Returns403", tests)
-            self.assertIn("Transition_take", tests)
-            self.assertIn("Transition_expire", tests)
-            self.assertIn("Transition_resolve", tests)
-            self.assertIn("Assert.Equal(200", tests)
-            self.assertIn("Assert.Equal(403", tests)
-            self.assertIn("Assert.Equal(409", tests)
-            self.assertEqual(tests.count("[Fact]"), 15)
+            cases = json.loads((workspace / "product/backend/tests/App.Generated.Tests/cases/api.json").read_text(encoding="utf-8"))
+            expected = {case["id"]: case["expected"] for case in cases["cases"]}
+            self.assertEqual(expected["Ticket.read.engineer"], 200)
+            self.assertEqual(expected["Ticket.create.engineer"], 403)
+            self.assertEqual(expected["Ticket.read.anonymous"], 401)
+            self.assertEqual(expected["TakeTicket.engineer"], 404)
+            endpoints = (workspace / "product/backend/src/App.Api/Features/Generated/Endpoints.cs").read_text(encoding="utf-8")
+            self.assertIn('"engineer|Ticket.read"', endpoints)
+            self.assertIn("ResolutionRequiredHook().Validate(cmd)", endpoints)
             blob = b"\n".join(_tree(workspace).values())
             self.assertNotIn("Не работает кондиционер".encode(), blob)
             self.assertNotIn("Взять заявку в работу?".encode(), blob)

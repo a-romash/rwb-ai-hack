@@ -97,9 +97,6 @@ def advance(run_id):
             _event(session, run.id, 'stage.queued', {'stage': candidate.stage, 'attempt': candidate.attempt})
             pending = (str(candidate.id), STAGES_BY_KEY[candidate.stage].queue)
         else:
-            has_flags = session.scalar(select(SpecFlag.id).where(SpecFlag.run_id == run_id).limit(1)) is not None
-            checks = session.scalars(select(GateResult).join(StageRun).where(StageRun.run_id == run_id)).all()
-            unchecked = any(finding.get('code') == 'GATE_MISSING' for check in checks for finding in check.findings)
             run.status = 'failed' if failed or report.status == 'failed' else result_status(session, run_id, stages)
             run.finished_at = utc_now()
             _event(session, run.id, 'run.finished', {'status': run.status})
@@ -164,14 +161,13 @@ def _execute(stage_id):
                         approve_test_change(session, run_id, root, path, dispute_id, gate)
                 def run(self, *args, **kwargs):
                     if self._instance is None:
-                        import yaml
                         from harness.sandbox import DockerSandbox
-                        manifest_path = Path(__file__).resolve().parents[2] / 'templates/product/pack.yaml'
+                        manifest_path = Path(__file__).resolve().parents[2] / 'templates/product/pack.json'
                         if not manifest_path.is_file():
-                            raise ContractError('Не найден доверенный templates/product/pack.yaml')
-                        manifest = yaml.safe_load(manifest_path.read_text(encoding='utf-8'))
+                            raise ContractError('Не найден доверенный templates/product/pack.json')
+                        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
                         if not isinstance(manifest, dict):
-                            raise ContractError('Некорректный pack.yaml')
+                            raise ContractError('Некорректный pack.json')
                         from harness.sandbox import host_workspaces_dir
                         base = Path(os.environ.get('WORKSPACES_DIR', '/app/workspaces')).resolve()
                         host_root = host_workspaces_dir(base) / root.resolve().relative_to(base)

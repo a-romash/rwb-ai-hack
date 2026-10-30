@@ -82,7 +82,7 @@ class DockerSandbox:
     def _execute(self, kind: str, target: str, config: dict, command: object,
                  filter: str | None, timeout_s: int, network: str | None = None) -> SandboxResult:
         if not isinstance(command, list) or not command or not all(isinstance(v, str) and v for v in command):
-            raise ContractError(f"Нет допустимой команды {kind}/{target} в pack.yaml")
+            raise ContractError(f"Нет допустимой команды {kind}/{target} в pack.json")
         args = list(command)
         if filter is not None:
             template = config.get("filter")

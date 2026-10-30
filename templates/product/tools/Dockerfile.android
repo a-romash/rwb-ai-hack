@@ -1,8 +1,0 @@
-# rwb/tool-android:kt2.2.21
-FROM eclipse-temurin:21-jdk-jammy
-
-# Android SDK command-line tools are not downloaded in this skeleton.
-# Kotlin toolchain for this tag: 2.2.21
-# Expected SDK root when the SDK is installed: /opt/android-sdk
-
-WORKDIR /src

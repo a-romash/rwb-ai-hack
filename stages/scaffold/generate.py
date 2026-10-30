@@ -10,6 +10,7 @@ from pathlib import Path
 
 from contracts.stage import StageOutput
 
+from .api import api_cases, dbcontext_cs, endpoints_cs
 from .domain import SCALARS, hook_input, model_cs, param_type, params_cs
 from .models import HookContract, HookExample, HookSpec
 
@@ -67,11 +68,9 @@ def execute(inp, workspace: Path, llm, sandbox) -> StageOutput:
             f"product/admin-web/e2e/pages/{name}.ts",
             _page_ts(name, _testids(screen)),
         )
-    _write(
-        workspace,
-        "product/backend/tests/App.Generated.Tests/PermissionsAndTransitions.cs",
-        _tests_cs(app),
-    )
+    _write(workspace, "product/backend/src/App.Api/Features/Generated/Endpoints.cs", endpoints_cs(app))
+    _write(workspace, "product/backend/src/App.Infrastructure/Generated/AppDbContext.Model.cs", dbcontext_cs(app))
+    _write(workspace, "product/backend/tests/App.Generated.Tests/cases/api.json", _dump(api_cases(app)))
     entities = app.get("entities") if isinstance(app.get("entities"), dict) else {}
     summary = "Scaffolded " + ", ".join((
         _counted(len(built), "hook", "hooks"),
@@ -506,201 +505,4 @@ def _page_ts(name: str, testids: list[str]) -> str:
     lines = [f"export const {name}Page = {{", "  testids: ["]
     lines.extend(f"    {json.dumps(testid, ensure_ascii=False)}," for testid in testids)
     lines.extend(["  ],", "};", ""])
-    return "\n".join(lines)
-
-
-def _cs(value: str) -> str:
-    return (
-        value.replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\r", "\\r")
-        .replace("\n", "\\n")
-    )
-
-
-def _method_ident(text: str) -> str:
-    chars = [char if char.isascii() and (char.isalnum() or char == "_") else "_" for char in text]
-    name = "".join(chars) or "_"
-    if name[0].isdigit():
-        name = "_" + name
-    return name
-
-
-def _role_names(app: dict, perms: list) -> list[str]:
-    names = set()
-    roles = app.get("roles") if isinstance(app.get("roles"), dict) else {}
-    names.update(roles)
-    for perm in perms:
-        if isinstance(perm, dict) and isinstance(perm.get("role"), str):
-            names.add(perm["role"])
-    return sorted(names)
-
-
-def _operations(app: dict, perms: list) -> list[str]:
-    ops = set()
-    entities = app.get("entities") if isinstance(app.get("entities"), dict) else {}
-    for entity in entities:
-        for action in ("create", "delete", "read", "update"):
-            ops.add(f"{entity}.{action}")
-    commands = app.get("commands") if isinstance(app.get("commands"), dict) else {}
-    ops.update(commands)
-    for perm in perms:
-        if isinstance(perm, dict) and isinstance(perm.get("op"), str):
-            ops.add(perm["op"])
-    return sorted(ops)
-
-
-def _grant(perms: list, role: str, op: str) -> tuple[int, str]:
-    scopes = []
-    for perm in perms:
-        if isinstance(perm, dict) and perm.get("role") == role and perm.get("op") == op:
-            scope = perm.get("scope") or ""
-            scopes.append(scope if isinstance(scope, str) else str(scope))
-    if not scopes:
-        return 403, ""
-    return 200, ",".join(sorted(set(scopes)))
-
-
-def _transitions(app: dict) -> list[dict]:
-    machines = app.get("state_machines") or {}
-    if not isinstance(machines, dict):
-        _contract_error("state_machines must be an object")
-    rows = []
-    for machine in sorted(machines):
-        spec = machines[machine] or {}
-        if not isinstance(spec, dict):
-            _contract_error("state machine must be an object")
-        for transition in spec.get("transitions") or []:
-            if not isinstance(transition, dict) or not isinstance(transition.get("name"), str):
-                _contract_error("transition name must be a string")
-            raw_from = transition.get("from") or []
-            if isinstance(raw_from, str):
-                raw_from = [raw_from]
-            if not isinstance(raw_from, list) or not all(isinstance(item, str) for item in raw_from):
-                _contract_error("transition from must be an array of strings")
-            to = transition.get("to") or ""
-            if not isinstance(to, str):
-                _contract_error("transition to must be a string")
-            rows.append({
-                "from": ",".join(sorted(raw_from)),
-                "machine": str(machine),
-                "name": transition["name"],
-                "to": to,
-            })
-    rows.sort(key=lambda row: (row["name"], row["machine"]))
-    counts: dict[str, int] = {}
-    for row in rows:
-        counts[row["name"]] = counts.get(row["name"], 0) + 1
-    for row in rows:
-        row["key"] = row["name"] if counts[row["name"]] == 1 else f"{row['machine']}_{row['name']}"
-    return rows
-
-
-def _tests_cs(app: dict) -> str:
-    perms = app.get("permissions") if isinstance(app.get("permissions"), list) else []
-    access_rows = []
-    for role in _role_names(app, perms):
-        for op in _operations(app, perms):
-            status, scope = _grant(perms, role, op)
-            access_rows.append((role, op, status, scope))
-    access_rows.sort()
-    transitions = _transitions(app)
-    lines = [
-        "using Xunit;",
-        "",
-        "namespace App.Generated.Tests;",
-        "",
-        "public static class ExpectedAccess",
-        "{",
-        "    public static int Status(string role, string op) => Find(role, op).Status;",
-        "",
-        "    public static string Scope(string role, string op) => Find(role, op).Scope;",
-        "",
-        "    private static (string Role, string Op, int Status, string Scope) Find(string role, string op)",
-        "    {",
-        "        for (var i = 0; i < Rows.Length; i++)",
-        "        {",
-        "            if (Rows[i].Role == role && Rows[i].Op == op)",
-        "            {",
-        "                return Rows[i];",
-        "            }",
-        "        }",
-        "        throw new System.InvalidOperationException(role + \" \" + op);",
-        "    }",
-        "",
-        "    private static readonly (string Role, string Op, int Status, string Scope)[] Rows = new (string Role, string Op, int Status, string Scope)[]",
-        "    {",
-    ]
-    for role, op, status, scope in access_rows:
-        lines.append(f'        ("{_cs(role)}", "{_cs(op)}", {status}, "{_cs(scope)}"),')
-    lines.extend([
-        "    };",
-        "}",
-        "",
-        "public static class ExpectedTransitions",
-        "{",
-        "    public const int RejectedStatus = 409;",
-        "",
-        "    public static string Machine(string name) => Find(name).Machine;",
-        "",
-        "    public static string From(string name) => Find(name).From;",
-        "",
-        "    public static string To(string name) => Find(name).To;",
-        "",
-        "    private static (string Key, string Machine, string From, string To) Find(string name)",
-        "    {",
-        "        for (var i = 0; i < Rows.Length; i++)",
-        "        {",
-        "            if (Rows[i].Key == name)",
-        "            {",
-        "                return Rows[i];",
-        "            }",
-        "        }",
-        "        throw new System.InvalidOperationException(name);",
-        "    }",
-        "",
-        "    private static readonly (string Key, string Machine, string From, string To)[] Rows = new (string Key, string Machine, string From, string To)[]",
-        "    {",
-    ])
-    for row in transitions:
-        lines.append(
-            f'        ("{_cs(row["key"])}", "{_cs(row["machine"])}", "{_cs(row["from"])}", "{_cs(row["to"])}"),'
-        )
-    lines.extend(["    };", "}", "", "public class PermissionsAndTransitions", "{"])
-    methods = []
-    seen = set()
-    for role, op, status, scope in access_rows:
-        method = f"Role_{_method_ident(role)}_Op_{_method_ident(op)}_Returns{status}"
-        if method in seen:
-            _contract_error(f"duplicate test name: {method}")
-        seen.add(method)
-        body = [
-            "    [Fact]",
-            f"    public void {method}()",
-            "    {",
-            f'        Assert.Equal({status}, ExpectedAccess.Status("{_cs(role)}", "{_cs(op)}"));',
-        ]
-        if status == 200:
-            body.append(f'        Assert.Equal("{_cs(scope)}", ExpectedAccess.Scope("{_cs(role)}", "{_cs(op)}"));')
-        body.append("    }")
-        methods.append((method, body))
-    for row in transitions:
-        method = "Transition_" + _method_ident(row["key"])
-        if method in seen:
-            _contract_error(f"duplicate test name: {method}")
-        seen.add(method)
-        methods.append((method, [
-            "    [Fact]",
-            f"    public void {method}()",
-            "    {",
-            f'        Assert.Equal("{_cs(row["machine"])}", ExpectedTransitions.Machine("{_cs(row["key"])}"));',
-            f'        Assert.Equal("{_cs(row["from"])}", ExpectedTransitions.From("{_cs(row["key"])}"));',
-            f'        Assert.Equal("{_cs(row["to"])}", ExpectedTransitions.To("{_cs(row["key"])}"));',
-            "        Assert.Equal(409, ExpectedTransitions.RejectedStatus);",
-            "    }",
-        ]))
-    methods.sort(key=lambda item: item[0])
-    if methods:
-        lines.append("\n\n".join("\n".join(body) for _, body in methods))
-    lines.extend(["}", ""])
     return "\n".join(lines)
