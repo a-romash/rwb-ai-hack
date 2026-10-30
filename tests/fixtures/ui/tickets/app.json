@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "name": "tickets",
+    "title": "Заявки на ремонт",
+    "lang": "ru-RU",
+    "timezone": "Europe/Moscow",
+    "modules": [
+      "core",
+      "workflow",
+      "scheduler",
+      "notify"
+    ]
+  },
+  "params": {
+    "SLA_HIGH": {
+      "type": "duration",
+      "value": "PT4H",
+      "traces": [
+        "BR-02"
+      ]
+    }
+  },
+  "types": {
+    "Priority": {
+      "kind": "enum",
+      "values": [
+        "low",
+        "normal",
+        "high"
+      ],
+      "labels": {
+        "low": "Низкий",
+        "normal": "Обычный",
+        "high": "Высокий"
+      }
+    }
+  },
+  "entities": {
+    "Ticket": {
+      "label": "Заявка",
+      "fields": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "label": "Тема",
+          "max": 200
+        },
+        "description": {
+          "type": "text",
+          "label": "Описание"
+        },
+        "priority": {
+          "type": "enum",
+          "ref": "Priority",
+          "required": true,
+          "label": "Приоритет"
+        },
+        "assignee": {
+          "type": "ref",
+          "ref": "Employee",
+          "nullable": true,
+          "label": "Исполнитель"
+        },
+        "due_at": {
+          "type": "datetime",
+          "computed_by": "SlaDeadline",
+          "label": "Срок"
+        },
+        "status": {
+          "type": "state",
+          "machine": "TicketFlow",
+          "label": "Статус"
+        },
+        "resolution": {
+          "type": "text",
+          "nullable": true,
+          "label": "Решение"
+        },
+        "resolution_time": {
+          "type": "duration",
+          "nullable": true,
+          "label": "Время решения"
+        }
+      },
+      "owner": "author",
+      "traces": [
+        "US-01"
+      ]
+    }
+  },
+  "roles": {
+    "employee": {
+      "name": "Сотрудник",
+      "demo_users": [
+        "emp1"
+      ]
+    },
+    "engineer": {
+      "name": "Инженер",
+      "demo_users": [
+        "eng1"
+      ]
+    },
+    "dispatcher": {
+      "name": "Диспетчер",
+      "demo_users": [
+        "disp1"
+      ]
+    }
+  },
+  "permissions": [
+    {
+      "role": "employee",
+      "op": "Ticket.create",
+      "scope": "all"
+    },
+    {
+      "role": "employee",
+      "op": "Ticket.read",
+      "scope": "own"
+    },
+    {
+      "role": "engineer",
+      "op": "Ticket.read",
+      "scope": "all"
+    },
+    {
+      "role": "dispatcher",
+      "op": "Ticket.read",
+      "scope": "all"
+    },
+    {
+      "role": "engineer",
+      "op": "TakeTicket",
+      "scope": "all"
+    },
+    {
+      "role": "engineer",
+      "op": "ResolveTicket",
+      "scope": "own"
+    }
+  ],
+  "state_machines": {
+    "TicketFlow": {
+      "entity": "Ticket",
+      "initial": "new",
+      "final": [
+        "resolved"
+      ],
+      "states": [
+        "new",
+        "in_progress",
+        "overdue",
+        "resolved"
+      ],
+      "transitions": [
+        {
+          "name": "take",
+          "from": [
+            "new"
+          ],
+          "to": "in_progress",
+          "trigger": {
+            "command": "TakeTicket"
+          },
+          "roles": [
+            "engineer"
+          ],
+          "traces": [
+            "US-02"
+          ]
+        },
+        {
+          "name": "expire",
+          "from": [
+            "in_progress"
+          ],
+          "to": "overdue",
+          "trigger": {
+            "timer": "due_at"
+          },
+          "traces": [
+            "BR-02"
+          ]
+        },
+        {
+          "name": "resolve",
+          "from": [
+            "in_progress",
+            "overdue"
+          ],
+          "to": "resolved",
+          "trigger": {
+            "command": "ResolveTicket"
+          },
+          "guard": "ResolutionRequired",
+          "roles": [
+            "engineer"
+          ],
+          "traces": [
+            "BR-03"
+          ]
+        }
+      ]
+    }
+  },
+  "hooks": {
+    "SlaDeadline": {
+      "kind": "calculator",
+      "in": [
+        "Ticket"
+      ],
+      "out": "datetime",
+      "params": [
+        "SLA_HIGH"
+      ],
+      "rule": "BR-02",
+      "traces": [
+        "AC-04",
+        "AC-05"
+      ]
+    },
+    "ResolutionRequired": {
+      "kind": "validator",
+      "in": [
+        "ResolveTicket"
+      ],
+      "rule": "BR-03",
+      "traces": [
+        "AC-07"
+      ]
+    }
+  },
+  "commands": {
+    "TakeTicket": {
+      "entity": "Ticket",
+      "roles": [
+        "engineer"
+      ],
+      "input": {},
+      "effects": [
+        "transition:TicketFlow.take"
+      ],
+      "traces": [
+        "US-02"
+      ]
+    },
+    "ResolveTicket": {
+      "entity": "Ticket",
+      "roles": [
+        "engineer"
+      ],
+      "input": {
+        "resolution": {
+          "type": "text",
+          "required": true
+        }
+      },
+      "effects": [
+        "transition:TicketFlow.resolve"
+      ],
+      "traces": [
+        "US-03"
+      ]
+    }
+  },
+  "queries": {
+    "OpenTickets": {
+      "entity": "Ticket",
+      "filter": "status in [new, in_progress, overdue]",
+      "roles": [
+        "engineer",
+        "dispatcher"
+      ],
+      "order": "-due_at"
+    },
+    "MyTickets": {
+      "entity": "Ticket",
+      "filter": "author = me or assignee = me",
+      "roles": [
+        "employee",
+        "engineer"
+      ],
+      "order": "-due_at"
+    },
+    "OverdueTickets": {
+      "entity": "Ticket",
+      "filter": "status = overdue",
+      "roles": [
+        "dispatcher"
+      ],
+      "order": "due_at"
+    },
+    "ResolvedTickets": {
+      "entity": "Ticket",
+      "filter": "status = resolved",
+      "roles": [
+        "dispatcher"
+      ],
+      "order": "-due_at"
+    }
+  },
+  "events": {},
+  "integrations": {},
+  "schedules": {},
+  "notifications": {
+    "TicketOverdue": {
+      "on": "TicketExpired",
+      "to": "dispatcher",
+      "channels": [
+        "web"
+      ],
+      "text": "Заявка «{title}» просрочена"
+    }
+  },
+  "seed": {
+    "Ticket": [
+      {
+        "title": "Не работает кондиционер",
+        "description": "В переговорной 3 тепло",
+        "priority": "high",
+        "status": "new"
+      },
+      {
+        "title": "Сломался стул",
+        "description": "Отвалилось колесо",
+        "priority": "normal",
+        "status": "in_progress",
+        "assignee": "eng1"
+      },
+      {
+        "title": "Принтер не печатает",
+        "description": "Замятие бумаги",
+        "priority": "low",
+        "status": "overdue",
+        "assignee": "eng1"
+      }
+    ]
+  },
+  "scenarios": [],
+  "custom": []
+}
