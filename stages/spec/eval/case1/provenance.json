@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "source": "/home/haus/Downloads/Telegram Desktop/Кейс Russtech.pdf",
+  "source_sha256": "ade1e1dd0f9eff00380d4c5ff5281cbface8f0ad53d34a2058e5682e2b95bf3b",
+  "pages": [
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "normalization": "Один текстовый абзац на слайд; переносы строк внутри слайда сведены к пробелам. Карточки слайда 17 расположены по визуальному порядку слева направо, сверху вниз; порядок сверён с нумерованным сценарием полного ТЗ. Все пять слайдов проверены по рендерам.",
+  "supplementary_source": "/home/haus/Downloads/Telegram Desktop/Агентский_ИИ_пайплайн_полного_цикла_разработки_корпоративных.pdf",
+  "supplementary_sha256": "3a8160eab57284bfc0b37fc272de5e032c4403a2a79e1782e56fa78136ec7cff",
+  "supplementary_pages": [
+    11,
+    12,
+    13
+  ],
+  "requirements_sha256": "57850e6eed6bc29592d37fae2213cb2445a51c912abf3b2582986447325f26da",
+  "input_revision": 2
+}

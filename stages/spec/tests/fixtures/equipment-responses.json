@@ -1,0 +1,282 @@
+{
+  "spec.meta.0": {
+    "name": "equipment",
+    "title": "Выдача оборудования",
+    "lang": "ru-RU",
+    "timezone": "Europe/Moscow",
+    "modules": [
+      "core",
+      "workflow"
+    ]
+  },
+  "spec.params.0": {
+    "MAX_LAPTOPS": {
+      "type": "int",
+      "value": 2,
+      "traces": [
+        "BR-01"
+      ]
+    }
+  },
+  "spec.types.0": {
+    "EquipmentType": {
+      "kind": "enum",
+      "values": [
+        "laptop",
+        "other"
+      ],
+      "labels": {
+        "laptop": "Ноутбук",
+        "other": "Другое"
+      }
+    }
+  },
+  "spec.entities.0": {
+    "Employee": {
+      "label": "Сотрудник",
+      "fields": {
+        "name": {
+          "type": "string",
+          "required": true,
+          "label": "Имя"
+        }
+      },
+      "traces": [
+        "US-02"
+      ]
+    },
+    "Equipment": {
+      "label": "Оборудование",
+      "fields": {
+        "inventory_number": {
+          "type": "string",
+          "required": true,
+          "label": "Инвентарный номер"
+        },
+        "equipment_type": {
+          "type": "enum",
+          "ref": "EquipmentType",
+          "required": true,
+          "label": "Тип"
+        },
+        "holder": {
+          "type": "ref",
+          "ref": "Employee",
+          "nullable": true,
+          "label": "Получатель"
+        },
+        "status": {
+          "type": "state",
+          "machine": "EquipmentFlow",
+          "label": "Статус"
+        }
+      },
+      "owner": "holder",
+      "traces": [
+        "US-01",
+        "US-02",
+        "US-03",
+        "US-04"
+      ]
+    }
+  },
+  "spec.roles.0": {
+    "operator": {
+      "name": "Оператор",
+      "demo_users": [
+        "op1"
+      ]
+    },
+    "employee": {
+      "name": "Сотрудник",
+      "demo_users": [
+        "emp1"
+      ]
+    }
+  },
+  "spec.permissions.0": [
+    {
+      "role": "operator",
+      "op": "Equipment.create",
+      "scope": "all"
+    },
+    {
+      "role": "operator",
+      "op": "Equipment.read",
+      "scope": "all"
+    },
+    {
+      "role": "operator",
+      "op": "Equipment.update",
+      "scope": "all"
+    },
+    {
+      "role": "operator",
+      "op": "IssueEquipment",
+      "scope": "all"
+    },
+    {
+      "role": "operator",
+      "op": "ReturnEquipment",
+      "scope": "all"
+    },
+    {
+      "role": "employee",
+      "op": "Equipment.read",
+      "scope": "own"
+    }
+  ],
+  "spec.state_machines.0": {
+    "EquipmentFlow": {
+      "entity": "Equipment",
+      "initial": "available",
+      "final": [],
+      "states": [
+        "available",
+        "issued"
+      ],
+      "transitions": [
+        {
+          "name": "issue",
+          "from": [
+            "available"
+          ],
+          "to": "issued",
+          "trigger": {
+            "command": "IssueEquipment"
+          },
+          "guard": "AvailableForIssue",
+          "roles": [
+            "operator"
+          ],
+          "traces": [
+            "US-02",
+            "BR-02"
+          ]
+        },
+        {
+          "name": "return",
+          "from": [
+            "issued"
+          ],
+          "to": "available",
+          "trigger": {
+            "command": "ReturnEquipment"
+          },
+          "roles": [
+            "operator"
+          ],
+          "traces": [
+            "US-03"
+          ]
+        }
+      ]
+    }
+  },
+  "spec.hooks.0": {
+    "LaptopLimit": {
+      "kind": "policy",
+      "in": [
+        "IssueEquipment",
+        "Equipment"
+      ],
+      "out": "bool",
+      "params": [
+        "MAX_LAPTOPS"
+      ],
+      "rule": "BR-01",
+      "traces": [
+        "AC-02"
+      ],
+      "select": "EmployeeEquipment"
+    },
+    "AvailableForIssue": {
+      "kind": "validator",
+      "in": [
+        "Equipment"
+      ],
+      "rule": "BR-02",
+      "traces": [
+        "AC-03"
+      ]
+    }
+  },
+  "spec.commands.0": {
+    "IssueEquipment": {
+      "entity": "Equipment",
+      "roles": [
+        "operator"
+      ],
+      "input": {
+        "employee": {
+          "type": "ref",
+          "ref": "Employee",
+          "required": true
+        },
+        "qr_code": {
+          "type": "string",
+          "required": true
+        }
+      },
+      "effects": [
+        "transition:EquipmentFlow.issue"
+      ],
+      "traces": [
+        "US-02",
+        "AC-02"
+      ]
+    },
+    "ReturnEquipment": {
+      "entity": "Equipment",
+      "roles": [
+        "operator"
+      ],
+      "input": {},
+      "effects": [
+        "transition:EquipmentFlow.return"
+      ],
+      "traces": [
+        "US-03",
+        "AC-04"
+      ]
+    }
+  },
+  "spec.queries.0": {
+    "EmployeeEquipment": {
+      "entity": "Equipment",
+      "filter": "holder == current_user and status == issued",
+      "roles": [
+        "operator",
+        "employee"
+      ]
+    },
+    "EquipmentHistory": {
+      "entity": "Equipment",
+      "roles": [
+        "operator",
+        "employee"
+      ]
+    }
+  },
+  "spec.events.0": {},
+  "spec.integrations.0": {},
+  "spec.schedules.0": {},
+  "spec.notifications.0": {},
+  "spec.seed.0": {
+    "Employee": [
+      {
+        "name": "Сотрудник"
+      }
+    ],
+    "Equipment": [
+      {
+        "inventory_number": "EQ-001",
+        "equipment_type": "laptop",
+        "holder": null,
+        "status": "available"
+      }
+    ]
+  },
+  "spec.scenarios.0": [],
+  "spec.custom.0": []
+}

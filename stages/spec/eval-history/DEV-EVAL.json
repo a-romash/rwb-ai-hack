@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "timestamp": "2026-10-30T14:08:08.099205+00:00",
+  "note": "Полные попытки разработки и отдельные проверки. Прерванные или неуспешные попытки не являются успешными прогонами. Неизвестный usage не равен нулю; известная сумма — нижняя граница, не стоимость в деньгах. Продолжение кейса №1 включено в исходную строку без двойного счёта.",
+  "runs": [
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T121620386640/equipment",
+      "case": "equipment",
+      "status": "contract_error",
+      "calls": 8,
+      "http_attempts": 8,
+      "known_tokens": 18285,
+      "unknown_usage_calls": 0,
+      "reason": "JSON Patch неприменим к документу",
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T121620386640/tickets",
+      "case": "tickets",
+      "status": "contract_error",
+      "calls": 10,
+      "http_attempts": 10,
+      "known_tokens": 34537,
+      "unknown_usage_calls": 0,
+      "reason": "JSON Patch неприменим к документу",
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T122124307125/equipment",
+      "case": "equipment",
+      "status": "interrupted",
+      "calls": 31,
+      "http_attempts": 31,
+      "known_tokens": 58277,
+      "unknown_usage_calls": 1,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T122124307125/tickets",
+      "case": "tickets",
+      "status": "failed",
+      "calls": 25,
+      "http_attempts": 26,
+      "known_tokens": 102202,
+      "unknown_usage_calls": 1,
+      "reason": "Не удалось дождаться провайдера модели",
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T122446590794/case1",
+      "case": "case1",
+      "status": "contract_error",
+      "calls": 7,
+      "http_attempts": 7,
+      "known_tokens": 39903,
+      "unknown_usage_calls": 0,
+      "reason": "Контекст запроса превышает профиль окна",
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T123139478749/tickets",
+      "case": "tickets",
+      "status": "interrupted",
+      "calls": 85,
+      "http_attempts": 85,
+      "known_tokens": 185471,
+      "unknown_usage_calls": 1,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T124422638132/tickets",
+      "case": "tickets",
+      "status": "interrupted",
+      "calls": 82,
+      "http_attempts": 85,
+      "known_tokens": 140577,
+      "unknown_usage_calls": 1,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T125044254401/equipment",
+      "case": "equipment",
+      "status": "interrupted",
+      "calls": 45,
+      "http_attempts": 46,
+      "known_tokens": 76016,
+      "unknown_usage_calls": 1,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T125915462885/tickets",
+      "case": "tickets",
+      "status": "partial",
+      "calls": 107,
+      "http_attempts": 108,
+      "known_tokens": 302380,
+      "unknown_usage_calls": 0,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T125915470114/equipment",
+      "case": "equipment",
+      "status": "partial",
+      "calls": 79,
+      "http_attempts": 80,
+      "known_tokens": 164365,
+      "unknown_usage_calls": 0,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T125915476642/case1",
+      "case": "case1",
+      "status": "partial",
+      "calls": 108,
+      "http_attempts": 110,
+      "known_tokens": 300779,
+      "unknown_usage_calls": 0,
+      "reason": null,
+      "continued": false
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T134031308295/case1",
+      "case": "case1",
+      "status": "partial",
+      "calls": 87,
+      "http_attempts": 88,
+      "known_tokens": 278694,
+      "unknown_usage_calls": 0,
+      "reason": null,
+      "continued": true
+    }
+  ],
+  "probes": [
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/schema-probe",
+      "calls": 1,
+      "known_tokens": 1906,
+      "findings": null,
+      "summary": null
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/typed-repair-probe",
+      "calls": 1,
+      "known_tokens": 2134,
+      "findings": [
+        "REF_UNRESOLVED",
+        "BR_NO_HOOK"
+      ],
+      "summary": null
+    },
+    {
+      "workspace": "/home/haus/Projects/rwb-ai-hack/workspaces/eval/typed-repair-probe-v2",
+      "calls": 1,
+      "known_tokens": 2360,
+      "findings": [],
+      "summary": "Применён адресный JSON Patch по находкам G1."
+    }
+  ],
+  "known_tokens": 1707886,
+  "unknown_usage_calls": 5
+}

@@ -1,0 +1,704 @@
+{
+  "$defs": {
+    "AcceptanceCriterion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^AC-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "rules": {
+          "items": {
+            "pattern": "^BR-\\d{2,}$",
+            "type": "string"
+          },
+          "title": "Rules",
+          "type": "array"
+        },
+        "stories": {
+          "items": {
+            "pattern": "^US-\\d{2,}$",
+            "type": "string"
+          },
+          "title": "Stories",
+          "type": "array"
+        },
+        "ui": {
+          "title": "Ui",
+          "type": "boolean"
+        },
+        "gherkin": {
+          "title": "Gherkin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "rules",
+        "stories",
+        "ui",
+        "gherkin"
+      ],
+      "title": "AcceptanceCriterion",
+      "type": "object"
+    },
+    "Assumption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^ASM-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "source",
+        "params"
+      ],
+      "title": "Assumption",
+      "type": "object"
+    },
+    "BusinessRule": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^BR-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "req": {
+          "items": {
+            "pattern": "^REQ-\\d{2,}$",
+            "type": "string"
+          },
+          "title": "Req",
+          "type": "array"
+        },
+        "params": {
+          "additionalProperties": {
+            "$ref": "#/$defs/RuleParameter"
+          },
+          "title": "Params",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "req",
+        "params"
+      ],
+      "title": "BusinessRule",
+      "type": "object"
+    },
+    "DataCard": {
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "records": {
+          "minimum": 0,
+          "title": "Records",
+          "type": "integer"
+        },
+        "schema": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Schema",
+          "type": "object"
+        },
+        "anomalies": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Anomalies",
+          "type": "array"
+        },
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Samples",
+          "type": "array"
+        }
+      },
+      "required": [
+        "file",
+        "records",
+        "schema",
+        "anomalies",
+        "samples"
+      ],
+      "title": "DataCard",
+      "type": "object"
+    },
+    "GlossaryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "minLength": 1,
+          "title": "Term",
+          "type": "string"
+        },
+        "definition": {
+          "minLength": 1,
+          "title": "Definition",
+          "type": "string"
+        }
+      },
+      "required": [
+        "term",
+        "definition"
+      ],
+      "title": "GlossaryEntry",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^ISS-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "req": {
+          "pattern": "^REQ-\\d{2,}$",
+          "title": "Req",
+          "type": "string"
+        },
+        "characteristic": {
+          "enum": [
+            "единичность",
+            "непротиворечивость",
+            "актуальность",
+            "выполнимость",
+            "проверяемость",
+            "однозначность",
+            "полнота",
+            "данные"
+          ],
+          "title": "Characteristic",
+          "type": "string"
+        },
+        "problem": {
+          "minLength": 1,
+          "title": "Problem",
+          "type": "string"
+        },
+        "action": {
+          "minLength": 1,
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "req",
+        "characteristic",
+        "problem",
+        "action"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "NonFunctionalRequirement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^NFR-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "verify": {
+          "title": "Verify",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "metric",
+        "verify"
+      ],
+      "title": "NonFunctionalRequirement",
+      "type": "object"
+    },
+    "OutOfScope": {
+      "additionalProperties": false,
+      "properties": {
+        "req": {
+          "pattern": "^REQ-\\d{2,}$",
+          "title": "Req",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "req",
+        "reason"
+      ],
+      "title": "OutOfScope",
+      "type": "object"
+    },
+    "Profile": {
+      "additionalProperties": false,
+      "properties": {
+        "modules": {
+          "items": {
+            "enum": [
+              "core",
+              "workflow",
+              "scheduler",
+              "notify"
+            ],
+            "type": "string"
+          },
+          "title": "Modules",
+          "type": "array"
+        },
+        "platforms": {
+          "items": {
+            "enum": [
+              "web",
+              "mobile"
+            ],
+            "type": "string"
+          },
+          "title": "Platforms",
+          "type": "array"
+        }
+      },
+      "required": [
+        "modules",
+        "platforms"
+      ],
+      "title": "Profile",
+      "type": "object"
+    },
+    "Question": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^Q-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 2,
+          "title": "Options",
+          "type": "array"
+        },
+        "default": {
+          "type": "string",
+          "minLength": 1,
+          "title": "Default"
+        },
+        "why": {
+          "minLength": 1,
+          "title": "Why",
+          "type": "string"
+        },
+        "blocking": {
+          "default": false,
+          "title": "Blocking",
+          "type": "boolean"
+        },
+        "answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answer"
+        },
+        "answered_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "default",
+                "human"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answered By"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "options",
+        "default",
+        "why"
+      ],
+      "title": "Question",
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^REQ-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "function",
+            "rule",
+            "data",
+            "interface",
+            "integration",
+            "constraint",
+            "nfr",
+            "goal"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "source": {
+          "items": {
+            "pattern": "^S-\\d{3,}$",
+            "type": "string"
+          },
+          "title": "Source",
+          "type": "array"
+        },
+        "quote": {
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "type",
+        "source",
+        "quote"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    },
+    "Role": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description"
+      ],
+      "title": "Role",
+      "type": "object"
+    },
+    "RuleParameter": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "string",
+            "text",
+            "int",
+            "decimal",
+            "money",
+            "bool",
+            "date",
+            "datetime",
+            "duration",
+            "interval",
+            "enum",
+            "ref",
+            "state",
+            "geo_point",
+            "geo_line",
+            "geo_polygon",
+            "file",
+            "json"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "RuleParameter",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^S-\\d{3,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "file": {
+          "minLength": 1,
+          "title": "File",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "file",
+        "text"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "UserStory": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^US-\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "role": {
+          "minLength": 1,
+          "title": "Role",
+          "type": "string"
+        },
+        "want": {
+          "minLength": 1,
+          "title": "Want",
+          "type": "string"
+        },
+        "so_that": {
+          "minLength": 1,
+          "title": "So That",
+          "type": "string"
+        },
+        "req": {
+          "items": {
+            "pattern": "^REQ-\\d{2,}$",
+            "type": "string"
+          },
+          "title": "Req",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "want",
+        "so_that",
+        "req"
+      ],
+      "title": "UserStory",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "requirements": {
+      "items": {
+        "$ref": "#/$defs/Requirement"
+      },
+      "title": "Requirements",
+      "type": "array"
+    },
+    "roles": {
+      "items": {
+        "$ref": "#/$defs/Role"
+      },
+      "title": "Roles",
+      "type": "array"
+    },
+    "glossary": {
+      "items": {
+        "$ref": "#/$defs/GlossaryEntry"
+      },
+      "title": "Glossary",
+      "type": "array"
+    },
+    "issues": {
+      "items": {
+        "$ref": "#/$defs/Issue"
+      },
+      "title": "Issues",
+      "type": "array"
+    },
+    "questions": {
+      "items": {
+        "$ref": "#/$defs/Question"
+      },
+      "maxItems": 8,
+      "title": "Questions",
+      "type": "array"
+    },
+    "assumptions": {
+      "items": {
+        "$ref": "#/$defs/Assumption"
+      },
+      "title": "Assumptions",
+      "type": "array"
+    },
+    "user_stories": {
+      "items": {
+        "$ref": "#/$defs/UserStory"
+      },
+      "title": "User Stories",
+      "type": "array"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/BusinessRule"
+      },
+      "title": "Rules",
+      "type": "array"
+    },
+    "acceptance": {
+      "items": {
+        "$ref": "#/$defs/AcceptanceCriterion"
+      },
+      "title": "Acceptance",
+      "type": "array"
+    },
+    "nfr": {
+      "items": {
+        "$ref": "#/$defs/NonFunctionalRequirement"
+      },
+      "title": "Nfr",
+      "type": "array"
+    },
+    "out_of_scope": {
+      "items": {
+        "$ref": "#/$defs/OutOfScope"
+      },
+      "title": "Out Of Scope",
+      "type": "array"
+    },
+    "data_cards": {
+      "items": {
+        "$ref": "#/$defs/DataCard"
+      },
+      "title": "Data Cards",
+      "type": "array"
+    },
+    "profile": {
+      "$ref": "#/$defs/Profile"
+    }
+  },
+  "required": [
+    "schema_version",
+    "sources",
+    "requirements",
+    "roles",
+    "glossary",
+    "issues",
+    "questions",
+    "assumptions",
+    "user_stories",
+    "rules",
+    "acceptance",
+    "nfr",
+    "out_of_scope",
+    "data_cards",
+    "profile"
+  ],
+  "title": "Analysis",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

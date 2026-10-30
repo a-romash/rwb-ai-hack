@@ -1,0 +1,5 @@
+version: "1.0.3"
+task_class: req_extract
+mode: structured
+max_turns: 1
+tools: []
