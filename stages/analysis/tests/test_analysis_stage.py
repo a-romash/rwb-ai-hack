@@ -152,7 +152,7 @@ class AnalysisStageTests(unittest.TestCase):
         self.assertEqual(before, path.read_bytes())
 
     def test_window_splitting_and_delimiter_injection(self) -> None:
-        llm = FakeLLM({"req_extract": {"requirements": [], "noise": []}}, context_window=8192)
+        llm = FakeLLM({"req_extract": {"requirements": [], "noise": ["S-000"]}}, context_window=8192)
         items = [{"id": f"S-{i:03d}", "text": "x" * 2000} for i in range(10)]
         groups = batches(llm, "analyst-extract", Extraction, items, "sources")
         self.assertGreater(len(groups), 1)

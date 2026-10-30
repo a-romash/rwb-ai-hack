@@ -38,6 +38,9 @@ def _latest(session, run_id):
     return {row.stage: row for row in rows}
 
 
+BLOCKING_GATES = frozenset({'G0', 'G1'})
+
+
 APP_SECTIONS = frozenset({
     'meta', 'params', 'types', 'entities', 'roles', 'permissions', 'state_machines', 'hooks', 'commands',
     'queries', 'events', 'integrations', 'schedules', 'notifications', 'seed', 'scenarios', 'custom',
@@ -328,6 +331,10 @@ def _execute(stage_id):
                 _event(session, run_id, 'question.asked', {'stage': stage, 'questions': [q.model_dump() for q in output.questions]})
             elif STAGES_BY_KEY[stage].gates and (run.autonomy == 'A0' or (run.autonomy == 'A1' and stage == 'spec')):
                 row.status, run.status = 'waiting_human', 'waiting'
+            elif blocked := [name for name, result in {name: result for name, _, result in gates}.items() if name in BLOCKING_GATES and not result.passed]:
+                # Later stages would spend the budget on an analysis or specification already known to be wrong.
+                row.status, row.finished_at = 'failed', utc_now()
+                row.error = f"Гейт {', '.join(blocked)} не пройден после ремонта; дальнейшие этапы не запускаются"
             else:
                 row.status, row.finished_at = 'succeeded', utc_now()
             _event(session, run_id, 'stage.finished', {'stage': stage, 'status': row.status})

@@ -72,6 +72,13 @@ class GateTests(unittest.TestCase):
         self.save()
         self.assertNotIn("SRC_UNCOVERED", [f.code for f in g0_inputs.check(self.workspace, {}).findings])
 
+    def test_no_requirements_from_sources_blocks_g0(self) -> None:
+        self.analysis["requirements"] = []
+        self.save()
+        result = g0_inputs.check(self.workspace, {})
+        self.assertFalse(result.passed)
+        self.assertIn("REQ_EMPTY", [f.code for f in result.findings if f.severity == "error"])
+
     def test_in_unparsed(self) -> None:
         (self.workspace / "input").mkdir()
         (self.workspace / "input/image.png").write_bytes(b"image")

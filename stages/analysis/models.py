@@ -1,7 +1,7 @@
 """Внутренние схемы узких шагов; не меняют общие артефакты."""
 from typing import Literal
 
-from pydantic import Field, create_model
+from pydantic import Field, create_model, model_validator
 
 from contracts.analysis import (
     AcceptanceCriterion, Assumption, BusinessRule, ContractModel, GlossaryEntry,
@@ -13,6 +13,13 @@ from contracts.analysis import (
 class Extraction(ContractModel):
     requirements: list[Requirement]
     noise: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _accounts_for_sources(self):
+        # An empty answer is a schema error: the gateway asks again and never caches it.
+        if not self.requirements and not self.noise:
+            raise ValueError("Ни одного требования и ни одного фрагмента шума: каждый фрагмент — требование или шум")
+        return self
 
 
 class Skeleton(ContractModel):

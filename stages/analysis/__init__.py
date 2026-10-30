@@ -275,11 +275,13 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
     Analysis.model_validate(data)
     original = encoded(data)
     rejected: list[Finding] = []
+    # A patch cannot invent requirements from nothing; an empty extraction needs a fresh stage attempt.
+    empty = [ElementFlag(path=finding.path, status="questioned", reason="Требования не извлечены; нужен повторный запуск анализа.", gate="G0") for finding in findings if finding.code == "REQ_EMPTY"]
     try:
-        data = _revise(data, llm, findings, f"analysis.repair.{inp.attempt}", rejected)
-        flags = [ElementFlag(path=f"analysis.{finding.path}", status="questioned", reason="Предложенный патч отклонён; исходный артефакт сохранён.", gate="G0") for finding in rejected]
+        data = _revise(data, llm, [finding for finding in findings if finding.code != "REQ_EMPTY"], f"analysis.repair.{inp.attempt}", rejected)
+        flags = empty + [ElementFlag(path=f"analysis.{finding.path}", status="questioned", reason="Предложенный патч отклонён; исходный артефакт сохранён.", gate="G0") for finding in rejected]
     except BudgetExceeded:
-        flags = [ElementFlag(path=f.path, status="questioned", reason="Бюджет ремонта исчерпан.", gate="G0") for f in findings]
+        flags = empty + [ElementFlag(path=f.path, status="questioned", reason="Бюджет ремонта исчерпан.", gate="G0") for f in findings if f.code != "REQ_EMPTY"]
     write_json(workspace, ARTIFACT, Analysis.model_validate(data))
     summary = "Применён адресный ремонт анализа." if encoded(data) != original else "Изменений в анализ не внесено; требуется повторная проверка гейтом."
     return StageOutput(artifacts={"analysis": ARTIFACT}, summary=summary, flags=flags)

@@ -88,7 +88,7 @@ class EvalTests(unittest.TestCase):
         sent: list[dict] = []
         def request(req, timeout):
             sent.append(json.loads(req.data))
-            return FakeHTTPResponse({"model": "qwen/qwen3.8-27b", "choices": [{"message": {"content": json.dumps({"requirements": [], "noise": []})}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}})
+            return FakeHTTPResponse({"model": "qwen/qwen3.8-27b", "choices": [{"message": {"content": json.dumps({"requirements": [], "noise": ["S-001"]})}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}})
         with patch.dict("os.environ", {"LLM_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen", request):
             llm = live_llm("qwen/qwen3.8-27b", 32768, 100000, 10)
             for index in range(2):

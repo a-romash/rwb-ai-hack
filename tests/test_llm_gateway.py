@@ -58,6 +58,15 @@ class Tests(unittest.TestCase):
         self.assertEqual([len(r['messages']) for r in self.records], [2, 4])
         self.assertEqual((self.records[0]['output'], self.records[0]['status']), ('bad', 'schema_error'))
         self.assertIn('Исправь формат ответа', self.records[1]['messages'][-1]['content'])
+    def test_empty_extraction_is_asked_again_and_never_cached(self):
+        from stages.analysis.models import Extraction
+        client = Client(['{"requirements": [], "noise": []}', '{"requirements": [], "noise": ["S-001"]}'])
+        with tempfile.TemporaryDirectory() as tmp:
+            gateway = self.gateway(client, cache_dir=Path(tmp))
+            self.assertEqual(gateway(task_class='req_extract', system='s', user='u', output=Extraction).noise, ['S-001'])
+            self.assertEqual([r['status'] for r in self.records], ['schema_error', 'repaired'])
+            self.assertEqual(len(list(Path(tmp).rglob('*.json'))), 1)
+
     def test_retry_and_schema_failure(self):
         class RetryClient:
             calls = 0

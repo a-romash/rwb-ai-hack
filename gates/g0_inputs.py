@@ -67,6 +67,8 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult:
             for path in sorted(inputs.rglob("*")):
                 if path.is_file() and str(path.relative_to(workspace)) not in known and path.name not in known:
                     findings.append(Finding(path=f"inputs[{path.name}]", code="IN_UNPARSED", severity="warning", message="Входной файл отсутствует в разобранных источниках и карточках данных."))
+    if analysis.sources and not analysis.requirements:
+        findings.append(Finding(path="analysis.requirements", code="REQ_EMPTY", severity="error", message="Из непустых требований не извлечено ни одного требования."))
     findings.extend(validate_quotes(analysis, trusted))
     findings.extend(validate_coverage(analysis, noise))
     return GateResult(gate="G0", passed=not any(f.severity == "error" for f in findings), findings=findings)
