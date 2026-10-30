@@ -47,6 +47,44 @@ class RunnerIntegration(unittest.TestCase):
             self.assertEqual(len(stages), 8)
             self.assertTrue(all(stage.status == 'succeeded' for stage in stages))
 
+    def _drain(self, start=None):
+        executed = []
+        with patch('app.tasks.run_stage.apply_async', side_effect=lambda args, queue: executed.append(args[0])):
+            start() if start else runner.advance(self.run_id)
+            index = 0
+            while index < len(executed):
+                runner.execute(executed[index])
+                index += 1
+        with SessionLocal() as session:
+            return [session.get(StageRun, stage_id).stage for stage_id in executed]
+
+    def test_restart_reuses_stages_with_unchanged_input(self):
+        from app.models import Artifact, Event
+        self.assertEqual(self._drain(), [stage.key for stage in STAGES])
+        self.assertEqual(self._drain(lambda: runner.retry(self.run_id, 'ui')), ['ui', 'report'])
+        with SessionLocal() as session:
+            latest = runner._latest(session, self.run_id)
+            self.assertEqual(session.get(Run, self.run_id).status, 'partial')
+            self.assertTrue(all(row.status == 'succeeded' and row.attempt == (1 if key in ('analysis', 'spec') else 2) for key, row in latest.items()))
+            self.assertIn('Переиспользован результат попытки 1', latest['verify'].summary)
+            reused = session.scalars(select(Event).where(Event.run_id == self.run_id, Event.type == 'stage.reused')).all()
+            self.assertEqual([e.payload['stage'] for e in reused], ['scaffold', 'tests', 'develop', 'verify'])
+            artifacts = session.scalars(select(Artifact).where(Artifact.stage_run_id == latest['scaffold'].id)).all()
+            self.assertEqual(sorted(a.name for a in artifacts), ['hooks', 'openapi', 'product'])
+            root = Path(session.get(Run, self.run_id).workspace_path)
+        self.assertTrue((root / 'reports/verification.json').is_file())
+
+    def test_restart_reruns_stages_whose_input_changed(self):
+        from harness.fake_stages import ui
+        from harness.fake_stages.common import execute
+        self._drain()
+        def changed(inp, root, llm, sandbox):
+            output = execute(inp, root, llm, sandbox)
+            (root / 'spec/ui.json').write_text('{"changed": true}\n')
+            return output
+        with patch.object(ui, 'execute', side_effect=changed):
+            self.assertEqual(self._drain(lambda: runner.retry(self.run_id, 'ui')), ['ui', 'scaffold', 'tests', 'develop', 'verify', 'report'])
+
     def test_answer_is_forwarded_and_queued(self):
         with SessionLocal.begin() as session:
             run = session.get(Run, self.run_id)

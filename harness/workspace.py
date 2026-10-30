@@ -71,11 +71,34 @@ def commit(path: Path, message: str) -> str:
 
 
 def restore(path: Path, revision: str) -> None:
-    if len(revision) != 40 or any(c not in '0123456789abcdef' for c in revision):
-        raise ContractError('Некорректный идентификатор коммита')
-    _git(path, 'reset', '--hard', revision)
+    _git(path, 'reset', '--hard', _revision(revision))
     # git clean removes generated files after the restore; path is the isolated run workspace.
     _git(path, 'clean', '-fd')
+
+
+def head(path: Path) -> str:
+    return _git(path, 'rev-parse', 'HEAD')
+
+
+def tree(path: Path, revision: str) -> str:
+    return _git(path, 'rev-parse', f'{_revision(revision)}^{{tree}}')
+
+
+def parent(path: Path, revision: str) -> str | None:
+    """The commit a stage started from; None for the root commit."""
+    result = _git(path, 'rev-list', '--parents', '-n', '1', _revision(revision)).split()
+    return result[1] if len(result) > 1 else None
+
+
+def checkout(path: Path, revision: str) -> None:
+    """Make the index and the tracked files exactly the tree of revision, keeping HEAD and ignored files."""
+    _git(path, 'read-tree', '-u', '--reset', _revision(revision))
+
+
+def _revision(revision: str) -> str:
+    if len(revision) != 40 or any(c not in '0123456789abcdef' for c in revision):
+        raise ContractError('Некорректный идентификатор коммита')
+    return revision
 
 
 def _tracked_files(folder: Path):

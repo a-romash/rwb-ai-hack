@@ -13,7 +13,7 @@ from app.database import SessionLocal
 from app.models import Artifact, Event, GateResult, LLMCall, Question, Run, SpecFlag, StageRun, TestHash, ToolRun, utc_now
 from harness.fakes import run_stage_locally
 from harness.registry import STAGES, STAGES_BY_KEY
-from harness.workspace import commit, describe, input_attachments, restore
+from harness.workspace import checkout, commit, describe, head, input_attachments, parent, restore, tree
 from gates.core import run_gate
 from contracts.stage import ContractError, StageInput
 
@@ -88,8 +88,10 @@ def advance(run_id):
             candidate = report if report.status == 'pending' else None
         else:
             candidate = next((stages[x.key] for x in STAGES if stages[x.key].status == 'pending'), None)
+        while candidate and _reuse(session, run, stages, candidate):
+            stages = _latest(session, run_id)
+            candidate = None if failed else next((stages[x.key] for x in STAGES if stages[x.key].status == 'pending'), None)
         if candidate:
-            candidate.input_hash = input_hash(session, run, stages, candidate.stage)
             candidate.status = 'queued'
             candidate.queued_at = utc_now()
             run.status = 'running'
@@ -106,6 +108,65 @@ def advance(run_id):
         except Exception:
             # Reconciler republishes the durable queued record.
             pass
+
+
+def _reuse(session, run, latest, candidate):
+    """Accept an earlier attempt's output when the stage would see exactly the same input again.
+
+    Same input means the same input_hash (requirements, accepted artifacts, platform code) and the
+    same workspace tree the earlier attempt started from; its commit tree is then the output.
+    """
+    stage = candidate.stage
+    candidate.input_hash = input_hash(session, run, latest, stage)
+    if stage == 'report' or (STAGES_BY_KEY[stage].gates and (run.autonomy == 'A0' or (run.autonomy == 'A1' and stage == 'spec'))):
+        return False
+    earlier = session.scalars(select(StageRun).where(StageRun.run_id == run.id, StageRun.stage == stage, StageRun.id != candidate.id,
+        StageRun.input_hash == candidate.input_hash, StageRun.output_commit.is_not(None), StageRun.finished_at.is_not(None),
+        StageRun.error.is_(None), StageRun.status.in_(('succeeded', 'stale'))).order_by(StageRun.attempt.desc())).first()
+    if earlier is None or session.scalar(select(Question.id).where(Question.stage_run_id == earlier.id).limit(1)):
+        return False
+    root = Path(run.workspace_path)
+    before = head(root)
+    savepoint = session.begin_nested()
+    try:
+        start = parent(root, earlier.output_commit)
+        if start is None or tree(root, start) != tree(root, before):
+            savepoint.rollback()
+            return False
+        checkout(root, earlier.output_commit)
+        artifacts = session.scalars(select(Artifact).where(Artifact.stage_run_id == earlier.id)).all()
+        for item in artifacts:
+            if describe(root, item.path)[0] != item.hash:
+                raise ContractError(f'Артефакт прошлой попытки не совпал: {item.path}')
+        if stage == 'tests' and not run.config.get('fake_stages'):
+            from app.test_integrity import accept_manifest
+            tests = next((a.path for a in artifacts if a.name == 'tests'), 'reports/tests.json')
+            accept_manifest(session, run.id, root, tests)
+        from harness.fakes import workspace_path
+        for item in artifacts:
+            if item.name in ('app', 'ui'):
+                workspace_path(root, item.path).chmod(0o444)
+        summary = f'Переиспользован результат попытки {earlier.attempt}: {earlier.summary or ""}'.strip()
+        revision = commit(root, f'stage({stage}): {summary}')
+        savepoint.commit()
+    except Exception:
+        logging.exception('Не удалось переиспользовать результат этапа %s', stage)
+        savepoint.rollback()
+        restore(root, before)
+        return False
+    for item in artifacts:
+        session.add(Artifact(run_id=run.id, stage_run_id=candidate.id, name=item.name, path=item.path, hash=item.hash, size=item.size, kind=item.kind))
+    for item in session.scalars(select(GateResult).where(GateResult.stage_run_id == earlier.id)).all():
+        session.add(GateResult(stage_run_id=candidate.id, gate=item.gate, round=item.round, passed=item.passed, decided_by=item.decided_by, findings=item.findings))
+    now = utc_now()
+    candidate.status, candidate.output_commit, candidate.summary = 'succeeded', revision, summary
+    candidate.started_at, candidate.finished_at = now, now
+    run.status = 'running'
+    run.started_at = run.started_at or now
+    _event(session, run.id, 'stage.reused', {'stage': stage, 'attempt': candidate.attempt, 'from_attempt': earlier.attempt})
+    _event(session, run.id, 'stage.finished', {'stage': stage, 'status': 'succeeded'})
+    session.flush()
+    return True
 
 
 def _execute(stage_id):
@@ -209,6 +270,7 @@ def _execute(stage_id):
             # Re-entry after a question replaces this attempt's accepted output atomically.
             session.execute(delete(Artifact).where(Artifact.stage_run_id == row.id))
             session.execute(delete(GateResult).where(GateResult.stage_run_id == row.id))
+            session.execute(delete(SpecFlag).where(SpecFlag.run_id == run_id, SpecFlag.gate.in_(STAGES_BY_KEY[stage].gates)))
             if stage == 'tests' and not fake:
                 from app.test_integrity import accept_manifest
                 accept_manifest(session, run_id, root, output.artifacts.get('tests', 'reports/tests.json'))
@@ -300,8 +362,9 @@ def retry(run_id, key):
         if not run or run.status in ('running', 'waiting', 'cancelled'):
             raise ValueError('Повтор доступен только для неактивного прогона')
         latest = _latest(session, run_id)
-        if key not in latest or latest[key].status != 'failed':
-            raise ValueError('Повтор доступен только для упавшего этапа')
+        # Restarting a succeeded stage reruns it; stages below are reused while their input is unchanged.
+        if key not in latest or latest[key].status not in ('failed', 'succeeded'):
+            raise ValueError('Повтор доступен только для завершённого этапа')
         index = next(i for i, stage in enumerate(STAGES) if stage.key == key)
         predecessor = latest[STAGES[index - 1].key] if index else None
         root = Path(run.workspace_path)
@@ -311,11 +374,13 @@ def retry(run_id, key):
             import subprocess
             revision = subprocess.check_output(['git', '-C', str(root), 'rev-list', '--max-parents=0', 'HEAD'], text=True).strip()
         restore(root, revision)
-        # Earlier stages remain accepted, so only invalidate downstream gate flags.
-        invalid_gates = [gate for item in STAGES[index:] for gate in (*item.gates, stage_flag_gate(item.key))]
+        # Downstream flags stay until that stage runs again (_execute replaces them) or is reused as is.
+        invalid_gates = [*STAGES[index].gates, stage_flag_gate(key)]
         session.execute(delete(SpecFlag).where(SpecFlag.run_id == run_id, SpecFlag.gate.in_(invalid_gates)))
         if index <= next(i for i, item in enumerate(STAGES) if item.key == 'tests'):
             session.execute(delete(TestHash).where(TestHash.run_id == run_id))
+        # The restarted stage itself must run again, so its old output is not a reuse candidate.
+        latest[key].input_hash = None
         for stage in STAGES[index:]:
             old = latest[stage.key]
             old.status = 'stale' if old.status not in ('failed', 'pending') else old.status
@@ -407,7 +472,7 @@ def input_hash(session, run, latest, key):
     artifacts = session.scalars(select(Artifact).where(Artifact.stage_run_id.in_(ids))).all()
     files = []
     repo = Path(__file__).resolve().parents[2]
-    for directory in ('agents', 'templates', 'contracts'):
+    for directory in ('agents', 'templates', 'contracts', 'stages', 'gates', 'harness'):
         for path in sorted((repo / directory).rglob('*')):
             if path.is_file() and '__pycache__' not in path.parts:
                 files.append((str(path.relative_to(repo)), hashlib.sha256(path.read_bytes()).hexdigest()))
