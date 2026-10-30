@@ -43,8 +43,13 @@ def execute(inp,workspace,llm,sandbox):
         file=f'product/backend/tests/App.Acceptance.Tests/Generated/{ident.replace("-","_")}.cs'
         packet=context(analysis,app,hooks,api,ac)
         try:
-            code=llm(task_class='qa',system='Write xUnit tests using the supplied public contracts only. Tag each test with Trait("AC", acceptance.id). Use TestClock, never real time. Expected results must come from AC examples, not production algorithms. Return C# code only.',user=json.dumps(packet,ensure_ascii=False),output='code',task_id=ident)
+            code=llm(task_class='qa',system='Write compilable xUnit C# tests using only the supplied public signatures and allowed APIs. Every test must have [Trait("AC", acceptance.id)]. Use TestClock, never real time. Expected results must be independent concrete values from AC examples. Rule thresholds must be read from App.Domain.Params, never embedded as numeric constants. Use boundary test data derived from the parameter rather than repeating its literal. Never access implementation source. Return the whole C# test file.',user=json.dumps(packet,ensure_ascii=False),output='code',task_id=ident)
         except BudgetExceeded:break
+        issues=lint(code,ident,rule_values(analysis,ac))
+        for _ in range(2):
+            if not issues:break
+            code=llm(task_class='qa',system='Correct only the C# test. Follow the AC and supplied public API; replace rule threshold numeric literals with references to the generated App.Domain.Params. Keep independent expected assertions and the AC trait. Return complete compilable C# source.',user=json.dumps({'contract':packet,'test':code,'lint_errors':issues},ensure_ascii=False),output='code',task_id=ident)
+            issues=lint(code,ident,rule_values(analysis,ac))
         target=workspace_path(workspace,file);target.parent.mkdir(parents=True,exist_ok=True);target.write_text(code,encoding='utf-8')
         tests.append(PlannedTest(id=ident,ac=ident,file=file,level='unit',neutral=ac.get('neutral_expectation',False),lint=lint(code,ident,rule_values(analysis,ac))))
     from stages.tests.e2e import generate
