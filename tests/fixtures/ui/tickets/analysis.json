@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "roles": [
+    {"id": "employee", "name": "Сотрудник", "description": "Создаёт заявки на ремонт"},
+    {"id": "engineer", "name": "Инженер", "description": "Берёт и закрывает заявки"},
+    {"id": "dispatcher", "name": "Диспетчер", "description": "Следит за сроками"}
+  ],
+  "user_stories": [
+    {"id": "US-01", "role": "employee", "want": "создать заявку на ремонт", "so_that": "оборудование починили", "req": ["REQ-01"]},
+    {"id": "US-02", "role": "engineer", "want": "взять заявку в работу", "so_that": "другие не взяли её же", "req": ["REQ-02"]},
+    {"id": "US-03", "role": "engineer", "want": "закрыть заявку с решением", "so_that": "автор знал, что сделано", "req": ["REQ-03"]},
+    {"id": "US-04", "role": "dispatcher", "want": "видеть сводку по заявкам", "so_that": "контролировать нагрузку", "req": ["REQ-05"]},
+    {"id": "US-05", "role": "dispatcher", "want": "видеть просроченные заявки", "so_that": "вовремя вмешаться", "req": ["REQ-04"]},
+    {"id": "US-06", "role": "engineer", "want": "видеть очередь заявок", "so_that": "выбрать следующую", "req": ["REQ-06"]}
+  ],
+  "acceptance": [
+    {"id": "AC-01", "rules": [], "stories": ["US-01"], "ui": true, "gherkin": ""},
+    {"id": "AC-02", "rules": [], "stories": ["US-02"], "ui": true, "gherkin": ""},
+    {"id": "AC-04", "rules": ["BR-02"], "stories": [], "ui": false, "gherkin": ""},
+    {"id": "AC-05", "rules": ["BR-02"], "stories": [], "ui": false, "gherkin": ""},
+    {"id": "AC-06", "rules": [], "stories": ["US-03"], "ui": true, "gherkin": ""},
+    {"id": "AC-07", "rules": ["BR-03"], "stories": ["US-03"], "ui": true, "gherkin": ""},
+    {"id": "AC-08", "rules": [], "stories": ["US-04"], "ui": true, "gherkin": ""},
+    {"id": "AC-09", "rules": [], "stories": ["US-05"], "ui": true, "gherkin": ""},
+    {"id": "AC-10", "rules": [], "stories": ["US-06"], "ui": true, "gherkin": ""}
+  ],
+  "profile": {"modules": ["core", "workflow", "scheduler", "notify"], "platforms": ["web", "mobile"]}
+}
