@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "build": {
+    "backend": true,
+    "admin": true,
+    "pwa": true
+  },
+  "tests": [
+    {
+      "id": "Boundary",
+      "ac": "AC-01",
+      "level": "unit",
+      "file": "test.cs",
+      "status": "passed",
+      "message": null
+    }
+  ],
+  "mutations": [
+    {
+      "hook": "Allowed",
+      "status": "killed"
+    }
+  ],
+  "scans": [
+    {
+      "status": "completed",
+      "ok": true
+    }
+  ],
+  "stand": {
+    "up": true,
+    "smoke": true,
+    "e2e": {
+      "admin": true,
+      "pwa": true
+    }
+  },
+  "ac_status": {
+    "AC-01": {
+      "specified": true,
+      "tested": true,
+      "red_proof": true,
+      "implemented": true,
+      "passes": true,
+      "e2e": true,
+      "reason": null
+    }
+  }
+}

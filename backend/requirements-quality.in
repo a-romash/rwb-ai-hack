@@ -1,0 +1,2 @@
+# Optional documentation verification tools; install alongside backend requirements.
+mkdocs-material==9.7.0
