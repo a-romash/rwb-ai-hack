@@ -5,6 +5,7 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN useradd --create-home app
 COPY --chown=app:app backend/ /app/
+COPY --chown=app:app contracts/ /app/contracts/
 COPY --chown=app:app harness/ /app/harness/
 COPY --chown=app:app agents/ /app/agents/
 USER app
