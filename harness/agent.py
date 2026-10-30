@@ -14,6 +14,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 import threading
 import time
 import urllib.error
@@ -26,9 +27,12 @@ BASE_URL = "https://openrouter.ai/api/v1"
 TOOLS = ("list_files", "read_file", "search_code", "write_file", "build", "run_tests", "ask", "finish")
 WRITE_ROOTS = (
     "backend/src/App.Domain/Hooks",
+    "backend/src/App.Api/Custom",
     "admin-web/src/app/custom",
+    "mobile/app/src/main/java/app/hooks",
     "db/seed",
 )
+HOOK_EFFORT = {"hook_1", "hook_2", "hook_3", "hook_4"}
 TARGETS = ("backend", "admin", "mobile")
 SECRET_ENV = ("OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "GITLAB_TOKEN")
 SECRET_NAMES = {".env", ".env.local", "id_rsa", "credentials.json"}
@@ -103,6 +107,43 @@ def load_agent(path: str | Path) -> dict:
     }
 
 
+def _apply_task_class(task_class: str | None, thinking: bool, effort: str) -> tuple[bool, str]:
+    if task_class and str(task_class).startswith("hook_"):
+        thinking = False
+        if str(task_class) in HOOK_EFFORT:
+            effort = "medium"
+    return thinking, effort
+
+
+def _pack_path(cwd: Path) -> Path | None:
+    local = cwd / "templates" / "product" / "pack.yaml"
+    if local.is_file():
+        return local
+    bundled = Path(__file__).resolve().parents[1] / "templates" / "product" / "pack.yaml"
+    if bundled.is_file():
+        return bundled
+    return None
+
+
+def _pack_overrides(cwd: Path) -> tuple[list[str] | None, dict]:
+    path = _pack_path(cwd)
+    if path is None:
+        return None, {}
+    repo = Path(__file__).resolve().parents[1]
+    if str(repo) not in sys.path:
+        sys.path.insert(0, str(repo))
+    from contracts.pack import load_pack
+
+    pack = load_pack(path)
+    commands: dict = {}
+    backend = pack.targets.backend
+    if backend.build:
+        commands["build"] = {"backend": list(backend.build)}
+    if backend.test:
+        commands["test"] = {"backend": list(backend.test)}
+    return list(pack.write_roots), commands
+
+
 def run(
     prompt: str,
     *,
@@ -122,14 +163,27 @@ def run(
     commands: dict | None = None,
     deadline_s: float | None = None,
     no_progress: int = 3,
+    task_class: str | None = None,
 ) -> dict:
     loaded = load_agent(agent) if agent else None
     config = (loaded or {}).get("config") or {}
     thinking = config.get("thinking", True) if thinking is None else thinking
     effort = effort or str(config.get("effort") or ("xhigh" if thinking else "medium"))
+    thinking, effort = _apply_task_class(task_class, bool(thinking), str(effort))
     max_turns = int(max_turns if max_turns is not None else config.get("max_turns") or 6)
     autonomy = autonomy or str(config.get("autonomy") or "auto")
-    roots = tuple(write_roots or config.get("write_roots") or WRITE_ROOTS)
+    root = Path(cwd).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    pack_roots = None
+    pack_commands: dict = {}
+    if not write_roots or commands is None:
+        pack_roots, pack_commands = _pack_overrides(root)
+    if not write_roots:
+        roots = tuple(pack_roots or config.get("write_roots") or WRITE_ROOTS)
+    else:
+        roots = tuple(write_roots)
+    if commands is None:
+        commands = pack_commands
     if tools is None:
         names = [name for name in ((loaded or {}).get("tools") or TOOLS) if name in TOOLS]
     else:
@@ -145,8 +199,6 @@ def run(
     if schema is None and loaded and mode == "structured":
         schema = loaded.get("schema")
     system = system if system is not None else (loaded["prompt"] if loaded else _default_prompt(roots))
-    root = Path(cwd).resolve()
-    root.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
     events: list[dict] = []
     denials: list[dict] = []
@@ -159,7 +211,12 @@ def run(
         {"role": "system", "content": system},
         {"role": "user", "content": prompt},
     ]
-    api = client or OpenRouter(thinking=thinking, effort=effort, max_output_tokens=max_output_tokens)
+    api = client or OpenRouter(
+        thinking=thinking,
+        effort=effort,
+        max_output_tokens=max_output_tokens,
+        task_class=task_class,
+    )
     tool_mode = mode != "structured" and bool(names)
     schemas = _schemas(names) if tool_mode else None
     response_format = _response_format(schema) if schema and not tool_mode else None
@@ -342,13 +399,16 @@ class OpenRouter:
         sleep=time.sleep,
         opener=urllib.request.urlopen,
         provider: dict | None = None,
+        task_class: str | None = None,
     ):
+        thinking, effort = _apply_task_class(task_class, thinking, effort)
         load_dotenv()
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         self.model = model
         self.base_url = base_url.rstrip("/")
         self.thinking = thinking
         self.effort = effort
+        self.task_class = task_class
         self.max_output_tokens = max_output_tokens
         self.retries = retries
         self.sleep = sleep

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\App.Api\App.Api.csproj" />
+    <ProjectReference Include="..\..\src\App.Domain\App.Domain.csproj" />
+    <ProjectReference Include="..\..\src\App.Infrastructure\App.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

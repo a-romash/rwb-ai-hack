@@ -1,0 +1,4 @@
+# rwb/tool-dotnet:10
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /src

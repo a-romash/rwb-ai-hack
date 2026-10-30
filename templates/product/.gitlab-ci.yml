@@ -1,0 +1,97 @@
+# Tool images: rwb/tool-dotnet:10, rwb/tool-node:22-ng20.1.6, rwb/tool-security:1.
+# rwb/tool-android:kt2.2.21 is built from tools/Dockerfile.android and is not a job here.
+# Commands match the product pack: dotnet build, dotnet test, npm run build, npx jest --ci.
+# This pipeline does not call a model.
+
+stages:
+  - lint
+  - build
+  - test
+  - security
+  - package
+  - deploy
+  - e2e
+  - docs
+
+lint:
+  stage: lint
+  image: rwb/tool-dotnet:10
+  script:
+    - echo "lint"
+    - dotnet build backend/App.sln --nologo
+
+build:backend:
+  stage: build
+  image: rwb/tool-dotnet:10
+  script:
+    - echo "build backend"
+    - dotnet build backend/App.sln --nologo
+  allow_failure: false
+
+build:admin:
+  stage: build
+  image: rwb/tool-node:22-ng20.1.6
+  script:
+    - echo "build admin"
+    - cd admin-web
+    - npm ci
+    - npm run build
+  allow_failure: false
+
+test:backend:
+  stage: test
+  image: rwb/tool-dotnet:10
+  script:
+    - echo "test backend"
+    - dotnet test backend/App.sln --nologo
+  allow_failure: false
+
+test:admin:
+  stage: test
+  image: rwb/tool-node:22-ng20.1.6
+  script:
+    - echo "test admin"
+    - cd admin-web
+    - npm ci
+    - npx jest --ci
+  allow_failure: false
+
+security:
+  stage: security
+  image: rwb/tool-security:1
+  script:
+    - echo "security"
+    - gitleaks detect --source .
+    - trivy fs --severity HIGH,CRITICAL --exit-code 1 .
+
+package:
+  stage: package
+  image: rwb/tool-dotnet:10
+  script:
+    - echo "package rwb/product-backend rwb/product-worker rwb/product-admin"
+    - dotnet publish backend/App.sln --nologo -c Release -o artifacts/publish
+
+deploy:
+  stage: deploy
+  image: rwb/tool-node:22-ng20.1.6
+  script:
+    - echo "deploy COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME} via infra/docker-compose.yml"
+  rules:
+    - when: manual
+
+e2e:
+  stage: e2e
+  image: rwb/tool-node:22-ng20.1.6
+  script:
+    - echo "e2e smoke"
+    - cd admin-web
+    - npm ci
+    - npx playwright test
+
+docs:
+  stage: docs
+  image: rwb/tool-node:22-ng20.1.6
+  script:
+    - echo "docs"
+    - test -f admin-web/src/app/ui/CHEATSHEET.md
+    - test -f admin-web/src/app/api/generated/README.md

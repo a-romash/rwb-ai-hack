@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "screens": {
+    "TicketList": {
+      "platform": "web",
+      "roles": ["engineer", "dispatcher"],
+      "pattern": "list",
+      "title": "Заявки",
+      "source": {"query": "OpenTickets"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "ticket-list.title"},
+        {"kind": "status", "field": "Ticket.status", "testid": "ticket-list.status"},
+        {"kind": "countdown", "field": "Ticket.due_at", "testid": "ticket-list.due"}
+      ],
+      "actions": [{"command": "TakeTicket", "testid": "ticket-list.take", "confirm": true}],
+      "live": ["TicketTaken", "TicketExpired"],
+      "states": {"empty": "Нет открытых заявок"},
+      "nav": ["TicketDetail"]
+    }
+  },
+  "menus": {
+    "engineer": {"web": ["TicketList"]},
+    "dispatcher": {"web": ["TicketList", "Dashboard"]}
+  },
+  "home": {
+    "engineer": {"web": "TicketList"},
+    "dispatcher": {"web": "Dashboard"}
+  },
+  "walks": {
+    "US-02": {
+      "role": "engineer",
+      "platform": "web",
+      "steps": [
+        {"open": "TicketList"},
+        {"tap": "TakeTicket", "row": {"seed": "Ticket[0]"}},
+        {"expect": {"screen": "TicketDetail", "status": "in_progress"}}
+      ],
+      "covers": ["AC-02"]
+    }
+  },
+  "copy": {"ticket.take.confirm": "Взять заявку в работу?"},
+  "device": {"mobile": []}
+}

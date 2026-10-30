@@ -1,0 +1,48 @@
+[
+  {
+    "id": "SlaDeadline",
+    "file": "backend/src/App.Domain/Hooks/SlaDeadlineHook.cs",
+    "language": "csharp",
+    "kind": "calculator",
+    "signature": "public DateTimeOffset Evaluate(Ticket ticket, SlaParams p, IWorkCalendar calendar)",
+    "refs": ["BR-02", "AC-04", "AC-05"],
+    "contract": {
+      "summary": "Срок решения заявки по приоритету и рабочему календарю",
+      "pre": ["ticket.CreatedAt задан"],
+      "post": ["срок не раньше CreatedAt"]
+    },
+    "examples": [
+      {
+        "input": {"priority": "high", "created_at": "2026-11-06T17:00:00+03:00"},
+        "expected": "2026-11-09T12:00:00+03:00",
+        "ac": "AC-05"
+      }
+    ],
+    "allowed_api": ["Ticket", "Priority", "SlaParams", "IWorkCalendar.IsWorkingTime"],
+    "max_lines": 60,
+    "stub": "neutral"
+  },
+  {
+    "id": "ResolutionRequired",
+    "file": "backend/src/App.Domain/Hooks/ResolutionRequiredHook.cs",
+    "language": "csharp",
+    "kind": "validator",
+    "signature": "public bool Evaluate(ResolveTicket command)",
+    "refs": ["BR-03", "AC-07"],
+    "contract": {
+      "summary": "Заявку нельзя закрыть без решения",
+      "pre": ["command задан"],
+      "post": ["false, если resolution пустой"]
+    },
+    "examples": [
+      {
+        "input": {"resolution": ""},
+        "expected": "false",
+        "ac": "AC-07"
+      }
+    ],
+    "allowed_api": ["ResolveTicket"],
+    "max_lines": 40,
+    "stub": "neutral"
+  }
+]
