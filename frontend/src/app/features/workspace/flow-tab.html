@@ -10,13 +10,15 @@
     label="Шаги и ворота конвейера. Стрелки вверх и вниз переключают строку."
     (select)="select($event)"
   />
-  <p class="pipeline-note">
-    Целиком конвейер запускает дирижёр в режиме A2 «{{ autonomy.name }}» — его API придёт в следующей поставке.
-    Пока шаги запускаются агентами по одному.
-  </p>
+  @if (!store.pipelineRun()) {
+    <p class="pipeline-note">
+      Статусы — по запускам отдельных агентов. Запустите конвейер целиком: шаги пройдут подряд в режиме, который вы выберете.
+    </p>
+  }
 </section>
 
 <div class="detail">
+  <app-run-panel class="panel" />
   <section id="station-panel" class="panel" role="region" aria-live="polite" [attr.aria-label]="selectedGate() ? 'Ворота качества' : 'Шаг конвейера'">
     @if (selectedStage(); as stage) {
       <app-station-panel
@@ -27,10 +29,11 @@
         (run)="run($event)"
         (openRuns)="openRuns()"
         (openGate)="select($event)"
+        (retry)="retry($event)"
       />
     }
     @if (selectedGate(); as gate) {
-      <app-gate-panel [gate]="gate" (openStage)="select($event)" />
+      <app-gate-panel [gate]="gate" (openStage)="select($event)" (decide)="decide(gate.key, $event)" />
     }
   </section>
 

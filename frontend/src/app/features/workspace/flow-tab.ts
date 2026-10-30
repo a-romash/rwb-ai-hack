@@ -1,8 +1,10 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
+import {readableError} from '../../core/api/errors';
+import {ToastService} from '../../core/state/toast.service';
 import {Router, RouterLink} from '@angular/router';
 import {TuiIcon} from '@taiga-ui/core';
 import {agentInfo} from '../../core/pipeline/agents.catalog';
-import {AUTONOMY, stageInfo} from '../../core/pipeline/stages.catalog';
+import {stageInfo} from '../../core/pipeline/stages.catalog';
 import {jobStatusView} from '../../core/pipeline/status';
 import {Clock} from '../../core/state/clock.service';
 import {JobRecord} from '../../core/state/jobs.store';
@@ -12,6 +14,7 @@ import {RelTimePipe} from '../../shared/ui/rel-time.pipe';
 import {StatusChip} from '../../shared/ui/status-chip';
 import {GatePanel} from './gate-panel';
 import {RunLauncher} from './run-launcher';
+import {RunPanel} from './run-panel';
 import {StationPanel} from './station-panel';
 import {WorkspaceStore} from './workspace.store';
 
@@ -19,7 +22,7 @@ import {WorkspaceStore} from './workspace.store';
 @Component({
   selector: 'app-flow-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TuiIcon, PipelineTimeline, StationPanel, GatePanel, StatusChip, RelTimePipe],
+  imports: [RouterLink, TuiIcon, PipelineTimeline, StationPanel, GatePanel, StatusChip, RelTimePipe, RunPanel],
   templateUrl: './flow-tab.html',
   styleUrl: './flow-tab.less',
 })
@@ -28,9 +31,9 @@ export class FlowTab {
   protected readonly clock = inject(Clock);
   private readonly launcher = inject(RunLauncher);
   private readonly router = inject(Router);
+  private readonly toasts = inject(ToastService);
 
   private readonly picked = signal<string | null>(null);
-  protected readonly autonomy = AUTONOMY.A2;
 
   /** Без явного выбора — первый шаг, который ещё не готов: туда и стоит идти. */
   protected readonly selectedId = computed(() => {
@@ -70,6 +73,25 @@ export class FlowTab {
 
   protected run(stageKey: string): void {
     this.launcher.open(stageKey);
+  }
+
+  protected retry(key: string): void {
+    this.store.retryStage(key).subscribe({
+      next: () => this.toasts.success('Шаг перезапущен'),
+      error: error => this.toast(error),
+    });
+  }
+
+  protected decide(gate: string, decision: 'approve' | 'reject'): void {
+    this.store.decide(gate, decision).subscribe({
+      next: () => this.toasts.success(decision === 'approve' ? 'Ворота приняты' : 'Шаг отправлен на доработку'),
+      error: error => this.toast(error),
+    });
+  }
+
+  private toast(error: unknown): void {
+    const readable = readableError(error, 'job');
+    this.toasts.error(readable.title, readable.hint);
   }
 
   protected openRuns(): void {

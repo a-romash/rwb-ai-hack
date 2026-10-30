@@ -43,7 +43,7 @@ export function readableError(error: unknown, context: ErrorContext): ReadableEr
     case 504:
       return {
         title: context === 'job' ? 'Очередь задач недоступна' : 'Сервис временно недоступен',
-        hint: detail ? `${detail}. Проверьте docker compose logs worker и повторите.` : 'Проверьте docker compose ps и повторите.',
+        hint: detail ? `${detail}. Проверьте docker compose logs worker-llm worker-build и повторите.` : 'Проверьте docker compose ps и повторите.',
         retryable: true,
         status: error.status,
       };

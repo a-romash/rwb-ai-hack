@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy, Component, computed, input, output} from '@angular/core';
-import {TuiIcon} from '@taiga-ui/core';
+import {TuiButton, TuiIcon} from '@taiga-ui/core';
 import {AUTONOMY, GATES, stageInfo} from '../../core/pipeline/stages.catalog';
 import {PipelineGate} from '../../shared/ui/pipeline/pipeline.model';
 import {StatusChip} from '../../shared/ui/status-chip';
@@ -8,7 +8,7 @@ import {StatusChip} from '../../shared/ui/status-chip';
 @Component({
   selector: 'app-gate-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TuiIcon, StatusChip],
+  imports: [TuiButton, TuiIcon, StatusChip],
   template: `
     @let g = gate();
     <header>
@@ -37,13 +37,37 @@ import {StatusChip} from '../../shared/ui/status-chip';
       </div>
     </dl>
 
-    <p class="note">
-      <tui-icon icon="@tui.info" />
-      <span>
-        Результат ворот покажет прогон конвейера целиком. Режим по умолчанию — A2 «{{ autonomy.name }}»: человек не участвует,
-        вопросы закрываются ответами по умолчанию.
-      </span>
-    </p>
+    @if (g.result; as result) {
+      <section class="findings" aria-label="Находки проверки">
+        @for (finding of findings(); track $index) {
+          <p class="finding" [attr.data-severity]="finding.severity">
+            <span class="finding-code">{{ finding.code }}</span>
+            <span class="finding-path">{{ finding.path }}</span>
+            <span class="finding-text">{{ finding.message }}</span>
+          </p>
+        } @empty {
+          <p class="note"><tui-icon icon="@tui.circle-check" /><span>Замечаний нет.</span></p>
+        }
+        @if (result.findings.length > findings().length) {
+          <p class="more">И ещё {{ result.findings.length - findings().length }} — в отчёте шага.</p>
+        }
+      </section>
+    } @else {
+      <p class="note">
+        <tui-icon icon="@tui.info" />
+        <span>
+          Результат появится, когда прогон конвейера дойдёт до этих ворот. В режиме A2 «{{ autonomy.name }}» человек не участвует,
+          вопросы закрываются ответами по умолчанию.
+        </span>
+      </p>
+    }
+
+    @if (g.waiting) {
+      <footer class="decision">
+        <button tuiButton type="button" size="s" iconStart="@tui.check" (click)="decide.emit('approve')">Принять и продолжить</button>
+        <button tuiButton type="button" size="s" appearance="flat" iconStart="@tui.undo-2" (click)="decide.emit('reject')">Вернуть на доработку</button>
+      </footer>
+    }
 
     <button type="button" class="back" (click)="openStage.emit(g.stageKey)">
       <tui-icon icon="@tui.arrow-left" />
@@ -79,6 +103,22 @@ import {StatusChip} from '../../shared/ui/status-chip';
       cursor: pointer;
     }
     .back tui-icon { width: 16px; height: 16px; }
+    .findings { display: grid; gap: 6px; }
+    .finding {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 2px 10px;
+      padding: 8px 12px;
+      border-left: 2px solid var(--p-wait);
+      background: var(--p-surface-2);
+      font-size: var(--p-text-s);
+    }
+    .finding[data-severity='error'] { border-left-color: var(--p-fail); }
+    .finding-code { font-family: var(--p-font-code); font-size: var(--p-text-xs); font-weight: 600; }
+    .finding-path { color: var(--p-ink-2); font-size: var(--p-text-xs); overflow-wrap: anywhere; }
+    .finding-text { grid-column: 1 / -1; }
+    .more { color: var(--p-ink-2); font-size: var(--p-text-xs); }
+    .decision { display: flex; flex-wrap: wrap; gap: 8px; }
     .back { text-decoration: underline; text-decoration-color: var(--p-line-strong); text-underline-offset: 3px; }
     .back:hover { text-decoration-color: currentColor; }
   `,
@@ -86,6 +126,12 @@ import {StatusChip} from '../../shared/ui/status-chip';
 export class GatePanel {
   readonly gate = input.required<PipelineGate>();
   readonly openStage = output<string>();
+  readonly decide = output<'approve' | 'reject'>();
+
+  /** Сначала ошибки, затем предупреждения; длинный список обрезан — целиком он в отчёте шага. */
+  protected readonly findings = computed(() =>
+    [...(this.gate().result?.findings ?? [])].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1)).slice(0, 12),
+  );
 
   protected readonly info = computed(() => GATES[this.gate().key]);
   protected readonly after = computed(() => stageInfo(this.gate().stageKey));

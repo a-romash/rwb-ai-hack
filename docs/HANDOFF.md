@@ -3,7 +3,7 @@
 Документ для того, кто продолжает работу: человек или ИИ-агент. В нём собраны ТЗ, устройство кода, принятые решения, сделанное, способ проверки и список дел. Сначала прочитайте разделы 1, 3 и 8.
 
 - Репозиторий: `a-romash/rwb-ai-hack` (GitHub).
-- Рабочая ветка интеграции: **`claude/review-docs-branches-48sc58`**. В ней влиты все ветки команды и исправления. Последний коммит — `d24de66`.
+- Рабочая ветка интеграции: **`claude/review-docs-branches-48sc58`**. В ней влиты все ветки команды и исправления. Свежее состояние — `git log`; раздел 5 и статусы в разделе 8 обновлены во второй сессии (локальный Docker).
 - Ревью со всеми находками: issue **#3** (https://github.com/a-romash/rwb-ai-hack/issues/3), с комментариями-дополнениями.
 - Открытые PR: #2 (`feat/artem-ui-contract` → `main`), #4 (`feature/studio-frontend` → `main`). Обе ветки уже влиты в ветку интеграции. Отдельно их сливать не нужно, если в `main` уйдёт ветка интеграции.
 - Старые ветки **не удалены**, так попросил владелец: `docs`, `docs-80s7c7`, `feat/maxim-platform`, `feat/timofey-quality`, `feat/artem-ui-stage`, `feat/artem-ui-contract`, `feat/sanya-contracts`, `ivan`, `feature/studio-frontend`.
@@ -131,21 +131,22 @@
   - JSON в snake_case, enum — snake_case-строки, `RespectNullableAnnotations`/`RespectRequiredConstructorParameters`, `ThrowOnBadRequest=false` (неполное тело — 400);
   - JWT, у которого и выдача, и проверка срока идут через `TimeProvider`;
   - dev-вход `POST /api/auth/login {role}` и `GET /api/auth/me`;
-  - `EnsureCreated()` (миграций нет);
+  - `EnsureCreated()` (миграций нет) и загрузка `seed.json` (scaffold пишет его из `app.json.seed`, id — детерминированные uuid5);
   - `--healthcheck` для контейнера.
 - **`App.TestKit`:** `AppFactory` (InMemory-БД, `As(role)` логинится через API), `TestClock`, `Json.Options` (snake_case, `IsRequired` снят для кейсов).
-- **`admin-web/`** — Angular 20 + Material: собирается, jest проходит. Экраны из `ui.json` пока **не** генерируются, только маршруты.
-- **`mobile-web/`** (PWA) — **отсутствует** в шаблоне.
+- **`admin-web/`** — Angular 20 + Material. Один рендерер `src/app/screens/screen-page.*` строит экраны по `generated/model.ts`, который scaffold пишет из `ui.json` и `app.json`: списки, формы, карточки, дашборды с `data-testid` из `ui.json`, подтверждение через диалог, KPI, опрос live-экранов. Демо-вход по роли: `?role=` или выбор на стартовой странице.
+- **`mobile-web/`** (PWA) — копия рендерера (`screens/`, `ui/` обязаны совпадать, это проверяет тест scaffold) плюс service worker, manifest, нижнее меню, офлайн-бейдж, геолокация (WKT POINT в поля `geo_point`) и локальные уведомления о новых строках.
 - **`infra/`:**
-  - `docker-compose.yml`: `db` (postgis), `mock` (wiremock), `backend`, `worker`, `admin`; сборка из workspace с `network: none`, эфемерные порты, без Kafka;
+  - `docker-compose.yml`: `db` (postgis), `mock` (wiremock), `backend`, `worker`, `admin`, `mobile`; сборка из workspace с `network: none`, эфемерные порты, без Kafka;
   - `smoke.py`: `BASE_URL=http://backend:8080`, логин каждой ролью, отчёт `reports/smoke.json`.
 - **`backend/Dockerfile`** (цели `api`/`worker`, контекст — корень продукта) и `admin-web/Dockerfile` (+ `nginx.conf`, прокси `/api`).
-- **`tools/Dockerfile.{dotnet,node,security}`** → образы `rwb/tool-dotnet:10`, `rwb/tool-node:22` (на базе playwright), `rwb/tool-security:1`. **Сборка этих образов нигде не автоматизирована** (раздел 8).
+- **`tools/Dockerfile.{dotnet,node,security}`** → образы `rwb/tool-dotnet:10`, `rwb/tool-node:22` (на базе playwright), `rwb/tool-security:1` (база trivy вшита). Собираются `docker compose --profile tools build`.
+- **`App.Worker`** — раз в 30 с вызывает `Generated/Timers.cs`: переходы машин состояний с `trigger.timer` (например, `expire`: `in_progress → overdue`, когда прошёл `due_at`), guard-хук вызывается, если его аргументы связываются.
 - **`pack.json`** — манифест песочницы:
   - цели `backend`, `admin`, `pwa`, `stack`; команды `restore`/`build`/`test`/`filter`/`e2e`/`up`/`smoke`/`down`, `env`, `reports`;
   - `scan`;
   - `write_roots` (куда модели можно писать) и `readonly`.
-- **`.gitlab-ci.yml`** продукта — **устарел**: команды старые, деплой через `echo` (раздел 8).
+- **`.gitlab-ci.yml`** продукта: lint (`dotnet format`), build, test (MTP JUnit, jest), security (gitleaks JSON, trivy SARIF), deploy стенда (`environment: review/...` + stop), smoke, E2E admin и PWA, docs.
 
 ---
 
@@ -187,7 +188,7 @@
 - значения из `seed`/`params`;
 - неоднозначный шаг — `ContractError`.
 
-Админка пока не генерирует экраны с этими `testid`, поэтому E2E будут красными до генерации экранов (раздел 8).
+Спеки выставляют роль прохода (`localStorage.role`) и подтверждают действия с `confirm: true` (`confirm.ok`). Экраны рендерера несут те же `testid`. Отчёты Playwright — JSON в `reports/e2e/{admin,pwa}.json`.
 
 ---
 
@@ -360,7 +361,7 @@ Docker-демона нет. Поэтому **не проверены**:
 - **Права на scratchpad:** однажды сбросились, и PostgreSQL упал с `Permission denied`. Данные PG держите в `/var/lib/postgresql/...`.
 - **Воркер сессии перезапускался.** Незакоммиченное выжило, но коммитьте и пушьте чаще.
 - **Коммиты:**
-  - сообщения на русском, в теле — что и почему;
+  - сообщения на английском (так принято с `ca66f81`), в теле — что и почему;
   - в конце строки `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` и `Claude-Session: https://claude.ai/code/session_01BVMh1mqEFn4QysVPTvv8Nu` (для сессий Claude);
   - пушить только в `claude/review-docs-branches-48sc58`: `git push -u origin claude/review-docs-branches-48sc58`.
 - **Комментарии на GitHub** от агента заканчиваются подписью `_Generated by [Claude Code](https://claude.ai/code)_`.

@@ -6,6 +6,7 @@ import {jobStatusView} from '../../core/pipeline/status';
 import {JobRecord} from '../../core/state/jobs.store';
 import {clip} from '../../core/util/text';
 import {formatDuration} from '../../core/util/time';
+import {stageStatusView} from '../../core/pipeline/status';
 import {PipelineStage} from '../../shared/ui/pipeline/pipeline.model';
 import {RelTimePipe} from '../../shared/ui/rel-time.pipe';
 import {StatusChip} from '../../shared/ui/status-chip';
@@ -26,6 +27,7 @@ export class StationPanel {
   readonly run = output<string>();
   readonly openRuns = output<void>();
   readonly openGate = output<string>();
+  readonly retry = output<string>();
 
   protected readonly info = computed(() => this.stage().info);
   protected readonly gates = computed(() => this.info().gates.map(key => GATES[key]));
@@ -34,6 +36,17 @@ export class StationPanel {
   protected readonly jobView = computed(() => {
     const job = this.job();
     return job ? jobStatusView(job.status, job.subtype, job.stale) : null;
+  });
+  protected readonly stageRun = computed(() => this.stage().stageRun ?? null);
+  protected readonly stageRunView = computed(() => {
+    const run = this.stageRun();
+    return run ? stageStatusView(run.status) : null;
+  });
+  protected readonly stageElapsed = computed(() => {
+    const run = this.stageRun();
+    if (!run?.started_at) return '';
+    const end = run.finished_at ? Date.parse(run.finished_at) : this.now();
+    return formatDuration(end - Date.parse(run.started_at));
   });
   protected readonly elapsed = computed(() => {
     const job = this.job();

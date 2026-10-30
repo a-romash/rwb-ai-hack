@@ -82,7 +82,7 @@ contracts/                     Python-пакет: Pydantic-модели всех
   api.py                       Максим   — модели API Студии
   analysis.py, app.py          Саня     — analysis.json, app.json (+ dependents())
   ui.py                        Артём    — ui.json, каталог паттернов и виджетов
-  hooks.py, pack.py            Иван     — спецификация хука (hooks.json), манифест шаблона (pack.yaml)
+  hooks.py, pack.py            Иван     — спецификация хука (hooks.json), манифест шаблона (pack.json)
   verification.py, report.py   Тимофей  — verification.json, report.json, споры по тестам
   fixtures/tickets/            эталонный домен «заявки на ремонт с SLA»: по одному валидному файлу на артефакт
   fixtures/equipment/          второй домен «выдача оборудования» (фаза 3)
@@ -99,7 +99,7 @@ gates/
 harness/                       Максим (runner.py, llm.py, sandbox.py, fakes.py, registry.py, doctor.py)
   agent.py                     Иван     — цикл с инструментами, только для мест custom
 agents/<id>/                   промпты агентов: prompt.md (англ.), config.yaml; владелец — владелец этапа
-templates/product/             Иван     — золотой шаблон генерируемого приложения + pack.yaml
+templates/product/             Иван     — золотой шаблон генерируемого приложения + pack.json
 backend/app/                   Максим   — API платформы, модели БД, миграции, Celery-задачи
 frontend/                      Артём    — Студия
 ```
@@ -178,7 +178,7 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
 
 Правила:
 - Этап не знает про HTTP, Celery и таблицы платформы. Всё, что ему нужно, приходит аргументами.
-- Этап пишет только внутри `workspace` и не перезаписывает чужие файлы. В `product/` после `scaffold` добавлять и менять файлы можно только в местах своего этапа: `tests` — тестовые проекты AC (`backend/tests/App.Acceptance.Tests`, `admin-web/e2e/*.spec.ts`); `develop` — `write_roots` из `pack.yaml`; `verify` — временно для мутаций, с обязательным восстановлением.
+- Этап пишет только внутри `workspace` и не перезаписывает чужие файлы. В `product/` после `scaffold` добавлять и менять файлы можно только в местах своего этапа: `tests` — тестовые проекты AC (`backend/tests/App.Acceptance.Tests`, `admin-web/e2e/*.spec.ts`); `develop` — `write_roots` из `pack.json`; `verify` — временно для мутаций, с обязательным восстановлением.
 - Этап проверяет вход и выход своими Pydantic-моделями. Нарушение — `ContractError`.
 - Частичный бизнес-результат (хук не написан, AC красный) — это **успешное** завершение этапа со статусами внутри артефакта, а не исключение.
 - `repair` вызывает дирижёр, если гейт после этапа нашёл ошибки: не больше двух раз. Этап исправляет только элементы по путям из `findings` (JSON Patch), остальное не трогает.
@@ -409,9 +409,11 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 
 Заглушки хуков **нейтральные**: возвращают «пусто», «ноль», «разрешено», не бросают исключений.
 
-### 3.9 Манифест шаблона `templates/product/pack.yaml` (владелец — Иван, потребитель — Максим)
+### 3.9 Манифест шаблона `templates/product/pack.json` (владелец — Иван, потребитель — Максим)
 
 ```yaml
+# Сокращённый пример в нотации YAML. Источник истины — templates/product/pack.json
+# (workdir, restore с сетью, отчёты JUnit/JSON/SARIF, BASE_URL стенда для E2E).
 targets:
   backend:
     image: rwb/tool-dotnet:10
@@ -420,14 +422,14 @@ targets:
     filter: ["--filter", "AC={filter}"]
     reports: {junit: "reports/junit/backend/*.xml"}
   admin:
-    image: rwb/tool-node:22-ng20.1.6
+    image: rwb/tool-node:22
     workdir: admin-web
     build: ["npm", "run", "build"]
     test:  ["npx", "jest", "--ci"]
     e2e:   ["npx", "playwright", "test"]
     filter: ["--grep", "@{filter}"]
   pwa:
-    image: rwb/tool-node:22-ng20.1.6
+    image: rwb/tool-node:22
     workdir: mobile-web
     build: ["npm", "run", "build"]
     test:  ["npx", "jest", "--ci"]
@@ -527,23 +529,23 @@ EventRead = {id, type, ts, payload}
 ## 5. Твоя зона: генератор, шаблон продукта и разработчик
 
 Ты превращаешь спецификацию в работающее приложение. Две части:
-1. **`scaffold`** — детерминированный генератор (код, без модели): из `app.json` и `ui.json` строит собираемый проект на стеке ТЗ с нейтральными заглушками хуков, OpenAPI, тестовым набором, Compose и `.gitlab-ci.yml`. Плюс золотой шаблон `templates/product/` и манифест `pack.yaml`.
+1. **`scaffold`** — детерминированный генератор (код, без модели): из `app.json` и `ui.json` строит собираемый проект на стеке ТЗ с нейтральными заглушками хуков, OpenAPI, тестовым набором, Compose и `.gitlab-ci.yml`. Плюс золотой шаблон `templates/product/` и манифест `pack.json`.
 2. **`develop`** — агент-разработчик: вписывает тела хуков по лестнице попыток и места `custom`.
 
 Объём кода, который пишет модель, — сотни строк. Всё остальное — шаблон и генератор. Это и качество, и скорость, и экономия токенов.
 
 **Входит:** `contracts/hooks.py`, `contracts/pack.py`, фикстура `contracts/fixtures/tickets/hooks.json`; `templates/product/`; `stages/scaffold/`, `stages/develop/`; `harness/agent.py` (цикл с инструментами для `custom`); Dockerfile образов инструментов `templates/product/tools/`.
 
-**Не входит:** тесты по AC (Тимофей), спецификация (Саня), формат `ui.json` (Артём), песочница как механизм запуска (Максим — запускает твои команды из `pack.yaml`).
+**Не входит:** тесты по AC (Тимофей), спецификация (Саня), формат `ui.json` (Артём), песочница как механизм запуска (Максим — запускает твои команды из `pack.json`).
 
 ## 6. Задачи
 
 ### I0. Контракты и пустой шаблон — первым делом
 
-1. `contracts/hooks.py` — `HookSpec` по §3.8; `contracts/pack.py` — модель `pack.yaml` по §3.9.
-2. `templates/product/pack.yaml` — команды сборки, тестов, запуска; `write_roots`, `readonly`.
+1. `contracts/hooks.py` — `HookSpec` по §3.8; `contracts/pack.py` — модель `pack.json` по §3.9.
+2. `templates/product/pack.json` — команды сборки, тестов, запуска; `write_roots`, `readonly`.
 3. Фикстура `contracts/fixtures/tickets/hooks.json` для хуков `SlaDeadline` и `ResolutionRequired`.
-4. **Пустой шаблон, который собирается:** `backend/App.sln` + пять проектов, `admin-web/` на Angular 20.1.6 + Material, `infra/docker-compose.yml`, `.gitlab-ci.yml`. Сборка проходит в образах из `pack.yaml`.
+4. **Пустой шаблон, который собирается:** `backend/App.sln` + пять проектов, `admin-web/` на Angular 20.1.6 + Material, `infra/docker-compose.yml`, `.gitlab-ci.yml`. Сборка проходит в образах из `pack.json`.
 
 **Готово, когда:** Максим может запустить `build`/`test` по манифесту на пустом шаблоне; Тимофей видит структуру тестового набора (§3.10).
 
@@ -621,7 +623,7 @@ backend/
 
 **Спор с тестом.** Если модель вместо кода вернула строку `// DISPUTE: <тест> — <причина>, <AC>`, вызови `stages.tests.dispute.resolve(...)` (контракт — `contracts/verification.py`, владелец Тимофей). `fix` → тест исправлен, лестница начинается заново; `reject` → аргумент и ответ — в контекст следующей попытки. Один спор на тест.
 
-**Места `custom`** — цикл с инструментами `harness/agent.py` (`read_file`, `write_file`, `build`, `run_tests`, `finish`): пути из `pack.yaml`, лимит ходов, откат к зелёному снимку при отсутствии прогресса. Доработай: путь записи `mobile-web/src/app/custom`; пути и команды из `pack.yaml` вместо констант; `effort` из класса задачи вместо `xhigh`.
+**Места `custom`** — цикл с инструментами `harness/agent.py` (`read_file`, `write_file`, `build`, `run_tests`, `finish`): пути из `pack.json`, лимит ходов, откат к зелёному снимку при отсутствии прогресса. Доработай: путь записи `mobile-web/src/app/custom`; пути и команды из `pack.json` вместо констант; `effort` из класса задачи вместо `xhigh`.
 
 **Выход:** `reports/develop.json`:
 
@@ -646,7 +648,7 @@ backend/
 
 | Что | Кому | Когда |
 |---|---|---|
-| `contracts/hooks.py`, `pack.py`, `pack.yaml`, пустой шаблон | Максиму, Тимофею | день 0 |
+| `contracts/hooks.py`, `pack.py`, `pack.json`, пустой шаблон | Максиму, Тимофею | день 0 |
 | Тестовый набор `App.TestKit` (§3.10) | Тимофею | фаза 1 |
 | Генератор на фикстурах | всем | фаза 1 |
 | `develop` на настоящей модели | всем | фаза 2 |

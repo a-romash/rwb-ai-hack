@@ -36,6 +36,8 @@ export interface MockOptions {
   /** Статусы, которые по очереди вернёт опрос задачи; последний повторяется. */
   jobSteps?: JobStep[];
   failList?: boolean;
+  /** Прогоны конвейера проекта (`/api/projects/{id}/runs`); первый — последний. */
+  runs?: Record<string, unknown>[];
 }
 
 export interface MockApi {
@@ -110,6 +112,29 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
     return route.fulfill({status: 202, json: {id: 'job-0001-abcdef', status: 'queued', agent: data.agent, subtype: null, result: null, num_turns: null}});
   });
 
+  const runs = [...(options.runs ?? [])];
+  await page.route(/\/api\/projects\/[^/]+\/runs$/, async route => {
+    log(route);
+    if (route.request().method() === 'POST') {
+      const run = makeRun(route.request().url().split('/').at(-2) as string, []);
+      runs.unshift(run);
+      return route.fulfill({status: 201, json: run});
+    }
+    return route.fulfill({json: runs});
+  });
+  await page.route(/\/api\/runs\/[^/]+\/events\/stream$/, route => route.fulfill({status: 200, contentType: 'text/event-stream', body: ''}));
+  await page.route(/\/api\/runs\/[^/]+\/artifacts$/, route =>
+    route.fulfill({json: [{name: 'analysis', path: 'spec/analysis.json', stage: 'analysis', hash: 'x', size: 10, kind: 'json'}]}),
+  );
+  await page.route(/\/api\/runs\/[^/]+\/(stages\/[^/]+\/retry|answers|gates\/[^/]+\/decision|cancel)$/, async route => {
+    log(route);
+    return route.fulfill({status: 202, json: {status: 'accepted'}});
+  });
+  await page.route(/\/api\/runs\/[^/]+$/, route => {
+    const run = runs.find(item => item['id'] === route.request().url().split('/').pop());
+    return run ? route.fulfill({json: run}) : route.fulfill({status: 404, json: {detail: 'Прогон не найден'}});
+  });
+
   await page.route(/\/api\/projects\/[^/]+$/, async route => {
     log(route);
     const id = route.request().url().split('/').pop();
@@ -122,4 +147,38 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
   });
 
   return state;
+}
+
+/** Прогон в форме `RunRead`: этапы — пары [ключ, статус] с необязательными воротами и текстом. */
+export function makeRun(
+  projectId: string,
+  stages: {key: string; status: string; gate?: unknown; summary?: string; error?: string; attempt?: number}[],
+  status = 'running',
+  questions: unknown[] = [],
+) {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    project_id: projectId,
+    status,
+    autonomy: 'A1',
+    spec_version: 1,
+    created_at: now,
+    finished_at: null,
+    budget: {tokens_used: 120000, tokens_limit: 1500000, minutes_used: 12, minutes_limit: 60},
+    stages: stages.map(stage => ({
+      title: stage.key,
+      rwb_stage: '',
+      participants: [],
+      attempt: 1,
+      started_at: now,
+      finished_at: null,
+      error: null,
+      summary: null,
+      gate: null,
+      ...stage,
+    })),
+    flags: [],
+    questions,
+  };
 }

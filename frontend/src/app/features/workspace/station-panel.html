@@ -65,6 +65,31 @@
   }
 </section>
 
+@if (stageRun(); as r) {
+  <section class="last" aria-label="Шаг в прогоне конвейера" aria-live="polite">
+    <div class="last-head">
+      <p class="last-title">В прогоне конвейера</p>
+      <app-status-chip [tone]="stageRunView()!.tone" [label]="stageRunView()!.label" [live]="stageRunView()!.live" [quiet]="true" />
+    </div>
+    <p class="last-meta">
+      <span class="num">Попытка {{ r.attempt }}</span>
+      @if (stageElapsed()) {
+        <span class="num">{{ stageRunView()!.live ? 'идёт ' : 'длился ' }}{{ stageElapsed() }}</span>
+      }
+    </p>
+    @if (r.error) {
+      <p class="last-text is-error">{{ r.error }}</p>
+    } @else if (r.summary) {
+      <p class="last-text">{{ r.summary }}</p>
+    }
+    @if (r.status === 'failed' || r.status === 'stale' || r.status === 'succeeded') {
+      <footer class="actions run-actions">
+        <button tuiButton type="button" size="s" appearance="flat" iconStart="@tui.rotate-ccw" (click)="retry.emit(s.key)">Перезапустить шаг</button>
+      </footer>
+    }
+  </section>
+}
+
 @if (job(); as j) {
   <section class="last" aria-label="Последний запуск">
     <div class="last-head">

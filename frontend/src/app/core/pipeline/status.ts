@@ -12,14 +12,31 @@ export interface StatusView {
 
 const STAGE_STATUS: Record<StageStatus, StatusView> = {
   not_started: {tone: 'idle', label: 'Не запущен', live: false},
+  pending: {tone: 'idle', label: 'Ожидает', live: false},
   queued: {tone: 'run', label: 'В очереди', live: true},
   running: {tone: 'run', label: 'Выполняется', live: true},
   waiting_input: {tone: 'wait', label: 'Ждёт ответа', live: false},
+  waiting_human: {tone: 'wait', label: 'Ждёт решения', live: false},
+  stale: {tone: 'wait', label: 'Устарел', live: false},
   succeeded: {tone: 'ok', label: 'Готово', live: false},
   partial: {tone: 'wait', label: 'Частично', live: false},
   failed: {tone: 'fail', label: 'Ошибка', live: false},
   skipped: {tone: 'idle', label: 'Пропущен', live: false},
 };
+
+const RUN_STATUS: Record<string, StatusView> = {
+  pending: {tone: 'run', label: 'Запускается', live: true},
+  running: {tone: 'run', label: 'Идёт', live: true},
+  waiting: {tone: 'wait', label: 'Ждёт человека', live: false},
+  succeeded: {tone: 'ok', label: 'Готово', live: false},
+  partial: {tone: 'wait', label: 'Частично', live: false},
+  failed: {tone: 'fail', label: 'Ошибка', live: false},
+  cancelled: {tone: 'idle', label: 'Отменён', live: false},
+};
+
+export function runStatusView(status: string): StatusView {
+  return RUN_STATUS[status] ?? {tone: 'idle', label: status, live: false};
+}
 
 export function stageStatusView(status: string): StatusView {
   return STAGE_STATUS[status as StageStatus] ?? {tone: 'idle', label: status, live: false};
@@ -49,10 +66,10 @@ const SUBTYPE: Record<string, Omit<JobStatusView, 'live' | 'terminal'>> = {
 export function jobStatusView(status: string, subtype: string | null, stale = false): JobStatusView {
   const state = status.toLowerCase();
   if (stale) {
-    return {phase: 'stale', tone: 'idle', label: 'Нет статуса', live: false, terminal: true, hint: 'Очередь долго не отвечает. Проверьте worker: docker compose logs worker.'};
+    return {phase: 'stale', tone: 'idle', label: 'Нет статуса', live: false, terminal: true, hint: 'Очередь долго не отвечает. Проверьте воркеры: docker compose logs worker-llm worker-build.'};
   }
   if (state === 'queued' || state === 'pending' || state === 'received') {
-    return {phase: 'queued', tone: 'run', label: 'В очереди', live: true, terminal: false, hint: 'Задача ждёт свободного worker.'};
+    return {phase: 'queued', tone: 'run', label: 'В очереди', live: true, terminal: false, hint: 'Задача ждёт свободного воркера.'};
   }
   if (state === 'started' || state === 'retry') {
     return {phase: 'running', tone: 'run', label: 'Выполняется', live: true, terminal: false, hint: 'Агент работает. Статус обновляется автоматически.'};
@@ -64,7 +81,7 @@ export function jobStatusView(status: string, subtype: string | null, stale = fa
   if (state === 'revoked') {
     return {phase: 'failed', tone: 'idle', label: 'Отменено', live: false, terminal: true, hint: 'Задача отменена в очереди.'};
   }
-  return {phase: 'failed', tone: 'fail', label: 'Сбой задачи', live: false, terminal: true, hint: 'Задача упала в worker. Подробности — в docker compose logs worker.'};
+  return {phase: 'failed', tone: 'fail', label: 'Сбой задачи', live: false, terminal: true, hint: 'Задача упала в воркере. Подробности — в docker compose logs worker-llm.'};
 }
 
 /** Иконка статуса: одна и та же в конвейере, таблицах и бейджах. */

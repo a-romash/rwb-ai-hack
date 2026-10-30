@@ -72,7 +72,7 @@
       <a class="tab" routerLink="flow" routerLinkActive="is-active" ariaCurrentWhenActive="page">Конвейер</a>
       <a class="tab" routerLink="requirements" routerLinkActive="is-active" ariaCurrentWhenActive="page">Требования</a>
       <a class="tab" routerLink="runs" routerLinkActive="is-active" ariaCurrentWhenActive="page">
-        Запуски
+        Запуски агентов
         @if (store.runs().length) {
           <span class="count" [class.is-live]="store.liveRuns() > 0">{{ store.runs().length }}</span>
         }

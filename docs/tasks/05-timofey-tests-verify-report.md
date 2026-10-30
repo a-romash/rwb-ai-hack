@@ -82,7 +82,7 @@ contracts/                     Python-пакет: Pydantic-модели всех
   api.py                       Максим   — модели API Студии
   analysis.py, app.py          Саня     — analysis.json, app.json (+ dependents())
   ui.py                        Артём    — ui.json, каталог паттернов и виджетов
-  hooks.py, pack.py            Иван     — спецификация хука (hooks.json), манифест шаблона (pack.yaml)
+  hooks.py, pack.py            Иван     — спецификация хука (hooks.json), манифест шаблона (pack.json)
   verification.py, report.py   Тимофей  — verification.json, report.json, споры по тестам
   fixtures/tickets/            эталонный домен «заявки на ремонт с SLA»: по одному валидному файлу на артефакт
   fixtures/equipment/          второй домен «выдача оборудования» (фаза 3)
@@ -99,7 +99,7 @@ gates/
 harness/                       Максим (runner.py, llm.py, sandbox.py, fakes.py, registry.py, doctor.py)
   agent.py                     Иван     — цикл с инструментами, только для мест custom
 agents/<id>/                   промпты агентов: prompt.md (англ.), config.yaml; владелец — владелец этапа
-templates/product/             Иван     — золотой шаблон генерируемого приложения + pack.yaml
+templates/product/             Иван     — золотой шаблон генерируемого приложения + pack.json
 backend/app/                   Максим   — API платформы, модели БД, миграции, Celery-задачи
 frontend/                      Артём    — Студия
 ```
@@ -178,7 +178,7 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
 
 Правила:
 - Этап не знает про HTTP, Celery и таблицы платформы. Всё, что ему нужно, приходит аргументами.
-- Этап пишет только внутри `workspace` и не перезаписывает чужие файлы. В `product/` после `scaffold` добавлять и менять файлы можно только в местах своего этапа: `tests` — тестовые проекты AC (`backend/tests/App.Acceptance.Tests`, `admin-web/e2e/*.spec.ts`); `develop` — `write_roots` из `pack.yaml`; `verify` — временно для мутаций, с обязательным восстановлением.
+- Этап пишет только внутри `workspace` и не перезаписывает чужие файлы. В `product/` после `scaffold` добавлять и менять файлы можно только в местах своего этапа: `tests` — тестовые проекты AC (`backend/tests/App.Acceptance.Tests`, `admin-web/e2e/*.spec.ts`); `develop` — `write_roots` из `pack.json`; `verify` — временно для мутаций, с обязательным восстановлением.
 - Этап проверяет вход и выход своими Pydantic-моделями. Нарушение — `ContractError`.
 - Частичный бизнес-результат (хук не написан, AC красный) — это **успешное** завершение этапа со статусами внутри артефакта, а не исключение.
 - `repair` вызывает дирижёр, если гейт после этапа нашёл ошибки: не больше двух раз. Этап исправляет только элементы по путям из `findings` (JSON Patch), остальное не трогает.
@@ -409,9 +409,11 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 
 Заглушки хуков **нейтральные**: возвращают «пусто», «ноль», «разрешено», не бросают исключений.
 
-### 3.9 Манифест шаблона `templates/product/pack.yaml` (владелец — Иван, потребитель — Максим)
+### 3.9 Манифест шаблона `templates/product/pack.json` (владелец — Иван, потребитель — Максим)
 
 ```yaml
+# Сокращённый пример в нотации YAML. Источник истины — templates/product/pack.json
+# (workdir, restore с сетью, отчёты JUnit/JSON/SARIF, BASE_URL стенда для E2E).
 targets:
   backend:
     image: rwb/tool-dotnet:10
@@ -420,14 +422,14 @@ targets:
     filter: ["--filter", "AC={filter}"]
     reports: {junit: "reports/junit/backend/*.xml"}
   admin:
-    image: rwb/tool-node:22-ng20.1.6
+    image: rwb/tool-node:22
     workdir: admin-web
     build: ["npm", "run", "build"]
     test:  ["npx", "jest", "--ci"]
     e2e:   ["npx", "playwright", "test"]
     filter: ["--grep", "@{filter}"]
   pwa:
-    image: rwb/tool-node:22-ng20.1.6
+    image: rwb/tool-node:22
     workdir: mobile-web
     build: ["npm", "run", "build"]
     test:  ["npx", "jest", "--ci"]
@@ -632,7 +634,7 @@ def resolve(dispute: Dispute, workspace: Path, llm: LLM, sandbox: Sandbox) -> Di
 2. Сверка хэшей тестов с `reports/tests.json`: расхождение — ошибка G3, а не предупреждение.
 3. Все тесты: `test` по целям, разбор JUnit → `TestCase[]`.
 4. **Green-proof (мутации):** для каждого реализованного хука 3–5 мутаций тела (перевернуть сравнение, сдвинуть числовую константу на единицу, `&&` ↔ `||`, вернуть другой вариант перечисления) → тесты хука по фильтру AC → хотя бы один тест должен покраснеть на каждой мутации. Выжившая мутация — находка (тестировщику дописать пример). После мутаций файл хука восстанавливается.
-5. Сканеры: `sandbox.run("scan", "stack")` по `pack.yaml` (gitleaks, trivy fs; semgrep — если есть в образе) → разбор SARIF/JSON.
+5. Сканеры: `sandbox.run("scan", "stack")` по `pack.json` (gitleaks, trivy fs; semgrep — если есть в образе) → разбор SARIF/JSON.
 6. Стенд: `up` → health всех сервисов → `smoke` (вход каждой ролью) → `e2e` (Playwright по проходам) → `down`.
 7. Проекция `ac_status` по каждому AC (см. T0) → `reports/verification.json`.
 

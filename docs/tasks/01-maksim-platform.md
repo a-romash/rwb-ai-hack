@@ -80,7 +80,7 @@ contracts/                     Python-пакет: Pydantic-модели всех
   api.py                       Максим   — модели API Студии
   analysis.py, app.py          Саня     — analysis.json, app.json (+ dependents())
   ui.py                        Артём    — ui.json, каталог паттернов и виджетов
-  hooks.py, pack.py            Иван     — спецификация хука (hooks.json), манифест шаблона (pack.yaml)
+  hooks.py, pack.py            Иван     — спецификация хука (hooks.json), манифест шаблона (pack.json)
   verification.py, report.py   Тимофей  — verification.json, report.json, споры по тестам
   fixtures/tickets/            эталонный домен «заявки на ремонт с SLA»: по одному валидному файлу на артефакт
   fixtures/equipment/          второй домен «выдача оборудования» (фаза 3)
@@ -97,7 +97,7 @@ gates/
 harness/                       Максим (runner.py, llm.py, sandbox.py, fakes.py, registry.py, doctor.py)
   agent.py                     Иван     — цикл с инструментами, только для мест custom
 agents/<id>/                   промпты агентов: prompt.md (англ.), config.yaml; владелец — владелец этапа
-templates/product/             Иван     — золотой шаблон генерируемого приложения + pack.yaml
+templates/product/             Иван     — золотой шаблон генерируемого приложения + pack.json
 backend/app/                   Максим   — API платформы, модели БД, миграции, Celery-задачи
 frontend/                      Артём    — Студия
 ```
@@ -176,7 +176,7 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
 
 Правила:
 - Этап не знает про HTTP, Celery и таблицы платформы. Всё, что ему нужно, приходит аргументами.
-- Этап пишет только внутри `workspace` и не перезаписывает чужие файлы. В `product/` после `scaffold` добавлять и менять файлы можно только в местах своего этапа: `tests` — тестовые проекты AC (`backend/tests/App.Acceptance.Tests`, `admin-web/e2e/*.spec.ts`); `develop` — `write_roots` из `pack.yaml`; `verify` — временно для мутаций, с обязательным восстановлением.
+- Этап пишет только внутри `workspace` и не перезаписывает чужие файлы. В `product/` после `scaffold` добавлять и менять файлы можно только в местах своего этапа: `tests` — тестовые проекты AC (`backend/tests/App.Acceptance.Tests`, `admin-web/e2e/*.spec.ts`); `develop` — `write_roots` из `pack.json`; `verify` — временно для мутаций, с обязательным восстановлением.
 - Этап проверяет вход и выход своими Pydantic-моделями. Нарушение — `ContractError`.
 - Частичный бизнес-результат (хук не написан, AC красный) — это **успешное** завершение этапа со статусами внутри артефакта, а не исключение.
 - `repair` вызывает дирижёр, если гейт после этапа нашёл ошибки: не больше двух раз. Этап исправляет только элементы по путям из `findings` (JSON Patch), остальное не трогает.
@@ -407,9 +407,11 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 
 Заглушки хуков **нейтральные**: возвращают «пусто», «ноль», «разрешено», не бросают исключений.
 
-### 3.9 Манифест шаблона `templates/product/pack.yaml` (владелец — Иван, потребитель — Максим)
+### 3.9 Манифест шаблона `templates/product/pack.json` (владелец — Иван, потребитель — Максим)
 
 ```yaml
+# Сокращённый пример в нотации YAML. Источник истины — templates/product/pack.json
+# (workdir, restore с сетью, отчёты JUnit/JSON/SARIF, BASE_URL стенда для E2E).
 targets:
   backend:
     image: rwb/tool-dotnet:10
@@ -418,14 +420,14 @@ targets:
     filter: ["--filter", "AC={filter}"]
     reports: {junit: "reports/junit/backend/*.xml"}
   admin:
-    image: rwb/tool-node:22-ng20.1.6
+    image: rwb/tool-node:22
     workdir: admin-web
     build: ["npm", "run", "build"]
     test:  ["npx", "jest", "--ci"]
     e2e:   ["npx", "playwright", "test"]
     filter: ["--grep", "@{filter}"]
   pwa:
-    image: rwb/tool-node:22-ng20.1.6
+    image: rwb/tool-node:22
     workdir: mobile-web
     build: ["npm", "run", "build"]
     test:  ["npx", "jest", "--ci"]
@@ -677,7 +679,7 @@ def advance(run_id):
 
 ### M6. Песочница `harness/sandbox.py`
 
-Реализует протокол `Sandbox` из §3.2. Команды берёт из `templates/product/pack.yaml` (§3.9), а не из констант.
+Реализует протокол `Sandbox` из §3.2. Команды берёт из `templates/product/pack.json` (§3.9), а не из констант.
 
 - `build`, `test`, `lint`, `e2e` для `backend`/`admin`/`pwa`: `docker run --rm --network none` (для `e2e` — сеть стенда), образ из манифеста, workspace смонтирован в `/work`, лимиты `--cpus 2 --memory 4g`, таймаут, непривилегированный пользователь, без секретов платформы в окружении.
 - `filter` подставляется по шаблону `filter` из манифеста (`AC=AC-07`, `@AC-07`).
@@ -696,7 +698,7 @@ def advance(run_id):
 
 ### M8. `python -m harness doctor`
 
-Печатает зелёный или красный список: БД и миграции; брокер; ключ модели и пробный вызов (JSON-режим, отключение размышлений, размер окна из конфигурации); Docker и образы из `pack.yaml`; свободное место; синхронизация времени. Код выхода 1 при любом красном пункте.
+Печатает зелёный или красный список: БД и миграции; брокер; ключ модели и пробный вызов (JSON-режим, отключение размышлений, размер окна из конфигурации); Docker и образы из `pack.json`; свободное место; синхронизация времени. Код выхода 1 при любом красном пункте.
 
 ## 7. Как проверять независимо
 
@@ -711,7 +713,7 @@ def advance(run_id):
 | `contracts/stage.py`, `gates.py`, `harness/fakes.py` | всем | день 0 |
 | `contracts/api.py` + фейковый прогон через API | Артёму | день 0 — модели, фаза 1 — работающий API на фейковых этапах |
 | Шлюз `llm` с таблицей классов | всем | фаза 2, до этого — `FakeLLM` |
-| Песочница по `pack.yaml` | Ивану, Тимофею | фаза 2, до этого — `FakeSandbox` |
+| Песочница по `pack.json` | Ивану, Тимофею | фаза 2, до этого — `FakeSandbox` |
 | `snapshot` для отчёта | Тимофею | фаза 1 — формат, фаза 2 — данные |
 
 ## 9. Чего не делать
