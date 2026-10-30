@@ -26,7 +26,7 @@ def check_gate(gate: str, workspace: Path, artifacts: dict[str, str], *, allow_m
     return result
 
 
-def run_gate(gate, module, inp: StageInput, workspace: Path, llm, output: StageOutput, *, allow_missing=False):
+def run_gate(gate, module, inp: StageInput, workspace: Path, llm, output: StageOutput, *, allow_missing=False, sandbox=None):
     """Return latest output and the complete sequence of results (round 0..2)."""
     results = []
     for round_number in range(3):
@@ -37,5 +37,7 @@ def run_gate(gate, module, inp: StageInput, workspace: Path, llm, output: StageO
             raise ContractError(f"Нарушен контракт гейта {gate}")
         if not errors or round_number == 2 or not hasattr(module, "repair"):
             break
-        output = StageOutput.model_validate(module.repair(inp, workspace, llm, errors))
+        import inspect
+        kwargs = {'sandbox': sandbox} if 'sandbox' in inspect.signature(module.repair).parameters else {}
+        output = StageOutput.model_validate(module.repair(inp, workspace, llm, errors, **kwargs))
     return output, results

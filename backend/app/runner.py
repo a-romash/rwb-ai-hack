@@ -160,7 +160,7 @@ def _execute(stage_id):
         output = run_stage_locally(module, inp, root, llm, sandbox)
         gates = []
         for name in (() if output.questions and inp.autonomy in ('A0', 'A1') else STAGES_BY_KEY[stage].gates):
-            output, results = run_gate(name, module, inp, root, llm, output, allow_missing=fake)
+            output, results = run_gate(name, module, inp, root, llm, output, allow_missing=fake, sandbox=sandbox)
             gates.extend((name, n, value) for n, value in enumerate(results))
         for path, digest in frozen:
             if describe(root, path)[0] != digest:
