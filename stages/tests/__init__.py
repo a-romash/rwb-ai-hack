@@ -1,24 +1,26 @@
+"""Stage tests: acceptance tests of hooks as JSON cases, red-proof on neutral stubs.
+
+The model never writes C#. Cases come from the Examples tables of the criteria; the model only
+maps rows to hook inputs when the columns do not match the parameters (stages/tests/cases.py).
+The C# side is fixed: a shared data-driven runner in the product template plus one generated
+class per criterion that carries the AC trait.
+"""
 import hashlib
 import json
-import re
-from contracts.stage import StageOutput,ContractError,BudgetExceeded
-from contracts.verification import TestsManifest,PlannedTest
+
+from contracts.stage import StageOutput, ContractError
+from contracts.verification import TestsManifest, PlannedTest
 from harness.fakes import workspace_path
-from stages.quality import read,write,junit,assertion_failure
-from stages.tests.lint import lint
+from stages.quality import read, write, junit, assertion_failure
+from stages.tests import cases as hook_cases
 
-
-def context(analysis,app,hooks,openapi,ac):
-    ids=ac.get('rules',[])
-    return {'acceptance':ac,'requirements':[r for r in analysis.get('requirements',[])],
-            'rules':[r for r in analysis.get('rules',[]) if r['id'] in ids],
-            'params':app.get('params',{}),'hooks':[{k:v for k,v in h.items() if k in ('id','signature','contract','examples','allowed_api','refs')} for h in hooks if ac['id'] in h.get('refs',[])],
-            'openapi':openapi}
+GENERATED = "product/backend/tests/App.Acceptance.Tests/Generated"
 
 
 def rule_values(analysis, ac):
-    ids=set(ac.get('rules', []))
-    values=[]
+    """Parameter values of the criterion's rules (used by the test linter)."""
+    ids = set(ac.get('rules', []))
+    values = []
     for rule in analysis.get('rules', []):
         if rule.get('id') in ids:
             for value in rule.get('params', {}).values():
@@ -26,88 +28,111 @@ def rule_values(analysis, ac):
     return values
 
 
-def execute(inp,workspace,llm,sandbox):
-    workspace=workspace.resolve()
-    analysis=read(workspace,inp.artifacts,'analysis');app=read(workspace,inp.artifacts,'app')
-    hooks=read(workspace,inp.artifacts,'hooks');api=read(workspace,inp.artifacts,'openapi')
-    # Save neutral scaffold implementations for independent dispute red-proof.
-    stubs={}
+def _hooks(workspace, artifacts):
+    hooks = read(workspace, artifacts, 'hooks')
+    if not isinstance(hooks, list):
+        raise ContractError('hooks.json должен быть массивом')
     for hook in hooks:
-        target=workspace_path(workspace,'product/'+hook['file'])
-        if target.is_file():stubs[hook['id']]={'file':'product/'+hook['file'],'source':target.read_text()}
-    write(workspace,'reports/redproof-stubs.json',stubs)
-    tests=[]
-    for ac in analysis.get('acceptance',[]):
-        ident=ac['id']
-        if not re.fullmatch(r'AC-[A-Za-z0-9_-]+',ident):raise ContractError('Недопустимый AC id')
-        file=f'product/backend/tests/App.Acceptance.Tests/Generated/{ident.replace("-","_")}.cs'
-        packet=context(analysis,app,hooks,api,ac)
-        try:
-            code=llm(task_class='qa',system='Write compilable xUnit C# tests using only the supplied public signatures and allowed APIs. Every test must have [Trait("AC", acceptance.id)]. Use TestClock, never real time. Expected results must be independent concrete values from AC examples. Rule thresholds must be read from App.Domain.Params, never embedded as numeric constants. Use boundary test data derived from the parameter rather than repeating its literal. Never access implementation source. Return the whole C# test file.',user=json.dumps(packet,ensure_ascii=False),output='code',task_id=ident)
-        except BudgetExceeded:break
-        issues=lint(code,ident,rule_values(analysis,ac))
-        for _ in range(2):
-            if not issues:break
-            code=llm(task_class='qa',system='Correct only the C# test. Follow the AC and supplied public API; replace rule threshold numeric literals with references to the generated App.Domain.Params. Keep independent expected assertions and the AC trait. Return complete compilable C# source.',user=json.dumps({'contract':packet,'test':code,'lint_errors':issues},ensure_ascii=False),output='code',task_id=ident)
-            issues=lint(code,ident,rule_values(analysis,ac))
-        target=workspace_path(workspace,file);target.parent.mkdir(parents=True,exist_ok=True);target.write_text(code,encoding='utf-8')
-        tests.append(PlannedTest(id=ident,ac=ident,file=file,level='unit',neutral=ac.get('neutral_expectation',False),lint=lint(code,ident,rule_values(analysis,ac))))
+        if not hook.get('method') or not hook.get('parameters'):
+            raise ContractError(f"В hooks.json нет method/parameters для {hook.get('id')}: обновите scaffold")
+    return hooks
+
+
+def _generate(workspace, analysis, app, hooks, llm, only=None):
+    """Write case files and per-criterion classes; returns {ac: [hook ids]} and sources by hook."""
+    covered, sources = {}, {}
+    for hook in hooks:
+        if only is not None and not ({ac['id'] for ac in hook_cases.related(hook, analysis)} & only):
+            continue
+        found, sources[hook['id']] = hook_cases.build(hook, app, analysis, llm)
+        hook_cases.write(workspace_path, workspace, hook, found)
+        for case in found:
+            covered.setdefault(case.ac, set()).add(hook['id'])
+    for ac in covered:
+        path = workspace_path(workspace, f"{GENERATED}/{ac.replace('-', '_')}.cs")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(hook_cases.test_class(ac), encoding='utf-8')
+    return covered, sources
+
+
+def _red_proof(workspace, sandbox, tests):
+    """Run each criterion on the neutral stubs: a real test fails on an assertion."""
+    for t in tests:
+        result = sandbox.run('test', 'backend', filter=t.ac)
+        found = junit(workspace, result, [t])
+        failed = [c for c in found if c.status == 'failed']
+        assertion = any(assertion_failure(c) for c in failed)
+        t.failure_kind = 'assertion' if assertion else 'setup' if failed else 'none' if found and all(c.status == 'passed' for c in found) else 'unknown'
+        t.red_proof = None if t.neutral else assertion
+
+
+def execute(inp, workspace, llm, sandbox):
+    workspace = workspace.resolve()
+    analysis = read(workspace, inp.artifacts, 'analysis')
+    app = read(workspace, inp.artifacts, 'app')
+    hooks = _hooks(workspace, inp.artifacts)
+    # Neutral stubs are kept for the dispute red-proof; the hook bodies are not shown to QA.
+    stubs = {}
+    for hook in hooks:
+        target = workspace_path(workspace, 'product/' + hook['file'])
+        if target.is_file():
+            stubs[hook['id']] = {'file': 'product/' + hook['file'], 'source': target.read_text(encoding='utf-8')}
+    write(workspace, 'reports/redproof-stubs.json', stubs)
+    covered, sources = _generate(workspace, analysis, app, hooks, llm)
+    tests = [PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ac.replace('-', '_')}.cs", level='unit',
+                         neutral=next((a.get('neutral_expectation', False) for a in analysis['acceptance'] if a['id'] == ac), False))
+             for ac in sorted(covered)]
     from stages.tests.e2e import generate
-    generate(workspace, read(workspace,inp.artifacts,'ui'))
-    build=sandbox.run('build','backend')
-    for repair_round in range(2):
-        if build.ok:break
-        for t in tests:
-            packet=context(analysis,app,hooks,api,next(ac for ac in analysis['acceptance'] if ac['id']==t.ac))
-            code=llm(task_class='qa',system='Repair only this C# test compilation. Preserve AC and assertions.',user=json.dumps({'contract':packet,'test':workspace_path(workspace,t.file).read_text(),'errors':build.failed},ensure_ascii=False),output='code',task_id=t.ac)
-            workspace_path(workspace,t.file).write_text(code,encoding='utf-8');t.lint=lint(code,t.ac,rule_values(analysis,next(a for a in analysis['acceptance'] if a['id']==t.ac)))
-        build=sandbox.run('build','backend')
-    manifest=TestsManifest(tests=tests,hashes={},acceptance=[a['id'] for a in analysis.get('acceptance',[])],build_ok=build.ok)
+    e2e = generate(workspace, read(workspace, inp.artifacts, 'ui', optional=True), app)
+    build = sandbox.run('build', 'backend')
+    manifest = TestsManifest(tests=tests, hashes={}, acceptance=[a['id'] for a in analysis.get('acceptance', [])], build_ok=build.ok)
     if build.ok:
-        for t in tests:
-            result=sandbox.run('test','backend',filter=t.ac)
-            cases=junit(workspace,result,[t])
-            failed=[c for c in cases if c.status=='failed']
-            assertion=any(assertion_failure(c) for c in failed)
-            t.failure_kind='assertion' if assertion else 'setup' if failed else 'none' if all(c.status=='passed' for c in cases) else 'unknown'
-            t.red_proof=None if t.neutral else assertion
+        _red_proof(workspace, sandbox, tests)
     else:
-        for t in tests:t.failure_kind='compile'
-    save(workspace,manifest)
-    return StageOutput(artifacts={'tests':'reports/tests.json'},summary=f'Тесты для {len(tests)} из {len(manifest.acceptance)} AC')
+        for t in tests:
+            t.failure_kind = 'compile'
+    save(workspace, manifest)
+    write(workspace, 'reports/test-cases.json', {'schema_version': 1, 'sources': sources, 'e2e': e2e,
+                                                 'covered': {ac: sorted(ids) for ac, ids in covered.items()}})
+    return StageOutput(artifacts={'tests': 'reports/tests.json'},
+                       summary=f"Тесты для {len(tests)} из {len(manifest.acceptance)} AC; E2E-проходов: {len(e2e)}")
 
 
-def save(workspace,manifest):
-    manifest.hashes={}
-    for directory in ('product/backend/tests','product/admin-web/e2e','product/mobile-web/e2e'):
-        root=workspace_path(workspace,directory)
+def save(workspace, manifest):
+    manifest.hashes = {}
+    for directory in ('product/backend/tests', 'product/admin-web/e2e', 'product/mobile-web/e2e'):
+        root = workspace_path(workspace, directory)
         if root.exists():
             for path in sorted(root.rglob('*')):
-                if path.is_file() and not any(part in ('bin','obj','node_modules') for part in path.parts):
-                    relative=str(path.relative_to(workspace));workspace_path(workspace,relative)
-                    manifest.hashes[relative]=hashlib.sha256(path.read_bytes()).hexdigest()
-    for relative in ('product/admin-web/playwright.config.ts','product/mobile-web/playwright.config.ts','product/admin-web/jest.config.cjs','product/mobile-web/jest.config.cjs'):
-        path=workspace_path(workspace,relative)
-        if path.is_file():manifest.hashes[relative]=hashlib.sha256(path.read_bytes()).hexdigest()
-    write(workspace,'reports/tests.json',manifest.model_dump())
+                if path.is_file() and not any(part in ('bin', 'obj', 'node_modules') for part in path.parts):
+                    relative = str(path.relative_to(workspace))
+                    workspace_path(workspace, relative)
+                    manifest.hashes[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    for relative in ('product/admin-web/playwright.config.ts', 'product/mobile-web/playwright.config.ts',
+                     'product/admin-web/jest.config.cjs', 'product/mobile-web/jest.config.cjs'):
+        path = workspace_path(workspace, relative)
+        if path.is_file():
+            manifest.hashes[relative] = hashlib.sha256(path.read_bytes()).hexdigest()
+    write(workspace, 'reports/tests.json', manifest.model_dump())
 
 
-def repair(inp,workspace,llm,findings, *, sandbox=None):
-    # Reuse accepted contracts, regenerate only addressed tests in a temporary view.
-    data=TestsManifest.model_validate(read(workspace,{'tests':'reports/tests.json'},'tests'))
-    selected={f.path.removeprefix('tests/') for f in findings}
-    analysis=read(workspace,inp.artifacts,'analysis')
-    affected={t.ac for t in data.tests if t.id in selected}|(selected & set(data.acceptance))
-    for t in data.tests:
-        if t.ac not in affected:continue
-        code=llm(task_class='qa',system='Repair the test according to findings, preserving its AC. Return C#.',user=json.dumps({'acceptance':next(a for a in analysis['acceptance'] if a['id']==t.ac),'test':workspace_path(workspace,t.file).read_text(),'findings':[f.model_dump() for f in findings]},ensure_ascii=False),output='code',task_id=t.ac)
-        workspace_path(workspace,t.file).write_text(code);t.lint=lint(code,t.ac,rule_values(analysis,next(a for a in analysis['acceptance'] if a['id']==t.ac)))
-        if sandbox is None:raise ContractError('Для repair требуется песочница')
-        build=sandbox.run('build','backend');data.build_ok=build.ok
-        result=sandbox.run('test','backend',filter=t.ac) if build.ok else None
-        cases=junit(workspace,result,[t]) if result else []
-        assertion=any(c.status=='failed' and assertion_failure(c) for c in cases)
-        t.failure_kind='compile' if not build.ok else 'assertion' if assertion else 'none' if cases and all(c.status=='passed' for c in cases) else 'unknown'
-        t.red_proof=None if t.neutral else assertion
-    save(workspace,data)
-    return StageOutput(artifacts={'tests':'reports/tests.json'},summary='Требуется повторная проверка исправленных тестов')
+def repair(inp, workspace, llm, findings, *, sandbox=None):
+    """G2 findings: ask again for the cases of the affected criteria and repeat the red-proof."""
+    if sandbox is None:
+        raise ContractError('Для repair требуется песочница')
+    workspace = workspace.resolve()
+    data = TestsManifest.model_validate(read(workspace, {'tests': 'reports/tests.json'}, 'tests'))
+    analysis = read(workspace, inp.artifacts, 'analysis')
+    app = read(workspace, inp.artifacts, 'app')
+    hooks = _hooks(workspace, inp.artifacts)
+    affected = {f.path.removeprefix('tests/') for f in findings} & set(data.acceptance)
+    covered, _ = _generate(workspace, analysis, app, hooks, llm, only=affected)
+    known = {t.ac for t in data.tests}
+    for ac in sorted(set(covered) - known):
+        data.tests.append(PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ac.replace('-', '_')}.cs", level='unit'))
+    build = sandbox.run('build', 'backend')
+    data.build_ok = build.ok
+    if build.ok:
+        _red_proof(workspace, sandbox, [t for t in data.tests if t.ac in affected])
+    save(workspace, data)
+    return StageOutput(artifacts={'tests': 'reports/tests.json'}, summary='Кейсы пересобраны по находкам G2')

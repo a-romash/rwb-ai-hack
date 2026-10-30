@@ -331,6 +331,13 @@ def _hooks(app: dict) -> list[dict]:
             "refs": refs,
             "signature": signature,
             "stub": "neutral",
+            "method": method,
+            "returns": ret,
+            "parameters": [
+                {"name": param, "type": cs_type,
+                 "source": "param" if param in set(_strs(hook.get("params"))) else "input"}
+                for cs_type, param in params
+            ],
         }
         built.append({
             "name": name,
@@ -379,6 +386,9 @@ def _local_spec(spec: dict) -> dict:
         allowed_api=list(spec["allowed_api"]),
         max_lines=spec["max_lines"],
         stub=spec["stub"],
+        method=spec.get("method", ""),
+        returns=spec.get("returns", ""),
+        parameters=list(spec.get("parameters", [])),
     )
     return asdict(model)
 

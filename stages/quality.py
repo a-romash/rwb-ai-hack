@@ -34,7 +34,7 @@ def junit(root, result, planned):
         ident=node.attrib.get('classname','')+'.'+node.attrib.get('name','')
         properties={p.attrib.get('name'):p.attrib.get('value') for p in node.findall('./properties/property')}
         ac=properties.get('AC')
-        match=next((t for t in planned if t.id==ident or t.id==node.attrib.get('name') or t.ac==ac or t.ac.replace('-','_') in ident),None)
+        match=next((t for t in planned if t.id==ident or t.id==node.attrib.get('name') or t.ac==ac or _mentions(ident,t.ac)),None)
         failure=node.find('failure');error=node.find('error')
         bad=failure if failure is not None else error
         status='skipped' if node.find('skipped') is not None else 'failed' if bad is not None else 'passed'
@@ -43,6 +43,11 @@ def junit(root, result, planned):
         if not any(c.ac==t.ac for c in cases):
             cases.append(TestCase(id=t.id,ac=t.ac,level=t.level,file=t.file,status='not_run',message='Тест отсутствует в JUnit'))
     return cases
+
+
+def _mentions(ident, ac):
+    """AC-1 must not match a test of AC-10: compare the id as a whole token."""
+    return re.search(r'(?<![A-Za-z0-9])'+re.escape(ac.replace('-','_'))+r'(?![0-9])',ident) is not None
 
 
 def assertion_failure(case):

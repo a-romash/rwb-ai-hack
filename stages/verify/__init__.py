@@ -1,5 +1,5 @@
-from contracts.stage import StageOutput,StageFailed
-from contracts.verification import TestsManifest,Verification,AcStatus
+from contracts.stage import StageOutput,StageFailed,ContractError
+from contracts.verification import TestsManifest,Verification,AcStatus,TestCase
 from harness.workspace import describe
 from stages.quality import read,write,junit
 
@@ -11,8 +11,14 @@ def execute(inp,workspace,llm,sandbox):
     develop=read(workspace,inp.artifacts,'develop',optional=True)
     build={};cases=[];scans=[];stand={'up':False,'smoke':False,'e2e':{},'down':False}
     mismatches=[p for p,h in plan.hashes.items() if describe(workspace,p)[0]!=h]
-    for target in ('backend','admin','pwa'):
-        result=sandbox.run('build',target)
+    ui=read(workspace,inp.artifacts,'ui',optional=True)
+    platforms={screen.get('platform') for screen in ui.get('screens',{}).values()}
+    targets=['backend']+(['admin'] if 'web' in platforms or not platforms else [])+(['pwa'] if 'mobile' in platforms else [])
+    for target in targets:
+        try:result=sandbox.run('build',target)
+        except ContractError as exc:
+            # A platform the template cannot build yet is a failed check, not a crashed stage.
+            build[target]=False;cases.append(TestCase(id=f'build/{target}',ac=None,level='unit',file='',status='not_run',message=str(exc)));continue
         if result.exit_code==127:raise StageFailed('Песочница недоступна')
         build[target]=result.ok
         if result.ok:
@@ -37,7 +43,7 @@ def execute(inp,workspace,llm,sandbox):
             roles=[r['id'] for r in analysis.get('roles',[])]
             stand['roles']=evidence.get('roles',{})
             stand['smoke']=smoke.ok and bool(roles) and all(stand['roles'].get(role,{}).get('login') is True and stand['roles'].get(role,{}).get('request') is True for role in roles)
-            for target in ('admin','pwa'):
+            for target in [t for t in targets if t!='backend' and build.get(t)]:
                 evidence=playwright(workspace,sandbox.run('e2e',target))
                 stand['e2e'][target]=evidence['ok']
                 stand.setdefault('e2e_results',{})[target]=evidence

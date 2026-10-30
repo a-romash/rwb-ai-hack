@@ -35,6 +35,9 @@ class HookSpec:
     allowed_api: list[str] = field(default_factory=list)
     max_lines: int = 60
     stub: str = "neutral"
+    method: str = ""
+    returns: str = ""
+    parameters: list[dict] = field(default_factory=list)
 
 
 @dataclass

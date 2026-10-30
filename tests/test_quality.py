@@ -31,10 +31,16 @@ class QualityTests(unittest.TestCase):
         from contracts.stage import ContractError
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
-            ui={'screens':{'List':{'route':'/items'}},'walks':{'US-1':{'platform':'web','covers':['AC-1'],'steps':[{'open':'List'},{'expect':{'testid':'items'}}]}}}
+            ui={'screens':{'ItemList':{'platform':'web','widgets':[{'kind':'status','field':'Item.status','testid':'item-list.status'}],
+                                       'actions':[{'command':'TakeItem','testid':'item-list.take'}]}},
+                'walks':{'US-01':{'platform':'web','covers':['AC-01'],'steps':[{'open':'ItemList'},{'tap':'TakeItem'},{'expect':{'status':'taken'}}]}}}
             files=generate(root,ui)
-            self.assertIn('page.goto("/items")',(root/files[0]).read_text())
-            ui['walks']['US-1']['steps']=[{'scan':'unknown'}]
+            text=(root/files[0]).read_text()
+            self.assertIn('page.goto("/ItemList")',text)
+            self.assertIn('getByTestId("item-list.take").click()',text)
+            self.assertIn('getByTestId("item-list.status")',text)
+            self.assertEqual(generate(root,ui),files)
+            ui['walks']['US-01']['steps']=[{'open':'ItemList'},{'scan':'Item.code','value':'x'}]
             with self.assertRaises(ContractError):generate(root,ui)
 
     def test_mutation_restores_hook_on_sandbox_exception(self):

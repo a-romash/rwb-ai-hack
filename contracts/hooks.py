@@ -19,6 +19,14 @@ class HookExample(BaseModel):
     ac: str
 
 
+class HookParameter(BaseModel):
+    """One argument of the hook method; `param` ones are filled from App.Domain.Params."""
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    type: str
+    source: Literal["input", "param"]
+
+
 class HookSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
     id: str
@@ -32,6 +40,9 @@ class HookSpec(BaseModel):
     allowed_api: list[str]
     max_lines: int
     stub: str
+    method: str = ""
+    returns: str = ""
+    parameters: list[HookParameter] = []
 
 
 class HooksFile(RootModel[list[HookSpec]]):
