@@ -1,0 +1,5 @@
+# Generated code, prompts and shell scripts run in Linux containers and are hashed:
+# keep LF on every platform, including Windows checkouts with core.autocrlf=true.
+* text=auto eol=lf
+*.png binary
+*.ico binary
