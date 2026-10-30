@@ -15,6 +15,7 @@ from typing import Callable, Literal
 from pydantic import BaseModel, ValidationError
 
 from contracts.stage import BudgetExceeded, ContractError
+from harness import llm_config
 from harness.agent import MODEL
 
 # reasoning effort, reasoning tokens, temperature, answer tokens
@@ -41,15 +42,15 @@ class TransportError(Exception):
 class HTTPTransport:
     """OpenAI-compatible endpoint; provider-specific parameters only for OpenRouter."""
     def __init__(self, *, base_url=None, api_key=None, model=None, provider=None, timeout=120, opener=urllib.request.urlopen):
-        self.base_url = (base_url or os.getenv('LLM_BASE_URL', 'https://openrouter.ai/api/v1')).rstrip('/')
-        self.api_key = api_key if api_key is not None else os.getenv('OPENROUTER_API_KEY', '')
-        self.model = model or os.getenv('LLM_MODEL', MODEL)
-        self.provider = provider if provider is not None else (os.getenv('LLM_PROVIDER', 'DeepInfra') if 'openrouter.ai' in self.base_url else None)
+        self.base_url = (base_url or llm_config.base_url()).rstrip('/')
+        self.api_key = api_key if api_key is not None else llm_config.api_key()
+        self.model = model or llm_config.model()
+        self.provider = provider if provider is not None else llm_config.provider(self.base_url)
         self.timeout, self.opener = timeout, opener
 
     def complete(self, messages, *, schema, effort, reasoning_tokens, temperature, max_tokens):
-        if not self.api_key and 'openrouter.ai' in self.base_url:
-            raise TransportError('OPENROUTER_API_KEY не задан', usage={'prompt_tokens': 0, 'completion_tokens': 0})
+        if not self.api_key and llm_config.key_required(self.base_url):
+            raise TransportError('LLM_API_KEY не задан', usage={'prompt_tokens': 0, 'completion_tokens': 0})
         payload = {'model': self.model, 'messages': messages, 'temperature': temperature, 'max_tokens': max_tokens}
         if self.provider:
             payload['provider'] = {'order': [self.provider], 'allow_fallbacks': False, 'require_parameters': True}

@@ -22,8 +22,10 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-MODEL = "qwen/qwen3.8-27b"
-BASE_URL = "https://openrouter.ai/api/v1"
+from harness import llm_config
+
+MODEL = llm_config.DEFAULT_MODEL
+BASE_URL = llm_config.DEFAULT_BASE_URL
 TOOLS = ("list_files", "read_file", "search_code", "write_file", "build", "run_tests", "ask", "finish")
 WRITE_ROOTS = (
     "backend/src/App.Domain/Hooks",
@@ -34,7 +36,7 @@ WRITE_ROOTS = (
 )
 HOOK_EFFORT = {"hook_1", "hook_2", "hook_3", "hook_4"}
 TARGETS = ("backend", "admin", "pwa")
-SECRET_ENV = ("OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "GITLAB_TOKEN")
+SECRET_ENV = (*llm_config.KEY_NAMES, "ANTHROPIC_API_KEY", "GITLAB_TOKEN")
 SECRET_NAMES = {".env", ".env.local", "id_rsa", "credentials.json"}
 LIMIT_HIT = (
     "Output token limit hit. Resume directly — no apology, no recap of what you were doing. "
@@ -47,7 +49,7 @@ _GATE = threading.Semaphore(4)
 
 
 def load_dotenv(path: Path | None = None) -> None:
-    if os.environ.get("OPENROUTER_API_KEY"):
+    if llm_config.api_key():
         return
     for name in ("OPENROUTER_API", "OPENROUTER_KEY", "OPENROUTER_TOKEN"):
         value = os.environ.get(name)
@@ -82,7 +84,7 @@ def load_dotenv(path: Path | None = None) -> None:
                 key = "OPENROUTER_API_KEY"
             if key and key not in os.environ:
                 os.environ[key] = value
-        if os.environ.get("OPENROUTER_API_KEY"):
+        if llm_config.api_key():
             return
 
 
@@ -386,8 +388,8 @@ class OpenRouter:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = MODEL,
-        base_url: str = BASE_URL,
+        model: str | None = None,
+        base_url: str | None = None,
         thinking: bool = True,
         effort: str = "xhigh",
         max_output_tokens: int | None = None,
@@ -399,9 +401,9 @@ class OpenRouter:
     ):
         thinking, effort = _apply_task_class(task_class, thinking, effort)
         load_dotenv()
-        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        self.model = model
-        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key or llm_config.api_key()
+        self.model = model or llm_config.model()
+        self.base_url = (base_url or llm_config.base_url()).rstrip("/")
         self.thinking = thinking
         self.effort = effort
         self.task_class = task_class
@@ -409,19 +411,21 @@ class OpenRouter:
         self.retries = retries
         self.sleep = sleep
         self.opener = opener
-        self.provider = provider or {"order": ["DeepInfra"], "allow_fallbacks": False, "require_parameters": True}
+        pinned = llm_config.provider(self.base_url)
+        self.provider = provider or ({"order": [pinned], "allow_fallbacks": False, "require_parameters": True} if pinned else None)
 
     def complete(self, messages: list[dict], tools: list[dict] | None, response_format: dict | None = None) -> dict:
-        if self.model != MODEL:
+        if self.model != llm_config.model():
             raise RuntimeError("refusing to swap model")
-        if not self.api_key:
-            raise RuntimeError("OPENROUTER_API_KEY is not set")
+        if not self.api_key and llm_config.key_required(self.base_url):
+            raise RuntimeError("LLM_API_KEY is not set")
         payload: dict = {
             "model": self.model,
             "messages": messages,
-            "provider": self.provider,
             "top_k": 20,
         }
+        if self.provider:
+            payload["provider"] = self.provider
         if self.thinking:
             payload.update(temperature=1.0, top_p=0.95, reasoning={"enabled": True, "effort": self.effort})
         else:
@@ -915,7 +919,7 @@ def _text(content) -> str:
 
 
 def _redact(text: str, secret: str | None = None) -> str:
-    secret = secret or os.environ.get("OPENROUTER_API_KEY", "")
+    secret = secret or llm_config.api_key()
     if secret:
         text = text.replace(secret, "***")
     return text

@@ -13,7 +13,7 @@ analysis ─G0→ spec ─G1→ ui ─G1.5→ scaffold → tests ─G2→ develo
 Нужны Docker с Compose v2. На Windows подходит Docker Desktop.
 
 ```sh
-cp .env.example .env                      # OPENROUTER_API_KEY=... для реального прогона
+cp .env.example .env                      # LLM_API_KEY=... (и при необходимости LLM_BASE_URL, LLM_MODEL) для реального прогона
 docker compose --profile tools build      # образы песочницы: rwb/tool-dotnet:10, rwb/tool-node:22, rwb/tool-security:1
 docker compose up --build -d
 ```

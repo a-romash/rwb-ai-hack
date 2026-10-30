@@ -22,6 +22,11 @@ x-backend: &backend
     # Host path of ./workspaces for Docker sandbox mounts; detected from the container mounts when empty.
     HOST_WORKSPACES_DIR: ${HOST_WORKSPACES_DIR:-}
     PIPELINE_FAKE_STAGES: ${PIPELINE_FAKE_STAGES:-0}
+    # Model endpoint (harness/llm_config.py): OpenRouter by default, or any OpenAI-compatible server.
+    LLM_BASE_URL: ${LLM_BASE_URL:-https://openrouter.ai/api/v1}
+    LLM_API_KEY: ${LLM_API_KEY:-}
+    LLM_MODEL: ${LLM_MODEL:-qwen/qwen3.8-27b}
+    LLM_PROVIDER: ${LLM_PROVIDER-DeepInfra}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   volumes:
     - ./workspaces:/app/workspaces

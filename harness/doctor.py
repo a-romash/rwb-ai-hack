@@ -10,6 +10,8 @@ import sys
 import time
 from pathlib import Path
 
+from harness import llm_config
+
 
 def _backend_imports():
     root = Path(__file__).resolve().parent.parent
@@ -55,8 +57,8 @@ def _broker():
 def _model():
     from harness.agent import OpenRouter, load_dotenv
     load_dotenv()
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        raise RuntimeError("OPENROUTER_API_KEY не задан")
+    if not llm_config.api_key() and llm_config.key_required():
+        raise RuntimeError("LLM_API_KEY не задан")
     client = OpenRouter(thinking=False, max_output_tokens=64, retries=1)
     result = client.complete([{"role": "user", "content": 'Return JSON: {"ok": true}'}], tools=None,
                              response_format={"type": "json_object"})
@@ -110,6 +112,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[OK] {name}: {detail}")
         except Exception as exc:
             from harness.agent import _redact
-            print(f"[ERROR] {name}: {_redact(str(exc), os.environ.get('OPENROUTER_API_KEY'))}")
+            print(f"[ERROR] {name}: {_redact(str(exc), llm_config.api_key())}")
             success = False
     return 0 if success else 1
