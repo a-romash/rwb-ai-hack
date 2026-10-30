@@ -7,10 +7,14 @@ from harness.fakes import workspace_path
 
 
 def execute(inp,workspace,llm,sandbox):
+    workspace=workspace.resolve()
     analysis=read(workspace,inp.artifacts,'analysis',optional=True)
     app=read(workspace,inp.artifacts,'app',optional=True)
     verification=read(workspace,inp.artifacts,'verification',optional=True)
-    snapshot=inp.snapshot or {};metrics=snapshot.get('metrics',{})
+    snapshot=inp.snapshot or {}
+    from stages.report.documents import metrics as calculate_metrics,documents
+    develop=read(workspace,inp.artifacts,'develop',optional=True)
+    metrics=calculate_metrics(snapshot,develop,workspace,len(analysis.get('acceptance',[])))
     ac=[]
     for item in analysis.get('acceptance',[]):
         state=verification.get('ac_status',{}).get(item['id'],{})
@@ -27,6 +31,14 @@ def execute(inp,workspace,llm,sandbox):
         narrative=llm(task_class='writer',system='Write a short Russian summary without numeric literals. Use {{ac:AC-ID}} for AC references. Never invent success or measurements.',user=json.dumps({'status':report.run.status,'not_done':missing},ensure_ascii=False),output='text')
     except BudgetExceeded:pass
     placeholders={'ac:'+a.id:a.status for a in ac}
+    for key,value in app.get('params',{}).items():
+        placeholders['param:'+key]=str(value.get('value') if isinstance(value,dict) else value)
+    def flatten(prefix,value):
+        if isinstance(value,dict):
+            for key,item in value.items():flatten(prefix+'.'+key if prefix else key,item)
+        elif not isinstance(value,list):placeholders['metric:'+prefix]='неизвестно' if value is None else str(value)
+    flatten('',metrics)
+    write(workspace,'reports/narrative.json',{'text':narrative})
     def replace(match):
         key=match.group(1)
         if key not in placeholders:raise ContractError('Неизвестный плейсхолдер '+key)
@@ -34,14 +46,8 @@ def execute(inp,workspace,llm,sandbox):
     rendered=re.sub(r'\{\{([^{}]+)\}\}',replace,narrative)
     text='# Отчёт\n\n'+rendered+'\n\n| AC | Статус | Тестов |\n|---|---|---|\n'+''.join(f'| {a.id} | {a.status} | {a.tests} |\n' for a in ac)
     target=workspace_path(workspace,'reports/report.md');target.write_text(text,encoding='utf-8')
-    docs=workspace_path(workspace,'product/docs');docs.mkdir(parents=True,exist_ok=True)
-    (docs/'index.md').write_text(text,encoding='utf-8')
-    for role,data in analysis_roles(analysis,app).items():
-        safe=re.sub(r'[^a-zA-Z0-9_-]','_',role)
-        (docs/f'role-{safe}.md').write_text('# '+data+'\n\nСценарии не подтверждены E2E; скриншоты отсутствуют.\n',encoding='utf-8')
-    (docs/'system.md').write_text('# Система\n\n```json\n'+json.dumps(app,ensure_ascii=False,indent=2)+'\n```\n',encoding='utf-8')
-    (docs/'operations.md').write_text('# Эксплуатация\n\nЗапуск: `docker compose -f infra/docker-compose.yml up -d --wait`.\nПроверяйте health сервисов и отчёт verification.json.\n',encoding='utf-8')
-    workspace_path(workspace,'product/mkdocs.yml').write_text('site_name: Документация продукта\ntheme:\n  name: material\ndocs_dir: docs\n',encoding='utf-8')
+    ui=read(workspace,inp.artifacts,'ui',optional=True)
+    documents(workspace,analysis,app,ui,verification,report,text)
     return StageOutput(artifacts={'report':'reports/report.json','report_markdown':'reports/report.md','docs':'product/docs'},summary='Отчёт сформирован из фактических результатов')
 
 

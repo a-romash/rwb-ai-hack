@@ -4,7 +4,7 @@ import re
 from contracts.stage import StageOutput,ContractError,BudgetExceeded
 from contracts.verification import TestsManifest,PlannedTest
 from harness.fakes import workspace_path
-from stages.quality import read,write,junit
+from stages.quality import read,write,junit,assertion_failure
 from stages.tests.lint import lint
 
 
@@ -17,8 +17,15 @@ def context(analysis,app,hooks,openapi,ac):
 
 
 def execute(inp,workspace,llm,sandbox):
+    workspace=workspace.resolve()
     analysis=read(workspace,inp.artifacts,'analysis');app=read(workspace,inp.artifacts,'app')
     hooks=read(workspace,inp.artifacts,'hooks');api=read(workspace,inp.artifacts,'openapi')
+    # Save neutral scaffold implementations for independent dispute red-proof.
+    stubs={}
+    for hook in hooks:
+        target=workspace_path(workspace,'product/'+hook['file'])
+        if target.is_file():stubs[hook['id']]={'file':'product/'+hook['file'],'source':target.read_text()}
+    write(workspace,'reports/redproof-stubs.json',stubs)
     tests=[]
     for ac in analysis.get('acceptance',[]):
         ident=ac['id']
@@ -46,7 +53,7 @@ def execute(inp,workspace,llm,sandbox):
             result=sandbox.run('test','backend',filter=t.ac)
             cases=junit(workspace,result,[t])
             failed=[c for c in cases if c.status=='failed']
-            assertion=any(c.message and ('assert' in c.message.lower() or 'xunit' in c.message.lower()) for c in failed)
+            assertion=any(assertion_failure(c) for c in failed)
             t.failure_kind='assertion' if assertion else 'setup' if failed else 'none' if all(c.status=='passed' for c in cases) else 'unknown'
             t.red_proof=None if t.neutral else assertion
     else:
@@ -64,6 +71,9 @@ def save(workspace,manifest):
                 if path.is_file() and not any(part in ('bin','obj','node_modules') for part in path.parts):
                     relative=str(path.relative_to(workspace));workspace_path(workspace,relative)
                     manifest.hashes[relative]=hashlib.sha256(path.read_bytes()).hexdigest()
+    for relative in ('product/admin-web/playwright.config.ts','product/mobile-web/playwright.config.ts','product/admin-web/jest.config.cjs','product/mobile-web/jest.config.cjs'):
+        path=workspace_path(workspace,relative)
+        if path.is_file():manifest.hashes[relative]=hashlib.sha256(path.read_bytes()).hexdigest()
     write(workspace,'reports/tests.json',manifest.model_dump())
 
 
@@ -81,7 +91,7 @@ def repair(inp,workspace,llm,findings, *, sandbox=None):
         build=sandbox.run('build','backend');data.build_ok=build.ok
         result=sandbox.run('test','backend',filter=t.ac) if build.ok else None
         cases=junit(workspace,result,[t]) if result else []
-        assertion=any(c.status=='failed' and c.message and ('assert' in c.message.lower() or 'xunit' in c.message.lower()) for c in cases)
+        assertion=any(c.status=='failed' and assertion_failure(c) for c in cases)
         t.failure_kind='compile' if not build.ok else 'assertion' if assertion else 'none' if cases and all(c.status=='passed' for c in cases) else 'unknown'
         t.red_proof=None if t.neutral else assertion
     save(workspace,data)

@@ -1,0 +1,14 @@
+{
+  "status": "succeeded",
+  "metrics": {
+    "totals": {
+      "tokens_in": 100,
+      "tokens_out": 50,
+      "tokens_cached": 0,
+      "tokens_reasoning": 0,
+      "manual_interventions": 0
+    },
+    "by_stage": [],
+    "by_task_class": []
+  }
+}

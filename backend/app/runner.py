@@ -77,7 +77,7 @@ def advance(run_id):
             has_flags = session.scalar(select(SpecFlag.id).where(SpecFlag.run_id == run_id).limit(1)) is not None
             checks = session.scalars(select(GateResult).join(StageRun).where(StageRun.run_id == run_id)).all()
             unchecked = any(finding.get('code') == 'GATE_MISSING' for check in checks for finding in check.findings)
-            run.status = 'failed' if failed or report.status == 'failed' else ('partial' if has_flags or unchecked else 'succeeded')
+            run.status = 'failed' if failed or report.status == 'failed' else result_status(session, run_id, stages)
             run.finished_at = utc_now()
             _event(session, run.id, 'run.finished', {'status': run.status})
     if pending:
@@ -135,6 +135,10 @@ def _execute(stage_id):
         else:
             class LazySandbox:
                 _instance = None
+                def approve_test_change(self, path, dispute_id, gate):
+                    from app.test_integrity import approve_test_change
+                    with SessionLocal.begin() as session:
+                        approve_test_change(session, run_id, root, path, dispute_id, gate)
                 def run(self, *args, **kwargs):
                     if self._instance is None:
                         import yaml
@@ -160,8 +164,14 @@ def _execute(stage_id):
         output = run_stage_locally(module, inp, root, llm, sandbox)
         gates = []
         for name in (() if output.questions and inp.autonomy in ('A0', 'A1') else STAGES_BY_KEY[stage].gates):
-            output, results = run_gate(name, module, inp, root, llm, output, allow_missing=fake, sandbox=sandbox)
+            if fake:
+                from contracts.gates import GateResult as GateModel, Finding
+                results = [GateModel(gate=name, passed=True, findings=[Finding(path='', code='GATE_MISSING', severity='warning', message='Фейковый этап не проверен')])]
+            else:
+                output, results = run_gate(name, module, inp, root, llm, output, allow_missing=False, sandbox=sandbox)
             gates.extend((name, n, value) for n, value in enumerate(results))
+        with SessionLocal() as session:
+            test_hashes = [(item.path, item.hash) for item in session.scalars(select(TestHash).where(TestHash.run_id == run_id)).all()]
         for path, digest in frozen:
             if describe(root, path)[0] != digest:
                 raise ContractError(f'Замороженный артефакт изменён: {path}')
@@ -355,7 +365,15 @@ def result_status(session, run_id, latest):
     ids = [row.id for row in latest.values()]
     checks = session.scalars(select(GateResult).where(GateResult.stage_run_id.in_(ids))).all()
     flags = session.scalar(select(SpecFlag.id).where(SpecFlag.run_id == run_id).limit(1))
-    return 'partial' if flags or any(f.get('code') == 'GATE_MISSING' for g in checks for f in g.findings) else 'succeeded'
+    verification = session.scalar(select(Artifact).where(Artifact.stage_run_id.in_(ids), Artifact.name == 'verification').order_by(Artifact.created_at.desc()).limit(1))
+    quality_partial = False
+    if verification:
+        from harness.fakes import workspace_path
+        run = session.get(Run, run_id)
+        data = json.loads(workspace_path(Path(run.workspace_path), verification.path).read_text())
+        quality_partial = any(not value.get('passes') or not value.get('implemented') for value in data.get('ac_status', {}).values())
+        quality_partial = quality_partial or any(m.get('status') != 'killed' for m in data.get('mutations', []))
+    return 'partial' if flags or quality_partial or any(f.get('code') == 'GATE_MISSING' for g in checks for f in g.findings) else 'succeeded'
 
 
 def input_hash(session, run, latest, key):

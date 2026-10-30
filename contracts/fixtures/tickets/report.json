@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "run": {
+    "id": "tickets",
+    "status": "succeeded",
+    "autonomy": "A2",
+    "started_at": null,
+    "finished_at": null
+  },
+  "verdict": {
+    "ac_total": 1,
+    "ac_green": 1,
+    "ac_red": 0,
+    "ac_not_implemented": 0
+  },
+  "ac": [
+    {
+      "id": "AC-01",
+      "status": "green",
+      "tests": 1,
+      "hooks": [],
+      "reason": null
+    }
+  ],
+  "assumptions": [],
+  "flags": [],
+  "checks": {
+    "build": {
+      "backend": true,
+      "admin": true,
+      "pwa": true
+    },
+    "tests": [
+      {
+        "id": "Boundary",
+        "ac": "AC-01",
+        "level": "unit",
+        "file": "test.cs",
+        "status": "passed",
+        "message": null
+      }
+    ],
+    "mutations": [
+      {
+        "hook": "Allowed",
+        "status": "killed"
+      }
+    ],
+    "scans": [
+      {
+        "status": "completed",
+        "ok": true
+      }
+    ],
+    "stand": {
+      "up": true,
+      "smoke": true,
+      "e2e": {
+        "admin": true,
+        "pwa": true
+      }
+    }
+  },
+  "metrics": {
+    "totals": {
+      "tokens_in": 100,
+      "tokens_out": 50,
+      "tokens_cached": 0,
+      "tokens_reasoning": 0,
+      "manual_interventions": 0
+    },
+    "by_stage": [],
+    "by_task_class": [],
+    "attempts_per_hook": 1.0,
+    "first_pass_rate": 1.0,
+    "tokens_per_ac": 150.0,
+    "interventions": 0,
+    "deterministic_code_ratio": null
+  },
+  "not_done": [],
+  "links": {
+    "stand": null,
+    "docs": "product/docs/index.md",
+    "openapi": null
+  }
+}

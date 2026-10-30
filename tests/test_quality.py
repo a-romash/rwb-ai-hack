@@ -36,3 +36,16 @@ class QualityTests(unittest.TestCase):
             self.assertIn('page.goto("/items")',(root/files[0]).read_text())
             ui['walks']['US-1']['steps']=[{'scan':'unknown'}]
             with self.assertRaises(ContractError):generate(root,ui)
+
+    def test_mutation_restores_hook_on_sandbox_exception(self):
+        from stages.verify.mutations import run
+        from contracts.verification import PlannedTest
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);path=root/'product/hook.cs';path.parent.mkdir()
+            source=b'class Rule { public bool Check(int n) { return n>=5; } }'
+            path.write_bytes(source)
+            class Broken:
+                def run(self,*args,**kwargs):raise RuntimeError('tool failed')
+            with self.assertRaises(RuntimeError):
+                run(root,[{'id':'Rule','file':'hook.cs','refs':['AC-01']}],[PlannedTest(id='AC-01',ac='AC-01',file='test.cs',level='unit')],Broken())
+            self.assertEqual(path.read_bytes(),source)

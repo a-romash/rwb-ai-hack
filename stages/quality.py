@@ -1,5 +1,6 @@
 """Small shared QA artifact helpers; no database or platform imports."""
 import json
+import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from contracts.stage import ContractError
@@ -31,12 +32,18 @@ def junit(root, result, planned):
     cases=[]
     for node in tree.iter('testcase'):
         ident=node.attrib.get('classname','')+'.'+node.attrib.get('name','')
-        match=next((t for t in planned if t.id==ident or t.id==node.attrib.get('name')),None)
+        properties={p.attrib.get('name'):p.attrib.get('value') for p in node.findall('./properties/property')}
+        ac=properties.get('AC')
+        match=next((t for t in planned if t.id==ident or t.id==node.attrib.get('name') or t.ac==ac or t.ac.replace('-','_') in ident),None)
         failure=node.find('failure');error=node.find('error')
         bad=failure if failure is not None else error
         status='skipped' if node.find('skipped') is not None else 'failed' if bad is not None else 'passed'
         cases.append(TestCase(id=ident,ac=match.ac if match else None,level=match.level if match else 'unit',file=match.file if match else node.attrib.get('file',''),status=status,message=(bad.attrib.get('type','')+': '+bad.attrib.get('message','')) if bad is not None else None))
     for t in planned:
-        if not any(c.id==t.id or c.id.endswith('.'+t.id) for c in cases):
+        if not any(c.ac==t.ac for c in cases):
             cases.append(TestCase(id=t.id,ac=t.ac,level=t.level,file=t.file,status='not_run',message='Тест отсутствует в JUnit'))
     return cases
+
+
+def assertion_failure(case):
+    return case.status == 'failed' and bool(re.search(r'Assert\.|(?:Equal|True|False|Contains|DoesNotContain|IsType|NotEqual|Assertion)Exception',case.message or ''))

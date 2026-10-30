@@ -6,6 +6,7 @@ from stages.report import analysis_roles
 
 
 def check(workspace,artifacts):
+    workspace=workspace.resolve()
     report=read(workspace,artifacts,'report');analysis=read(workspace,artifacts,'analysis',optional=True);app=read(workspace,artifacts,'app',optional=True)
     findings=[];docs=workspace_path(workspace,artifacts.get('docs','product/docs'))
     text='\n'.join(p.read_text(encoding='utf-8') for p in docs.rglob('*.md')) if docs.exists() else ''
@@ -15,6 +16,13 @@ def check(workspace,artifacts):
     for role in analysis_roles(analysis,app):
         safe=re.sub(r'[^a-zA-Z0-9_-]','_',role)
         if not (docs/f'role-{safe}.md').is_file():add('DOC_ROLE_MISSING','Нет руководства роли')
+    narrative=workspace_path(workspace,'reports/narrative.json')
+    if narrative.is_file():
+        import json
+        source=json.loads(narrative.read_text()).get('text','')
+        # Ignore identifiers and placeholder contents, inspect only model prose.
+        prose=re.sub(r'\{\{.*?\}\}|(?:AC|BR|REQ|US)-[A-Za-z0-9_-]+','',source)
+        if re.search(r'\b\d+(?:[.,]\d+)?\b',prose):add('DOC_NUMBER_LITERAL','Числа в тексте модели должны быть плейсхолдерами','warning')
     if re.search(r'\{\{.+?\}\}',text):add('DOC_PLACEHOLDER','Плейсхолдер не разрешён')
     for path in docs.rglob('*.md') if docs.exists() else []:
         for link in re.findall(r'\]\(([^)]+)\)',path.read_text()):

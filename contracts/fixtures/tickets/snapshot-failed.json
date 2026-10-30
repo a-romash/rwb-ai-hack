@@ -1,0 +1,17 @@
+{
+  "status": "failed",
+  "metrics": {
+    "totals": {
+      "tokens_in": null,
+      "tokens_out": null,
+      "unknown_usage_calls": 1
+    }
+  },
+  "stages": [
+    {
+      "stage": "spec",
+      "status": "failed",
+      "error": "test"
+    }
+  ]
+}

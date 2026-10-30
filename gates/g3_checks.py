@@ -16,6 +16,7 @@ def check(workspace,artifacts):
     if not data.mutations:add('mutations','MUTATION_NOT_RUN','Мутации не проверены','warning')
     for scan in data.scans:
         if scan.get('severity','').lower() in ('high','critical'):add('scans','SCAN_HIGH','Опасная находка сканера')
+        if scan.get('status')=='completed' and not scan.get('ok',False):add('scans','SCAN_FAILED','Сканер завершился ошибкой')
         if scan.get('status')=='not_run':add('scans','SCAN_NOT_RUN','Сканирование не подтверждено')
     for t in data.tests:
         if t.status in ('skipped','not_run'):add('tests/'+t.id,'SKIPPED_AS_PASS','Проверка не выполнена')

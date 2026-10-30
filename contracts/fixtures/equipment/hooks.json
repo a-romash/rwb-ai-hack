@@ -1,0 +1,29 @@
+[
+  {
+    "id": "Allowed",
+    "file": "backend/src/App.Domain/Hooks/Allowed.cs",
+    "signature": "public static bool Evaluate(int value, int minimum)",
+    "refs": [
+      "AC-01"
+    ],
+    "contract": {
+      "summary": "Допуск начиная с порога"
+    },
+    "examples": [
+      {
+        "input": 4,
+        "expected": false
+      },
+      {
+        "input": 5,
+        "expected": true
+      },
+      {
+        "input": 6,
+        "expected": true
+      }
+    ],
+    "allowed_api": [],
+    "stub": "neutral"
+  }
+]

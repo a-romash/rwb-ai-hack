@@ -210,7 +210,7 @@ class DockerSandbox:
         if not isinstance(reports, dict):
             raise ContractError("Некорректные пути отчётов")
         for kind, pattern in reports.items():
-            if kind not in ("junit", "sarif", "coverage") or not isinstance(pattern, str):
+            if kind not in ("junit", "sarif", "coverage", "json") or not isinstance(pattern, str):
                 raise ContractError("Некорректный тип отчёта")
             workspace_path(self.workspace, pattern)
             for file in sorted(self.workspace.glob(pattern)):

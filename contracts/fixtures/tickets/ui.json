@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "screens": {
+    "List": {
+      "platform": "web",
+      "route": "/items",
+      "roles": [
+        "manager"
+      ],
+      "title": "Список",
+      "actions": [
+        {
+          "command": "Check",
+          "testid": "items.check"
+        }
+      ]
+    }
+  },
+  "walks": {
+    "US-01": {
+      "role": "manager",
+      "platform": "web",
+      "covers": [
+        "AC-01"
+      ],
+      "steps": [
+        {
+          "open": "List"
+        },
+        {
+          "tap": "Check"
+        },
+        {
+          "expect": {
+            "testid": "items.result",
+            "text": "Разрешено"
+          }
+        }
+      ]
+    }
+  }
+}

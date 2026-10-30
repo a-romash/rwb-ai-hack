@@ -3,7 +3,7 @@ import hashlib
 from contracts.verification import Dispute,DisputeDecision,TestsManifest
 from contracts.stage import ContractError
 from harness.fakes import workspace_path
-from stages.quality import read,write,junit
+from stages.quality import read,write,junit,assertion_failure
 from stages.tests import save
 from stages.tests.lint import lint
 
@@ -25,11 +25,29 @@ def resolve(dispute:Dispute,workspace,llm,sandbox)->DisputeDecision:
             if lint(code,test.ac):raise ContractError('Исправление не прошло линтер')
             path.write_text(code)
             if not sandbox.run('build','backend').ok:raise ContractError('Исправление не собрано')
-            cases=junit(workspace,sandbox.run('test','backend',filter=test.ac),[test])
-            valid=all(c.status=='passed' for c in cases) if test.neutral else any(c.status=='failed' and c.message and ('assert' in c.message.lower() or 'xunit' in c.message.lower()) for c in cases)
+            stubs=read(workspace,{'stubs':'reports/redproof-stubs.json'},'stubs')
+            stub=stubs.get(dispute.hook)
+            if not stub:raise ContractError('Нет сохранённой заглушки для спора')
+            hook_path=workspace_path(workspace,stub['file']);hook_original=hook_path.read_bytes()
+            try:
+                hook_path.write_text(stub['source'])
+                cases=junit(workspace,sandbox.run('test','backend',filter=test.ac),[test])
+            finally:hook_path.write_bytes(hook_original)
+            valid=all(c.status=='passed' for c in cases) if test.neutral else any(c.status=='failed' and assertion_failure(c) for c in cases)
             if not valid:raise ContractError('Red-proof исправления не подтверждён')
+            test.failure_kind='none' if test.neutral else 'assertion'
+            test.red_proof=None if test.neutral else True
+            test.lint=[]
+            save(workspace,plan)
+            from gates.g2_redproof import check
+            gate=check(workspace,{'tests':'reports/tests.json'})
+            if not gate.passed:raise ContractError('Исправление не прошло G2')
+            accept=getattr(sandbox,'approve_test_change',None)
+            if accept is None:raise ContractError('Не подключено доверенное принятие хэша платформой')
+            accept(test.file, hashlib.sha256((test.id+dispute.reason).encode()).hexdigest(), gate)
         except Exception:
             path.write_bytes(original)
+            save(workspace,plan)
             decision=DisputeDecision(decision='reject',reason='Исправление не прошло повторную проверку')
     records.append({'test':test.id,'ac':test.ac,'decision':decision.decision,'reason':decision.reason,'old_hash':hashlib.sha256(original).hexdigest(),'new_hash':hashlib.sha256(path.read_bytes()).hexdigest()})
     write(workspace,'reports/disputes.json',records)
