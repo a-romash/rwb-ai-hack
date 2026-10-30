@@ -198,7 +198,12 @@ def endpoints_cs(app: dict) -> str:
             "            return Results.Ok(item);",
             "        });",
         ]
-    out += ["    }", ""]
+    out += ["    }", "",
+            "    /// <summary>Computed fields of a record; the seed loader uses it like the endpoints do.</summary>",
+            "    public static void Compute(object item, TimeProvider time)", "    {", "        switch (item)", "        {"]
+    for entity in sorted(entities):
+        out.append(f"            case {pascal(entity)} record: Compute{pascal(entity)}(record, time); break;")
+    out += ["        }", "    }", ""]
     for entity in sorted(entities):
         out += [f"    private static void Compute{pascal(entity)}({pascal(entity)} item, TimeProvider time)", "    {",
                 *_computed(app, entity), "    }", ""]

@@ -13,4 +13,8 @@ public static class GeneratedEndpoints
     public static void Map(RouteGroupBuilder api)
     {
     }
+
+    public static void Compute(object item, TimeProvider time)
+    {
+    }
 }

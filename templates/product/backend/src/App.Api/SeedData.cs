@@ -6,7 +6,8 @@ namespace App.Api;
 /// <summary>Demo rows from app.json seed (seed.json, written by the scaffold stage) for a fresh stand.</summary>
 public static class SeedData
 {
-    public static void Load(AppDbContext db, string path, JsonSerializerOptions options, ILogger logger)
+    /// <param name="compute">Fills computed fields (due dates and the like) as the API does on create.</param>
+    public static void Load(AppDbContext db, string path, JsonSerializerOptions options, ILogger logger, Action<object>? compute = null)
     {
         if (!File.Exists(path))
         {
@@ -25,7 +26,9 @@ public static class SeedData
             {
                 try
                 {
-                    db.Add(row.Deserialize(type, options)!);
+                    var item = row.Deserialize(type, options)!;
+                    compute?.Invoke(item);
+                    db.Add(item);
                 }
                 catch (JsonException exc)
                 {

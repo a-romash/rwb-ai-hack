@@ -90,7 +90,8 @@ using (var scope = app.Services.CreateScope())
     if (db.Database.EnsureCreated() && app.Configuration["Seed"] != "false")
     {
         SeedData.Load(db, Path.Combine(app.Environment.ContentRootPath, "seed.json"),
-            app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions, app.Logger);
+            app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions, app.Logger,
+            item => GeneratedEndpoints.Compute(item, app.Services.GetRequiredService<TimeProvider>()));
     }
 }
 
