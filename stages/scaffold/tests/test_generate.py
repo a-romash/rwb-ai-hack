@@ -13,9 +13,12 @@ EQUIPMENT_FILES = [
     "product/admin-web/e2e/pages/ItemList.ts",
     "product/admin-web/src/app/generated/routes.ts",
     "product/backend/src/App.Domain/Generated/IMaxLaptopsHook.cs",
+    "product/backend/src/App.Domain/Generated/Model.cs",
+    "product/backend/src/App.Domain/Generated/Params.cs",
     "product/backend/src/App.Domain/Hooks/MaxLaptopsHook.cs",
     "product/backend/tests/App.Generated.Tests/PermissionsAndTransitions.cs",
     "product/hooks.json",
+    "product/infra/roles.json",
     "product/openapi.json",
 ]
 

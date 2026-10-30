@@ -8,7 +8,10 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
-from .models import HookContract, HookExample, HookSpec, StageResult
+from contracts.stage import StageOutput
+
+from .domain import SCALARS, hook_input, model_cs, param_type, params_cs
+from .models import HookContract, HookExample, HookSpec
 
 # ponytail: mobile screens, kafka topics, and EF migrations are out of this stage.
 
@@ -19,18 +22,6 @@ _METHODS = {
     "decider": "Decide",
     "policy": "Allow",
     "reaction": "React",
-}
-_OUT = {
-    "datetime": "DateTimeOffset",
-    "date": "DateOnly",
-    "string": "string",
-    "text": "string",
-    "int": "int",
-    "decimal": "decimal",
-    "money": "decimal",
-    "bool": "bool",
-    "duration": "string",
-    "interval": "string",
 }
 _KEYWORDS = {
     "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char",
@@ -46,7 +37,7 @@ _KEYWORDS = {
 }
 
 
-def execute(inp, workspace: Path, llm, sandbox) -> StageResult:
+def execute(inp, workspace: Path, llm, sandbox) -> StageOutput:
     """Scaffold product/. llm and sandbox are unused."""
     _ = (llm, sandbox)
     workspace = Path(workspace)
@@ -54,6 +45,9 @@ def execute(inp, workspace: Path, llm, sandbox) -> StageResult:
     app = _load(workspace, _rel(artifacts, "app", "app.json"), "app.json")
     ui = _load(workspace, _rel(artifacts, "ui", "ui.json"), "ui.json")
     _copy_template(workspace)
+    _write(workspace, "product/backend/src/App.Domain/Generated/Model.cs", model_cs(app))
+    _write(workspace, "product/backend/src/App.Domain/Generated/Params.cs", params_cs(app))
+    _write(workspace, "product/infra/roles.json", _dump(sorted((app.get("roles") or {}).keys())))
     built = _hooks(app)
     for hook in built:
         _write(workspace, f"product/backend/src/App.Domain/Generated/I{hook['name']}Hook.cs", hook["interface"])
@@ -84,7 +78,7 @@ def execute(inp, workspace: Path, llm, sandbox) -> StageResult:
         _counted(len(entities), "entity", "entities"),
         _counted(len(screens), "screen", "screens"),
     )) + "."
-    return StageResult(
+    return StageOutput(
         artifacts={
             "hooks": "product/hooks.json",
             "openapi": "product/openapi.json",
@@ -254,20 +248,14 @@ def _camel(name: str) -> str:
     return name[:1].lower() + name[1:]
 
 
-def _scalar(declared) -> str:
-    if not isinstance(declared, str):
-        return "string"
-    return _OUT.get(declared, "string")
-
-
 def _return_type(kind: str, hook: dict) -> str:
     if kind != "calculator":
         return {"validator": "bool", "policy": "bool", "decider": "string", "reaction": "void"}[kind]
     out = hook.get("out")
     if not isinstance(out, str) or out == "":
         return "DateTimeOffset"
-    if out in _OUT:
-        return _OUT[out]
+    if out in SCALARS:
+        return SCALARS[out]
     if _ID.fullmatch(out):
         return out
     return "DateTimeOffset"
@@ -291,15 +279,13 @@ def _parameters(kind: str, hook: dict, app: dict) -> list[tuple[str, str]]:
 
     if kind == "decider":
         add("string", "initialState", camel=False)
-    for type_name in sorted(set(_strs(hook.get("in")))):
-        _ident(type_name)
-        add(type_name, type_name, camel=True)
+    for token in sorted(set(_strs(hook.get("in")))):
+        cs_type, name = hook_input(token, app)
+        add(cs_type, name, camel=False)
     params = app.get("params") if isinstance(app.get("params"), dict) else {}
     for param in sorted(set(_strs(hook.get("params")))):
         _ident(param)
-        declared = params.get(param)
-        cs_type = _scalar(declared.get("type") if isinstance(declared, dict) else None)
-        add(cs_type, param, camel=False)
+        add(param_type(params.get(param)), param, camel=False)
     return ordered
 
 
