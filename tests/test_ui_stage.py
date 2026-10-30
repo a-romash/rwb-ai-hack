@@ -45,6 +45,12 @@ class BaseTest(unittest.TestCase):
     def setUp(self):
         self.ui = derive_base(APP)
 
+    def test_partial_spec_without_entities_or_access_has_clear_error(self):
+        for app in ({'entities': {}, 'roles': {}, 'permissions': []},
+                    {**APP, 'permissions': [], 'commands': {}}):
+            with self.subTest(app=app), self.assertRaisesRegex(ContractError, 'спецификац.*сущност.*прав'):
+                derive_base(app)
+
     def test_screens_by_permissions(self):
         self.assertEqual(set(self.ui.screens), {"TicketList", "TicketDetail", "TicketForm", "ResolveTicketForm"})
         self.assertEqual(self.ui.screens["TicketList"].roles, ["dispatcher", "employee", "engineer"])

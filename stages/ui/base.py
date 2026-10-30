@@ -6,6 +6,7 @@ The model only refines this base afterwards (platforms, extra widgets, walks, te
 """
 import re
 
+from contracts.stage import ContractError
 from contracts.ui import REQUIRED_STATES, Action, Filter, Screen, Source, UiSpec, Widget, screen_kebab
 from stages.ui.appview import AppView
 
@@ -130,4 +131,7 @@ def derive_base(raw_app: dict) -> UiSpec:
             menus[role] = {"web": entries}
             home[role] = {"web": entries[0]}
 
+    if not screens:
+        raise ContractError('В спецификации нет сущностей с правами доступа для построения интерфейса. '
+                            'Проверьте результат этапа «Спецификация» и бюджет прогона.')
     return UiSpec(schema_version=1, screens=screens, menus=menus, home=home)
