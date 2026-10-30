@@ -92,6 +92,6 @@ def validate_input(inp: StageInput, expected: str) -> StageInput:
         result = StageInput.model_validate(inp)
     except (ValueError, TypeError) as exc:
         raise ContractError("Вход этапа не соответствует StageInput") from exc
-    if result.stage != expected or result.attempt < 0:
-        raise ContractError(f"Ожидался этап {expected} и неотрицательная попытка")
+    if result.stage != expected or result.attempt < 1:
+        raise ContractError(f"Ожидался этап {expected} и попытка не меньше 1")
     return result

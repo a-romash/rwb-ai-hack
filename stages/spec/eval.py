@@ -61,7 +61,7 @@ def evaluate(name: str, requirements: Path | None, workspace: Path, *, mode: str
     artifacts: dict[str, str] = {}
     flags: list[ElementFlag] = []
     try:
-        inp = StageInput(run_id=f"eval-{name}", stage="analysis", attempt=0, requirements=text, artifacts=artifacts)
+        inp = StageInput(run_id=f"eval-{name}", stage="analysis", attempt=1, requirements=text, artifacts=artifacts)
         output = analyze(inp, workspace, llm, FakeSandbox())
         flags.extend(output.flags)
         artifacts.update(output.artifacts)
@@ -77,7 +77,7 @@ def evaluate(name: str, requirements: Path | None, workspace: Path, *, mode: str
             gate = g0(workspace, artifacts)
         result["g0_after"] = len(gate.findings)
         g0_errors = _errors(gate)
-        inp = inp.model_copy(update={"stage": "spec", "attempt": 0, "artifacts": artifacts})
+        inp = inp.model_copy(update={"stage": "spec", "attempt": 1, "artifacts": artifacts})
         output = specify(inp, workspace, llm, FakeSandbox())
         flags.extend(output.flags)
         artifacts.update(output.artifacts)

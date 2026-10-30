@@ -248,7 +248,7 @@ def _contains(parent: tuple[str | int, ...], child: tuple[str | int, ...]) -> bo
     return child[:len(parent)] == parent
 
 
-def dependents(app: App, path: str) -> list[str]:
+def dependents(app: App | dict, path: str) -> list[str]:
     """Возвращает прямые и транзитивные зависимости, включая циклы.
 
     Имена разрешаются в контексте свойства (role, ref, trigger и т. п.).
@@ -256,6 +256,8 @@ def dependents(app: App, path: str) -> list[str]:
     Для непрозрачных разделов учитываются явные имена/пути, но новая грамматика
     выражений здесь не вводится. Исходный элемент в результат не включается.
     """
+    if not isinstance(app, App):
+        app = App.model_validate(app)
     data = app.model_dump(mode="json", by_alias=True, exclude_none=True)
     graph: dict[tuple[str | int, ...], set[tuple[str | int, ...]]] = {}
 

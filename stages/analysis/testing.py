@@ -45,5 +45,5 @@ def run_stage_locally(execute: Callable, *, stage: str, requirements: str,
     workspace.mkdir(parents=True, exist_ok=True)
     (workspace / "input").mkdir(exist_ok=True)
     (workspace / "input/requirements.md").write_text(requirements, encoding="utf-8")
-    inp = StageInput(run_id="local", stage=stage, attempt=0, requirements=requirements, artifacts=artifacts or {}, autonomy=autonomy, answers=answers or {})
+    inp = StageInput(run_id="local", stage=stage, attempt=1, requirements=requirements, artifacts=artifacts or {}, autonomy=autonomy, answers=answers or {})
     return execute(inp, workspace, llm, FakeSandbox())

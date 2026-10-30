@@ -25,7 +25,7 @@ class SpecStageTests(unittest.TestCase):
         self.requirements = (ROOT / "contracts/fixtures/tickets/requirements.md").read_text()
         (self.workspace / "spec/analysis.json").write_text((ROOT / "contracts/fixtures/tickets/analysis.json").read_text())
         self.responses = json.loads((Path(__file__).parent / "fixtures/tickets-responses.json").read_text())
-        self.inp = StageInput(run_id="test", stage="spec", attempt=0, requirements=self.requirements, artifacts={"analysis": "spec/analysis.json", "app": "spec/app.json"})
+        self.inp = StageInput(run_id="test", stage="spec", attempt=1, requirements=self.requirements, artifacts={"analysis": "spec/analysis.json", "app": "spec/app.json"})
 
     def test_spec_seven_steps_seventeen_sections(self) -> None:
         llm = FakeLLM(self.responses)
