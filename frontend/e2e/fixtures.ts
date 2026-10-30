@@ -38,6 +38,8 @@ export interface MockOptions {
   failList?: boolean;
   /** Прогоны конвейера проекта (`/api/projects/{id}/runs`); первый — последний. */
   runs?: Record<string, unknown>[];
+  /** Уже приложенные к проекту файлы (`/api/projects/{id}/attachments`). */
+  attachments?: {name: string; size: number}[];
 }
 
 export interface MockApi {
@@ -110,6 +112,22 @@ export async function mockApi(page: Page, options: MockOptions = {}): Promise<Mo
     log(route);
     const data = route.request().postDataJSON() as {agent: string};
     return route.fulfill({status: 202, json: {id: 'job-0001-abcdef', status: 'queued', agent: data.agent, subtype: null, result: null, num_turns: null}});
+  });
+
+  // Как backend/app/projects.py: тело — сам файл, имя — параметр name; формат проверяет сервер.
+  const attachments = [...(options.attachments ?? [])];
+  await page.route(/\/api\/projects\/[^/]+\/attachments(\?.*)?$/, async route => {
+    const request = route.request();
+    if (request.method() !== 'POST') return route.fulfill({json: attachments});
+    const name = new URL(request.url()).searchParams.get('name') ?? '';
+    const size = request.postDataBuffer()?.length ?? 0;
+    state.requests.push({method: 'POST', url: request.url(), body: {name, size, type: request.headers()['content-type']}});
+    if (!/^[\w.-]+\.(json|geojson|csv|txt|md|docx|pdf)$/i.test(name)) {
+      return route.fulfill({status: 422, json: {detail: 'Имя файла: буквы, цифры, точка, дефис; форматы json, geojson, csv, txt, md, docx, pdf'}});
+    }
+    const saved = {name, size};
+    attachments.splice(0, attachments.length, ...attachments.filter(file => file.name !== name), saved);
+    return route.fulfill({status: 201, json: saved});
   });
 
   const runs = [...(options.runs ?? [])];
