@@ -156,8 +156,8 @@ OK
 ## .venv/bin/python -m contracts.export
 
 ```text
-/home/haus/Projects/rwb-ai-hack/contracts/schemas/analysis.schema.json
-/home/haus/Projects/rwb-ai-hack/contracts/schemas/app.schema.json
+contracts/schemas/analysis.schema.json
+contracts/schemas/app.schema.json
 ```
 
 ## .venv/bin/python -m compileall -q contracts stages/analysis stages/spec gates

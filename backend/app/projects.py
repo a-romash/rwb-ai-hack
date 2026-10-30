@@ -1,8 +1,10 @@
+import os
 import re
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -118,3 +120,41 @@ def project_view(project, session):
         if states:
             area['status'] = next((state for state in ('failed','running','waiting_input','waiting_human','queued','stale','pending') if state in states), 'succeeded')
     return result
+
+
+# Formats the analysis stage reads (stages/analysis/inputs.py::ingest); a run copies them into input/.
+ATTACHMENT_NAME = re.compile(r"^[\w.-]{1,120}\.(json|geojson|csv|txt|md|markdown|docx|pdf)$")
+MAX_ATTACHMENT_BYTES = 64 * 1024 * 1024
+
+
+def attachments_dir(project_id: UUID) -> Path:
+    return Path(os.environ.get("WORKSPACES_DIR", "workspaces")).resolve() / str(project_id) / "attachments"
+
+
+def project_attachments(project_id: UUID) -> list[Path]:
+    folder = attachments_dir(project_id)
+    return sorted(p for p in folder.iterdir() if p.is_file()) if folder.is_dir() else []
+
+
+@router.post("/{project_id}/attachments", status_code=201)
+async def upload_attachment(project_id: UUID, request: Request, session: Database,
+                            name: Annotated[str, Query(description="Имя файла, например spb.json")]):
+    """Raw file body (application/octet-stream); the next run of the project receives it in input/."""
+    if not session.get(Project, project_id):
+        raise HTTPException(404, "Проект не найден")
+    if not ATTACHMENT_NAME.fullmatch(name) or name == "requirements.md":
+        raise HTTPException(422, "Имя файла: буквы, цифры, точка, дефис; форматы json, geojson, csv, txt, md, docx, pdf")
+    body = await request.body()
+    if not body or len(body) > MAX_ATTACHMENT_BYTES:
+        raise HTTPException(413, "Файл пустой или больше 64 МБ")
+    folder = attachments_dir(project_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / name).write_bytes(body)
+    return {"name": name, "size": len(body)}
+
+
+@router.get("/{project_id}/attachments")
+def list_attachments(project_id: UUID, session: Database):
+    if not session.get(Project, project_id):
+        raise HTTPException(404, "Проект не найден")
+    return [{"name": p.name, "size": p.stat().st_size} for p in project_attachments(project_id)]

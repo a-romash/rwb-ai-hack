@@ -27,6 +27,10 @@ class AppViewTest(unittest.TestCase):
         view = AppView(APP)
         self.assertTrue(view.event_exists("TicketTaken"))
         self.assertFalse(view.event_exists("TicketVanished"))
+        # Multi-word transition from the canonical spec: the name the ui stage derives must resolve.
+        canonical = AppView(json.loads((ROOT / "contracts" / "fixtures" / "tickets" / "app.json").read_text(encoding="utf-8")))
+        self.assertEqual(derived_event("Ticket", "take_overdue"), "TicketTakenOverdue")
+        self.assertTrue(canonical.event_exists("TicketTakenOverdue"))
 
     def test_roles_and_fields(self):
         view = AppView(APP)

@@ -99,7 +99,7 @@ class EvalGateway:
                         time.sleep(0.5)
                         continue
                     raise StageFailed(f"Провайдер модели вернул HTTP {status}") from None
-                except (urllib.error.URLError, TimeoutError) as exc:
+                except (urllib.error.URLError, TimeoutError):
                     if attempt == 0:
                         continue
                     raise StageFailed("Не удалось дождаться провайдера модели") from None

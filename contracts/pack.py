@@ -33,6 +33,7 @@ class Scan(BaseModel):
     model_config = ConfigDict(extra="forbid")
     image: str
     commands: list[list[str]]
+    reports: dict[str, str] | None = None
 
 
 class Pack(BaseModel):

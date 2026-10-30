@@ -1,0 +1,99 @@
+# CI of the platform itself (Поток). GitLab CI/CD 19.x, Docker executor.
+# The product the pipeline generates has its own CI: templates/product/.gitlab-ci.yml.
+# Tool images rwb/tool-* are local: build them on the runner host once with
+#   docker compose --profile tools build
+# and keep the runner's pull_policy at if-not-present.
+
+stages:
+  - lint
+  - test
+  - build
+  - security
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  npm_config_cache: "$CI_PROJECT_DIR/.cache/npm"
+
+default:
+  interruptible: true
+
+python:lint:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - pip install pyflakes==3.4.0
+    - python -m pyflakes backend/app backend/alembic harness gates contracts stages scripts tests templates/product/infra
+  cache:
+    key: pip
+    paths: [.cache/pip]
+
+python:test:
+  stage: test
+  image: python:3.12-slim
+  services:
+    - name: postgres:17.9-bookworm
+      alias: postgres
+  variables:
+    POSTGRES_USER: pipeline
+    POSTGRES_PASSWORD: pipeline
+    POSTGRES_DB: pipeline
+    POSTGRES_HOST: postgres
+  before_script:
+    # Run workspaces are git repositories, so the stage tests need git.
+    - apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+    - pip install -r backend/requirements.txt
+  script:
+    - sh scripts/test-all.sh
+  cache:
+    key: pip
+    paths: [.cache/pip]
+
+studio:build:
+  stage: test
+  image: node:22-bookworm
+  script:
+    - cd frontend
+    - npm ci --no-audit --no-fund
+    - npm run build
+  cache:
+    key: npm-studio
+    paths: [.cache/npm]
+
+studio:e2e:
+  stage: test
+  # Playwright with browsers; the API is mocked in every scenario (frontend/e2e/fixtures.ts).
+  image: rwb/tool-node:22
+  variables:
+    CI: "1"
+  script:
+    - cd frontend
+    - npm ci --no-audit --no-fund
+    - npx playwright test
+  artifacts:
+    when: always
+    paths: [frontend/playwright-report]
+    expire_in: 1 week
+  cache:
+    key: npm-studio
+    paths: [.cache/npm]
+
+images:build:
+  stage: build
+  # Needs a runner that mounts the host Docker socket (volumes = ["/var/run/docker.sock:/var/run/docker.sock"]).
+  image: docker:27-cli
+  script:
+    - docker compose build api frontend
+    - docker compose --profile tools build
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+security:
+  stage: security
+  image: rwb/tool-security:1
+  script:
+    - gitleaks detect --source . --no-git --redact
+    # Angular 20.1.6 is mandated by the case; the same pinned-stack policy as in the product.
+    - trivy fs --cache-dir /opt/trivy --skip-db-update --skip-java-db-update --offline-scan
+      --severity HIGH,CRITICAL --exit-code 1 --ignore-policy templates/product/infra/trivy-pinned-stack.rego
+      --skip-dirs node_modules,workspaces,.cache .

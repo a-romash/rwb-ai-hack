@@ -55,7 +55,8 @@ class HTTPTransport:
             payload['provider'] = {'order': [self.provider], 'allow_fallbacks': False, 'require_parameters': True}
             payload['reasoning'] = {'enabled': bool(effort)}
             if effort:
-                payload['reasoning'].update(effort=effort, max_tokens=reasoning_tokens)
+                # OpenRouter rejects effort together with max_tokens (HTTP 400); the token budget is the precise bound.
+                payload['reasoning']['max_tokens'] = reasoning_tokens
                 payload.update(top_p=.95, top_k=20)
         if schema:
             payload['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'response', 'strict': True, 'schema': schema}}
@@ -172,6 +173,13 @@ class Gateway:
                 if continuations >= 3:
                     raise ContractError('Ответ модели обрезан после трёх продолжений')
                 continuations += 1
+                if schema:
+                    # Structured output starts the JSON anew on every call, so parts cannot be glued: ask again with a larger answer budget.
+                    grown = min(limit * 2, window - count - reasoning_tokens)
+                    if grown <= limit:
+                        raise ContractError('Ответ модели не помещается в окно профиля')
+                    limit, content = grown, ''
+                    continue
                 messages.extend([{'role': 'assistant', 'content': part}, {'role': 'user', 'content': 'Продолжи точно с места остановки.'}])
                 continue
             try:

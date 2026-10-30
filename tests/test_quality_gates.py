@@ -52,7 +52,6 @@ class GateCoverage(unittest.TestCase):
             self.assertTrue({'DOC_AC_MISSING','DOC_ROLE_MISSING','DOC_PLACEHOLDER','DOC_BROKEN_LINK'}<=findings)
     def test_verify_keeps_failed_and_skipped_checks_partial(self):
         from stages.verify import execute as verify
-        from contracts.verification import TestsManifest
         from harness.workspace import describe
         fixtures=Path('contracts/fixtures/tickets');artifacts={}
         for name in ('analysis','app','hooks','develop'):
@@ -72,7 +71,7 @@ class GateCoverage(unittest.TestCase):
         self.assertEqual(sandbox.calls[-1]['kind'],'down')
     def test_dispute_rejection_and_single_attempt(self):
         from stages.tests.dispute import resolve
-        from contracts.verification import Dispute,DisputeDecision
+        from contracts.verification import Dispute
         from contracts.stage import ContractError
         (self.root/'product').mkdir();(self.root/'product/test.cs').write_text('original')
         write(self.root,'reports/tests.json',{'schema_version':1,'tests':[{'id':'test','ac':'AC-01','file':'product/test.cs','level':'unit'}],'hashes':{},'acceptance':['AC-01'],'build_ok':True})

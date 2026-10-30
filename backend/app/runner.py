@@ -13,7 +13,7 @@ from app.database import SessionLocal
 from app.models import Artifact, Event, GateResult, LLMCall, Question, Run, SpecFlag, StageRun, TestHash, ToolRun, utc_now
 from harness.fakes import run_stage_locally
 from harness.registry import STAGES, STAGES_BY_KEY
-from harness.workspace import commit, describe, restore
+from harness.workspace import commit, describe, input_attachments, restore
 from gates.core import run_gate
 from contracts.stage import ContractError, StageInput
 
@@ -136,7 +136,7 @@ def _execute(stage_id):
                 'llm_calls': [{'task_class': x.task_class, 'status': x.status, 'tokens_in': x.tokens_in, 'tokens_out': x.tokens_out, 'from_cache': x.from_cache} for x in calls],
                 'tool_runs': [{'kind': x.kind, 'target': x.target, 'ok': x.ok, 'duration_ms': x.duration_ms} for x in tools]}
         answers = {q.qid: q.answer for q in session.scalars(select(Question).where(Question.stage_run_id == row.id, Question.answer.is_not(None))).all()}
-        inp = StageInput(run_id=str(run.id), stage=stage, attempt=attempt, autonomy=run.autonomy, requirements=run.requirements, artifacts=artifacts, answers=answers, snapshot=snapshot)
+        inp = StageInput(run_id=str(run.id), stage=stage, attempt=attempt, autonomy=run.autonomy, requirements=run.requirements, attachments=input_attachments(root), artifacts=artifacts, answers=answers, snapshot=snapshot)
         test_hashes = [(item.path, item.hash) for item in session.scalars(select(TestHash).where(TestHash.run_id == run.id)).all()]
         fake = bool(run.config.get('fake_stages'))
         _event(session, run.id, 'stage.started', {'stage': stage, 'attempt': attempt})
@@ -283,10 +283,14 @@ def execute(stage_id):
 def reconcile():
     from datetime import timedelta
     from app.tasks import run_stage
-    with SessionLocal() as session:
+    with SessionLocal.begin() as session:
         rows = session.scalars(select(StageRun).where(StageRun.status == 'queued', StageRun.queued_at < utc_now() - timedelta(seconds=30))).all()
         for row in rows:
-            run_stage.apply_async(args=[str(row.id)], queue=STAGES_BY_KEY[row.stage].queue)
+            queue = STAGES_BY_KEY[row.stage].queue
+            logging.warning('Шаг %s ждёт воркера очереди %s дольше 30 с, задача отправлена повторно', row.stage, queue)
+            run_stage.apply_async(args=[str(row.id)], queue=queue)
+            # The claim in execute() is atomic, so duplicates are harmless; this only bounds them to one per 30 s.
+            row.queued_at = utc_now()
 
 
 def retry(run_id, key):

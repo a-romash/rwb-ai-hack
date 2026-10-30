@@ -7,7 +7,8 @@ from stages.report import analysis_roles
 
 def check(workspace,artifacts):
     workspace=workspace.resolve()
-    report=read(workspace,artifacts,'report');analysis=read(workspace,artifacts,'analysis',optional=True);app=read(workspace,artifacts,'app',optional=True)
+    read(workspace,artifacts,'report')  # the report must exist even though only docs are inspected
+    analysis=read(workspace,artifacts,'analysis',optional=True);app=read(workspace,artifacts,'app',optional=True)
     findings=[];docs=workspace_path(workspace,artifacts.get('docs','product/docs'))
     text='\n'.join(p.read_text(encoding='utf-8') for p in docs.rglob('*.md')) if docs.exists() else ''
     def add(code,message,severity='error'):findings.append(Finding(path='docs',code=code,severity=severity,message=message))

@@ -429,6 +429,9 @@ def dependents(app: App | dict, path: str) -> list[str]:
             # Ссылка на сущность/раздел зависит также от его дочерних элементов.
             if not (_contains(changed, target) or _contains(target, changed)):
                 continue
+            # Транзитивно задетое поле не меняет форму сущности: права, CRUD и seed по ней не помечаются.
+            if changed != start and len(target) == 2 and target[0] == "entities" and target != changed:
+                continue
             for consumer in consumers:
                 if consumer in visited or _contains(start, consumer):
                     continue

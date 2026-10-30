@@ -196,7 +196,8 @@ class DockerSandbox:
                 if not isinstance(context, str):
                     raise ContractError("Некорректный контекст сборки")
                 try:
-                    relative_context = str((path.parent / context).relative_to(self.workspace))
+                    # infra/docker-compose.yml builds from "..": normalise before the escape check.
+                    relative_context = str((path.parent / context).resolve().relative_to(self.workspace))
                 except ValueError as exc:
                     raise ContractError("Контекст сборки вне продукта") from exc
                 workspace_path(self.workspace, relative_context)
@@ -282,7 +283,7 @@ def host_workspaces_dir(container_dir: Path) -> Path:
     """
     configured = os.environ.get("HOST_WORKSPACES_DIR")
     if configured:
-        return Path(configured)
+        return _posix_host_path(configured)
     container_dir = Path(container_dir).resolve()
     try:
         output = subprocess.run(["docker", "inspect", "--format", "{{json .Mounts}}", socket_hostname()],
@@ -290,12 +291,20 @@ def host_workspaces_dir(container_dir: Path) -> Path:
         import json
         for mount in json.loads(output) or []:
             if Path(mount.get("Destination", "")) == container_dir and mount.get("Source"):
-                return Path(mount["Source"])
+                return _posix_host_path(mount["Source"])
     except (OSError, subprocess.SubprocessError, ValueError):
         pass
     if not Path("/.dockerenv").exists():
         return container_dir  # running directly on the host
     raise ContractError("Не удалось определить путь workspaces на хосте: задайте HOST_WORKSPACES_DIR")
+
+
+def _posix_host_path(source: str) -> Path:
+    # Docker Desktop on Windows reports C:\...; Path() inside a Linux worker would treat it as
+    # relative. Its daemon also accepts the POSIX form /c/..., which survives Path arithmetic.
+    if re.match(r"^[A-Za-z]:[\\/]", source):
+        source = "/" + source[0].lower() + source[2:].replace("\\", "/")
+    return Path(source)
 
 
 def socket_hostname() -> str:

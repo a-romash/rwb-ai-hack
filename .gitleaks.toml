@@ -1,0 +1,8 @@
+# Recorded evals store SHA-256 hashes of prompts next to agent names; gitleaks' generic-api-key
+# rule reads them as keys. They are hashes of files in agents/, not secrets.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Prompt hashes in recorded spec evals"
+paths = ['''stages/spec/EVAL-recorded\.json''']

@@ -186,7 +186,7 @@ def _check_walks(ui: UiSpec, app: AppView, analysis: dict, out: _Findings) -> No
         _simulate(ui, app, walk, p, out)
     for ac_id, ac in acceptance.items():
         if ac.get("ui") and ac_id not in covered:
-            out.add(f"walks", "AC_UI_UNCOVERED", f"{ac_id} проверяется через интерфейс, но ни один проход его не покрывает")
+            out.add("walks", "AC_UI_UNCOVERED", f"{ac_id} проверяется через интерфейс, но ни один проход его не покрывает")
 
 
 def _simulate(ui: UiSpec, app: AppView, walk: Walk, p: str, out: _Findings) -> None:

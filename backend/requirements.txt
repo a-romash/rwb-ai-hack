@@ -34,7 +34,7 @@ click-plugins==1.1.1.2
     # via celery
 click-repl==0.4.1
     # via celery
-fastapi==0.121.0
+fastapi==0.162.0
     # via -r backend/requirements.in
 filelock==4.2.4
     # via huggingface-hub
@@ -64,7 +64,7 @@ idna==3.20
     #   httpx
 kombu==5.5.4
     # via celery
-lxml==6.0.2
+lxml==6.1.0
     # via
     #   -r backend/requirements.in
     #   python-docx
@@ -72,6 +72,8 @@ mako==1.4.3
     # via alembic
 markupsafe==3.0.4
     # via mako
+opentelemetry-api==1.45.2
+    # via fastapi
 packaging==26.3
     # via
     #   huggingface-hub
@@ -107,8 +109,10 @@ sqlalchemy==2.0.44
     #   -r backend/requirements.in
     #   alembic
     #   kombu
-starlette==0.49.3
-    # via fastapi
+starlette==1.10.0
+    # via
+    #   -r backend/requirements.in
+    #   fastapi
 tokenizers==0.22.2
     # via -r backend/requirements.in
 tqdm==4.70.1
@@ -120,6 +124,7 @@ typing-extensions==4.16.0
     #   click-repl
     #   fastapi
     #   huggingface-hub
+    #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   python-docx
@@ -128,6 +133,7 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.4
     # via
+    #   fastapi
     #   pydantic
     #   pydantic-settings
 tzdata==2026.6

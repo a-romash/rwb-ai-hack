@@ -20,6 +20,28 @@ class Tests(unittest.TestCase):
         def start(data): self.records.append(data); return len(self.records)-1
         def finish(i, data): self.records[i].update(data)
         return Gateway(start=start, finish=finish, budget=lambda: (0, 1000, 0, 10), transport=client, **kw)
+    def test_reasoning_payload_has_one_budget(self):
+        import io, json
+        from harness.llm import HTTPTransport
+        sent = []
+        def opener(request, timeout):
+            sent.append(json.loads(request.data))
+            return io.BytesIO(json.dumps({'choices': [{'message': {'content': '{}'}, 'finish_reason': 'stop'}]}).encode())
+        transport = HTTPTransport(api_key='k', opener=opener)
+        transport.complete([], schema=None, effort='low', reasoning_tokens=1500, temperature=1.0, max_tokens=10)
+        # OpenRouter answers 400 when both reasoning.effort and reasoning.max_tokens are present.
+        self.assertEqual(sent[0]['reasoning'], {'enabled': True, 'max_tokens': 1500})
+    def test_truncated_json_is_asked_again_with_larger_budget(self):
+        class Truncating:
+            budgets = []
+            def complete(self, messages, *, max_tokens, **kwargs):
+                self.budgets.append(max_tokens)
+                if len(self.budgets) < 3:
+                    return {'content': '{"cou', 'usage': {}, 'finish_reason': 'length'}
+                return {'content': '{"count": 5}', 'usage': {}, 'finish_reason': 'stop'}
+        client = Truncating()
+        self.assertEqual(self.gateway(client)(task_class='qa', system='s', user='u', output=Output).count, 5)
+        self.assertEqual(client.budgets, [2500, 5000, 10000])
     def test_repair_and_cache(self):
         client = Client(['bad', '{"count": 3}'])
         with tempfile.TemporaryDirectory() as tmp:

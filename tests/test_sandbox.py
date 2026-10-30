@@ -101,9 +101,6 @@ class SandboxTest(unittest.TestCase):
                 sandbox.run("lint", "backend")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
     def test_restore_runs_once_with_network_then_build_offline(self):
         with tempfile.TemporaryDirectory() as tmp:
             config = {"targets": {"backend": {"image": "tool:1", "restore": ["dotnet", "restore"], "build": ["dotnet", "build", "--no-restore"],
@@ -162,3 +159,33 @@ if __name__ == "__main__":
             with self.assertRaises(ContractError):
                 sandbox._validate_compose(bad)
 
+
+    def test_windows_host_path_from_docker_desktop_becomes_posix(self):
+        from harness.sandbox import host_workspaces_dir
+        with patch.dict("os.environ", {"HOST_WORKSPACES_DIR": r"C:\Users\dev\rwb\workspaces"}):
+            path = host_workspaces_dir(Path("/app/workspaces"))
+        self.assertEqual(path.as_posix(), "/c/Users/dev/rwb/workspaces")
+        self.assertEqual((path / "local").resolve().as_posix(), "/c/Users/dev/rwb/workspaces/local")
+
+
+    def test_product_template_passes_sandbox_validation(self):
+        # The trusted template must be runnable as is: env keys, images and the stand compose file.
+        import json
+        import shutil
+        template = Path(__file__).resolve().parents[1] / "templates" / "product"
+        manifest = json.loads((template / "pack.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shutil.copytree(template / "infra", root / "infra")
+            for name in ("backend", "admin-web"):
+                (root / name).mkdir()
+                shutil.copy(template / name / "Dockerfile", root / name / "Dockerfile")
+            sandbox = DockerSandbox(root, "abc", manifest)
+            for target, config in manifest["targets"].items():
+                if "image" in config:
+                    sandbox._docker(config, ["true"], config.get("workdir", "."), "n", "none")
+            sandbox._validate_compose(root / "infra" / "docker-compose.yml")
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -4,7 +4,6 @@ import unittest
 from pathlib import Path
 from contracts.stage import StageInput
 from harness.fakes import FakeLLM,FakeSandbox
-from stages.quality import write
 from stages.tests.lint import lint
 from stages.verify.mutations import candidates
 from stages.report import execute
@@ -55,6 +54,25 @@ class QualityTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 run(root,[{'id':'Rule','file':'hook.cs','refs':['AC-01']}],[PlannedTest(id='AC-01',ac='AC-01',file='test.cs',level='unit')],Broken())
             self.assertEqual(path.read_bytes(),source)
+
+    def test_mutant_killed_by_any_ac_of_the_hook(self):
+        from types import SimpleNamespace
+        from stages.verify.mutations import run
+        from contracts.verification import PlannedTest
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'product').mkdir();(root/'product/hook.cs').write_text('class Rule { public bool Check(int n) { return n>=5 && n<=9 && true; } }')
+            class OnlySecondKills:
+                filters=[]
+                def run(self,kind,target,filter=None):
+                    self.filters.append(filter)
+                    failure='<failure type="Xunit.Sdk.EqualException" message="Assert.Equal() Failure"/>' if filter=='AC-02' else ''
+                    (root/'junit.xml').write_text(f'<testsuite><testcase classname="AC_0x" name="{filter}"><properties><property name="AC" value="{filter}"/></properties>{failure}</testcase></testsuite>')
+                    return SimpleNamespace(reports={'junit':'junit.xml'})
+            sandbox=OnlySecondKills()
+            planned=[PlannedTest(id=ac,ac=ac,file='t.cs',level='unit') for ac in ('AC-01','AC-02')]
+            reports=run(root,[{'id':'Rule','file':'hook.cs','refs':['AC-01','AC-02']}],planned,sandbox)
+        self.assertTrue(reports and all(r['status']=='killed' for r in reports),reports)
+        self.assertEqual(sandbox.filters[:2],['AC-01','AC-02'])
 
     def test_lint_rejects_only_related_threshold(self):
         from stages.tests import rule_values

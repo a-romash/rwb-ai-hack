@@ -86,6 +86,18 @@ class RunnerIntegration(unittest.TestCase):
             stage = session.scalar(select(StageRun).where(StageRun.run_id == self.run_id, StageRun.stage == 'analysis'))
             self.assertEqual(stage.status, 'queued')
 
+    def test_reconcile_resends_at_most_once_per_interval(self):
+        from datetime import timedelta
+        with SessionLocal.begin() as session:
+            stage = session.scalar(select(StageRun).where(StageRun.run_id == self.run_id, StageRun.stage == 'analysis'))
+            stage.status, stage.queued_at = 'queued', runner.utc_now() - timedelta(minutes=5)
+            stage_id = str(stage.id)
+        queued = []
+        with patch('app.tasks.run_stage.apply_async', side_effect=lambda args, queue: queued.append(args[0])):
+            runner.reconcile()
+            runner.reconcile()
+        self.assertEqual(queued.count(stage_id), 1)
+
     def test_secret_is_redacted(self):
         import os
         with patch.dict(os.environ, {'OPENROUTER_API_KEY': 'test-secret-value'}):

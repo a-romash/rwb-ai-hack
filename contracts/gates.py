@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 from contracts.stage import ElementFlag  # shared type, also available from this module
 
+__all__ = ["ElementFlag", "Finding", "GateResult"]
+
 
 class Finding(BaseModel):
     path: str

@@ -76,7 +76,6 @@ def evaluate(name: str, requirements: Path | None, workspace: Path, *, mode: str
             flags.extend(output.flags)
             gate = g0(workspace, artifacts)
         result["g0_after"] = len(gate.findings)
-        g0_errors = _errors(gate)
         inp = inp.model_copy(update={"stage": "spec", "attempt": 1, "artifacts": artifacts})
         output = specify(inp, workspace, llm, FakeSandbox())
         flags.extend(output.flags)

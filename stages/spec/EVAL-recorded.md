@@ -13,13 +13,13 @@
 
 Статус: `passed`. Время: 97 мс.
 
-Артефакты и сырые выходы модели: `/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T140534987792/tickets`.
+Артефакты и сырые выходы модели: `workspaces/eval/20261030T140534987792/tickets`.
 
 ## equipment
 
 Статус: `passed`. Время: 70 мс.
 
-Артефакты и сырые выходы модели: `/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T140534987792/equipment`.
+Артефакты и сырые выходы модели: `workspaces/eval/20261030T140534987792/equipment`.
 
 ## Версии промптов
 

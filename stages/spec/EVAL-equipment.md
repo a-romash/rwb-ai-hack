@@ -12,7 +12,7 @@
 
 Статус: `partial`. Время: 502081 мс.
 
-Артефакты и сырые выходы модели: `/home/haus/Projects/rwb-ai-hack/workspaces/eval/20261030T125915470114/equipment`.
+Артефакты и сырые выходы модели: `workspaces/eval/20261030T125915470114/equipment`.
 
 Находки после ремонта:
 

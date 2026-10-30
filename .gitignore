@@ -9,3 +9,7 @@ dist/
 .DS_Store
 playwright-report/
 test-results/
+
+# Case data dropped in by hand (spb.json zones, API samples): attached to runs, never committed.
+/spb.json
+/response.json

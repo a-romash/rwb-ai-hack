@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.database import engine, get_session
 from app.models import Artifact, Project, StageRun
+from app.projects import router as projects_router
 from app.runs import router
 
 
@@ -28,6 +29,7 @@ class RunApiTest(unittest.TestCase):
         self.db.flush()
         self.app = FastAPI()
         self.app.include_router(router, prefix="/api")
+        self.app.include_router(projects_router, prefix="/api")
         self.app.dependency_overrides[get_session] = lambda: self.db
         self.client = TestClient(self.app)
 
@@ -44,10 +46,12 @@ class RunApiTest(unittest.TestCase):
 
     def test_create_snapshot_list_and_read(self):
         advance = Mock()
-        def workspace(base, project_id, run_id, requirements):
+        def workspace(base, project_id, run_id, requirements, attachments=()):
             path = Path(base) / str(project_id) / "runs" / str(run_id)
             (path / "input").mkdir(parents=True)
             (path / "input" / "requirements.md").write_text(requirements)
+            for file in attachments:
+                (path / "input" / file.name).write_bytes(file.read_bytes())
             return path
         with patch.dict("sys.modules", {"app.runner": SimpleNamespace(advance=advance)}), patch("app.runs.create_workspace", side_effect=workspace):
             response = self.client.post(f"/api/projects/{self.project.id}/runs", json={"autonomy": "A2"})
@@ -72,6 +76,20 @@ class RunApiTest(unittest.TestCase):
         self.db.add(StageRun(run_id=stage.run_id, stage="analysis", attempt=2, status="pending"))
         self.db.flush()
         self.assertEqual(self.client.get(f"/api/runs/{run_id}/artifacts").json(), [])
+
+    def test_attachments_reach_the_run_input(self):
+        url = f"/api/projects/{self.project.id}/attachments"
+        self.assertEqual(self.client.post(url, params={"name": "spb.json"}, content=b'{"zones": []}').status_code, 201)
+        self.assertEqual(self.client.post(url, params={"name": "../x.json"}, content=b"{}").status_code, 422)
+        self.assertEqual(self.client.post(url, params={"name": "run.sh"}, content=b"echo").status_code, 422)
+        self.assertEqual(self.client.post(url, params={"name": "empty.json"}, content=b"").status_code, 413)
+        self.assertEqual(self.client.get(url).json(), [{"name": "spb.json", "size": 13}])
+        with patch.dict("sys.modules", {"app.runner": SimpleNamespace(advance=Mock())}):
+            run = self.client.post(f"/api/projects/{self.project.id}/runs", json={}).json()
+        self.assertEqual(self.client.get(f"/api/runs/{run['id']}/files", params={"path": "input/spb.json"}).text, '{"zones": []}')
+        from harness.workspace import input_attachments
+        workspace = Path(self.temp.name) / str(self.project.id) / "runs" / run["id"]
+        self.assertEqual(input_attachments(workspace), ["input/spb.json"])
 
     def test_missing_and_validation(self):
         self.assertEqual(self.client.get(f"/api/runs/{uuid4()}").status_code, 404)

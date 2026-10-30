@@ -23,6 +23,7 @@ from contracts.api import (AnswersCreate, ArtifactRead, EventRead, GateDecisionC
 from contracts.stage import ContractError
 from harness.fakes import workspace_path
 from harness.registry import STAGES, STAGES_BY_KEY
+from app.projects import project_attachments
 from harness.workspace import create_workspace
 
 router = APIRouter(tags=["runs"])
@@ -98,7 +99,7 @@ def create_run(project_id: UUID, data: RunCreate, session: Database):
     base = Path(os.environ.get("WORKSPACES_DIR", "workspaces")).resolve()
     workspace = None
     try:
-        workspace = create_workspace(base, project_id, run_id, project.requirements)
+        workspace = create_workspace(base, project_id, run_id, project.requirements, project_attachments(project_id))
         run = Run(id=run_id, project_id=project_id, requirements=project.requirements, workspace_path=str(workspace),
                   autonomy=data.autonomy, tokens_limit=data.budget.tokens, minutes_limit=data.budget.minutes,
                   config={"fake_stages": os.environ.get("PIPELINE_FAKE_STAGES", "").lower() in ("1", "true")})

@@ -92,5 +92,28 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Images of the build sandbox and the product CI (templates/product/pack.json).
+  # Build once: docker compose --profile tools build
+  tool-dotnet:
+    profiles: [tools]
+    image: rwb/tool-dotnet:10
+    build:
+      context: templates/product/tools
+      dockerfile: Dockerfile.dotnet
+
+  tool-node:
+    profiles: [tools]
+    image: rwb/tool-node:22
+    build:
+      context: templates/product/tools
+      dockerfile: Dockerfile.node
+
+  tool-security:
+    profiles: [tools]
+    image: rwb/tool-security:1
+    build:
+      context: templates/product/tools
+      dockerfile: Dockerfile.security
+
 volumes:
   postgres_data:
