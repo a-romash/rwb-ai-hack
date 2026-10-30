@@ -1,0 +1,146 @@
+:host {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+// Конвейер
+
+.pipeline {
+  position: sticky;
+  top: 16px;
+  padding: 12px 8px 12px;
+}
+
+.pipeline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px 10px;
+}
+
+.pipeline-title {
+  font-size: var(--p-text-m);
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.pipeline-count {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  letter-spacing: 0;
+}
+
+.pipeline-note {
+  margin: 10px 12px 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--p-line);
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+}
+
+// Описание и запуски
+
+.detail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.recent-block {
+  padding: 16px;
+}
+
+.aside-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.aside-title {
+  font-size: var(--p-text-m);
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+// Ссылки в чёрно-белой гамме отличаются подчёркиванием, а не цветом
+.aside-link {
+  color: var(--p-accent-text);
+  font-size: var(--p-text-s);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--p-line-strong);
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+.recent {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -8px;
+  padding: 8px;
+  border-radius: var(--p-radius-control);
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--p-hover);
+  }
+}
+
+.recent-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--p-icon);
+}
+
+.recent-main {
+  display: grid;
+  min-width: 0;
+}
+
+.recent-title {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-stage {
+  color: var(--p-ink-2);
+  font-weight: 400;
+}
+
+.recent-time {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+}
+
+.aside-empty {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-s);
+  line-height: 1.25rem;
+}
+
+@media (max-width: 1100px) {
+  :host {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pipeline {
+    position: static;
+  }
+}

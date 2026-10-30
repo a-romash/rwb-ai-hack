@@ -1,0 +1,75 @@
+@let j = job();
+@let v = view();
+<header class="head">
+  <tui-icon class="agent-icon" [icon]="agent()?.icon ?? '@tui.bot'" />
+  <div class="who">
+    <p class="who-title">
+      {{ agent()?.name ?? j.agent }}
+      @if (stage(); as s) {
+        <span class="who-stage">{{ s.code }} «{{ s.title }}»</span>
+      }
+    </p>
+    <p class="who-meta">
+      <span [attr.title]="fullDate(j.createdAt)">{{ j.createdAt | relTime: now() }}</span>
+      <span class="num">{{ v.live ? 'идёт' : 'длился' }} {{ duration() }}</span>
+      <span class="job-id" [tuiHint]="'Идентификатор задачи в очереди: ' + j.id">задача {{ j.id.slice(0, 8) }}</span>
+    </p>
+  </div>
+  <app-status-chip [tone]="v.tone" [label]="v.label" [live]="v.live" />
+</header>
+
+<p class="hint" [attr.aria-live]="v.live ? 'polite' : null">
+  {{ v.hint }}
+  @if (j.lastError) {
+    <span class="hint-error">Опрос остановлен: {{ j.lastError }}.</span>
+  }
+  @if (j.expired) {
+    <span>Очередь хранит результат час — показан сохранённый в Студии.</span>
+  }
+</p>
+
+@if (facts().length) {
+  <dl class="facts">
+    @for (fact of facts(); track fact.label) {
+      <div>
+        <dt>{{ fact.label }}</dt>
+        <dd class="num">{{ fact.value }}</dd>
+      </div>
+    }
+  </dl>
+}
+
+@if (j.result) {
+  <section class="result" aria-label="Результат агента">
+    <app-result-view [text]="j.result" />
+  </section>
+} @else if (v.live) {
+  <div class="progress" aria-hidden="true"><i></i></div>
+}
+
+@if (j.assumptions?.length) {
+  <section class="assumptions" aria-label="Допущения агента">
+    <p class="assumptions-title">Допущения агента</p>
+    <ul>
+      @for (item of j.assumptions; track $index) {
+        <li>{{ item.question }}</li>
+      }
+    </ul>
+  </section>
+}
+
+<details class="prompt">
+  <summary>{{ promptLabel() }}</summary>
+  @if (j.prompt) {
+    <pre>{{ j.prompt }}@if (j.promptLength > j.prompt.length) {…}</pre>
+  } @else {
+    <p class="muted">Агент получил текст требований проекта.</p>
+  }
+</details>
+
+<footer class="actions">
+  @if (canRefresh()) {
+    <button tuiButton type="button" appearance="flat" size="s" iconStart="@tui.refresh-cw" (click)="refresh.emit(j.id)">Проверить статус</button>
+  }
+  <button tuiButton type="button" appearance="flat" size="s" iconStart="@tui.x" class="remove" (click)="remove.emit(j.id)">Убрать из истории</button>
+</footer>

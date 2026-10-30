@@ -1,0 +1,90 @@
+<section class="page">
+  @if (store.state() === 'error' && !store.project()) {
+    @let error = store.error();
+    <div class="notice" data-tone="fail" role="alert">
+      <tui-icon icon="@tui.circle-alert" />
+      <p class="notice-title">{{ error?.title }}</p>
+      <p class="notice-text">{{ error?.hint }}</p>
+      <div class="notice-actions">
+        @if (error?.retryable) {
+          <button tuiButton type="button" size="s" appearance="secondary" iconStart="@tui.rotate-ccw" (click)="store.load()">Повторить</button>
+        }
+        <a tuiButton size="s" appearance="flat" iconStart="@tui.arrow-left" routerLink="/projects">К проектам</a>
+      </div>
+    </div>
+  } @else {
+    @let project = store.project();
+    <header class="head">
+      <div class="title-block">
+        @if (renaming()) {
+          <div class="rename">
+            <label class="visually-hidden" for="rename-input">Название проекта</label>
+            <tui-textfield tuiTextfieldSize="m" class="rename-field">
+              <input
+                #renameInput
+                tuiInput
+                id="rename-input"
+                maxlength="200"
+                autocomplete="off"
+                [ngModel]="draftName()"
+                (ngModelChange)="draftName.set($event ?? '')"
+                (keydown)="onRenameKey($event)"
+              />
+            </tui-textfield>
+            <button tuiButton type="button" size="m" [disabled]="savingName()" (click)="saveRename()">Сохранить</button>
+            <button tuiButton type="button" size="m" appearance="flat" (click)="cancelRename()">Отмена</button>
+          </div>
+        } @else {
+          <div class="title-row">
+            @if (project) {
+              <h1 class="page-title title">{{ project.name }}</h1>
+            } @else {
+              <h1 class="page-title title"><span [tuiSkeleton]="true">Загружаем проект</span></h1>
+            }
+            @if (project) {
+              <button tuiIconButton type="button" size="xs" appearance="flat" iconStart="@tui.pencil" tuiHint="Переименовать" (click)="startRename()">
+                Переименовать
+              </button>
+            }
+          </div>
+        }
+        <div class="meta">
+          @if (project) {
+            <span class="meta-item">
+              <app-pipeline-mini [stages]="store.stages()" />
+              <span class="num">{{ stagesLabel() }}</span>
+            </span>
+            <span class="meta-item" [attr.title]="fullDate(project.updated_at)">Изменён {{ project.updated_at | relTime: clock.now() }}</span>
+          } @else {
+            <span class="meta-item" [tuiSkeleton]="true">8 шагов конвейера, изменён сегодня</span>
+          }
+        </div>
+      </div>
+
+      <div class="head-actions">
+        <button tuiButton type="button" size="s" appearance="secondary" [iconStart]="analyst.icon" [disabled]="!project" (click)="runAnalyst()">
+          Запустить {{ analyst.accusative }}
+        </button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Разделы проекта">
+      <a class="tab" routerLink="flow" routerLinkActive="is-active" ariaCurrentWhenActive="page">Конвейер</a>
+      <a class="tab" routerLink="requirements" routerLinkActive="is-active" ariaCurrentWhenActive="page">Требования</a>
+      <a class="tab" routerLink="runs" routerLinkActive="is-active" ariaCurrentWhenActive="page">
+        Запуски
+        @if (store.runs().length) {
+          <span class="count" [class.is-live]="store.liveRuns() > 0">{{ store.runs().length }}</span>
+        }
+      </a>
+    </nav>
+
+    @if (project) {
+      <router-outlet />
+    } @else {
+      <div class="tab-skeleton" aria-busy="true" aria-label="Загружаем проект">
+        <div [tuiSkeleton]="true" class="sk-map"></div>
+      </div>
+    }
+  }
+</section>

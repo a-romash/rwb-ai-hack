@@ -1,0 +1,155 @@
+<tui-root>
+  <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+  <div class="shell" [class.is-menu-open]="menuOpen()">
+    <header class="mobilebar">
+      <button
+        #menuButton
+        tuiIconButton
+        type="button"
+        appearance="flat"
+        size="s"
+        iconStart="@tui.menu"
+        aria-controls="sidebar"
+        [attr.aria-expanded]="menuOpen()"
+        (click)="menuOpen.set(true)"
+      >
+        Открыть меню
+      </button>
+      <a class="brand" routerLink="/projects" aria-label="Поток для RWB — к списку проектов">
+        <app-rwb-logo />
+        <span class="brand-text">
+          <i class="brand-divider" aria-hidden="true"></i>
+          <app-potok-wordmark class="wordmark" />
+        </span>
+      </a>
+      <button tuiIconButton type="button" appearance="flat" size="s" iconStart="@tui.search" (click)="openPalette()">Поиск и команды</button>
+    </header>
+
+    <div class="scrim" aria-hidden="true" (click)="closeMenu()"></div>
+
+    <nav id="sidebar" class="sidebar" aria-label="Основная навигация" [cdkTrapFocus]="menuOpen()" (keydown.escape)="closeMenu()">
+      <div class="sidebar-head">
+        <a class="brand" routerLink="/projects" aria-label="Поток для RWB — к списку проектов">
+          <app-rwb-logo />
+          <span class="brand-text">
+            <i class="brand-divider" aria-hidden="true"></i>
+            <app-potok-wordmark class="wordmark" />
+          </span>
+        </a>
+        <button tuiIconButton type="button" appearance="flat" size="s" iconStart="@tui.x" class="close" (click)="closeMenu()">Закрыть меню</button>
+      </div>
+
+      <div class="sidebar-actions">
+        @if (rail()) {
+          <a tuiIconButton size="s" appearance="secondary" iconStart="@tui.plus" routerLink="/projects/new" tuiHint="Новый проект" tuiHintDirection="end">
+            Новый проект
+          </a>
+        } @else {
+          <a tuiButton size="s" appearance="secondary" iconStart="@tui.plus" routerLink="/projects/new" class="new">Новый проект</a>
+        }
+        <button
+          type="button"
+          class="search"
+          aria-haspopup="dialog"
+          [tuiHint]="rail() ? 'Поиск и команды' : null"
+          tuiHintDirection="end"
+          (click)="openPalette()"
+        >
+          <tui-icon icon="@tui.search" />
+          <span class="search-text">Поиск и команды</span>
+          <span class="search-keys" aria-hidden="true">
+            <kbd class="kbd">{{ isMac ? '⌘' : 'Ctrl' }}</kbd><kbd class="kbd">K</kbd>
+          </span>
+        </button>
+      </div>
+
+      <div class="nav">
+        <a
+          class="nav-item"
+          routerLink="/projects"
+          routerLinkActive="is-active"
+          [routerLinkActiveOptions]="{exact: true}"
+          ariaCurrentWhenActive="page"
+          [tuiHint]="rail() ? 'Все проекты' : null"
+          tuiHintDirection="end"
+        >
+          <tui-icon icon="@tui.layout-list" />
+          <span class="nav-text">Все проекты</span>
+          @if (projects.items().length) {
+            <span class="nav-count num">{{ projects.items().length }}</span>
+          }
+        </a>
+      </div>
+
+      @if (recent().length) {
+        <div class="nav">
+          <p class="nav-label" id="recent-label">Недавние</p>
+          <ul class="nav-list" aria-labelledby="recent-label">
+            @for (item of recent(); track item.project.id) {
+              <li>
+                <a
+                  class="nav-item"
+                  [routerLink]="['/projects', item.project.id]"
+                  routerLinkActive="is-active"
+                  ariaCurrentWhenActive="page"
+                  [tuiHint]="rail() ? item.project.name : null"
+                  tuiHintDirection="end"
+                >
+                  <span class="avatar" [attr.data-tone]="item.tone" [class.is-live]="item.live" aria-hidden="true">{{ item.initial }}</span>
+                  <span class="nav-text">{{ item.project.name }}</span>
+                </a>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+
+      <div class="sidebar-foot">
+        <button
+          type="button"
+          class="health"
+          [attr.data-state]="health.state()"
+          [tuiHint]="healthHint()"
+          (click)="health.check()"
+          [attr.aria-label]="healthLabel() + '. Проверить снова'"
+        >
+          <i class="health-dot" aria-hidden="true"></i>
+          <span class="health-text">{{ healthLabel() }}</span>
+        </button>
+        <button
+          tuiIconButton
+          type="button"
+          appearance="flat"
+          size="s"
+          [iconStart]="theme.dark() ? '@tui.sun' : '@tui.moon'"
+          [tuiHint]="theme.dark() ? 'Светлая тема' : 'Тёмная тема'"
+          (click)="theme.toggle()"
+        >
+          {{ theme.dark() ? 'Включить светлую тему' : 'Включить тёмную тему' }}
+        </button>
+      </div>
+    </nav>
+
+    <main id="main" class="main" tabindex="-1">
+      @if (shell.crumbs().length > 1) {
+        <nav class="crumbs" aria-label="Вы здесь">
+          <ol>
+            @for (crumb of shell.crumbs(); track $index; let last = $last) {
+              <li>
+                @if (crumb.link && !last) {
+                  <a [routerLink]="crumb.link">{{ crumb.label }}</a>
+                } @else {
+                  <span [attr.aria-current]="last ? 'page' : null">{{ crumb.label }}</span>
+                }
+              </li>
+            }
+          </ol>
+        </nav>
+      }
+      <router-outlet />
+    </main>
+  </div>
+
+  <app-toast-host />
+</tui-root>

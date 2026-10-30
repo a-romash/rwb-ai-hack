@@ -1,0 +1,88 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 720px) 280px;
+  align-items: start;
+  gap: 24px;
+}
+
+.main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.side {
+  position: sticky;
+  top: 24px;
+}
+
+.side-card {
+  padding: 16px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-card);
+}
+
+// Действия прилипают к низу окна: создать можно, не листая длинные требования
+
+.submit {
+  position: sticky;
+  bottom: 16px;
+  z-index: 10;
+  display: grid;
+  gap: 8px;
+}
+
+.submit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-pop);
+}
+
+.submit-hint {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: auto;
+  padding-left: 8px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  letter-spacing: 0;
+
+  span {
+    margin-left: 6px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .submit-hint {
+    display: none;
+  }
+
+  .submit-bar {
+    justify-content: stretch;
+
+    > * {
+      flex: 1;
+    }
+  }
+}

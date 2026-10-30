@@ -1,0 +1,51 @@
+<div class="field">
+  <tui-icon icon="@tui.search" class="field-icon" />
+  <input
+    class="input"
+    type="text"
+    role="combobox"
+    aria-label="Поиск по проектам и командам"
+    aria-autocomplete="list"
+    aria-controls="palette-list"
+    aria-expanded="true"
+    autocomplete="off"
+    spellcheck="false"
+    placeholder="Найти проект или команду"
+    [attr.aria-activedescendant]="activeId()"
+    [value]="query()"
+    (input)="onQuery($event)"
+    (keydown)="onKeydown($event)"
+  />
+  <kbd class="kbd esc">Esc</kbd>
+</div>
+
+<div #list id="palette-list" class="list" role="listbox" aria-label="Результаты">
+  @for (group of groups(); track group.name) {
+    <div class="group" role="group" [attr.aria-label]="group.name">
+      <p class="group-name" aria-hidden="true">{{ group.name }}</p>
+      @for (item of group.items; track item.command.id) {
+        <div
+          class="option"
+          role="option"
+          [id]="'cmd-' + item.command.id"
+          [attr.aria-selected]="item.index === active()"
+          (click)="pick(item.command)"
+          (mousemove)="active.set(item.index)"
+        >
+          <tui-icon [icon]="item.command.icon" class="option-icon" />
+          <span class="option-label">{{ item.command.label }}</span>
+          @if (item.command.hint) {
+            <span class="option-hint">{{ item.command.hint }}</span>
+          }
+        </div>
+      }
+    </div>
+  } @empty {
+    <p class="empty">Ничего не нашлось. Попробуйте название проекта или слово «тема».</p>
+  }
+</div>
+
+<div class="footer" aria-hidden="true">
+  <span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> выбрать</span>
+  <span><kbd class="kbd">↵</kbd> открыть</span>
+</div>

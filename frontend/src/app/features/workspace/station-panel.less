@@ -1,0 +1,226 @@
+// Рамку и фон даёт глобальный класс .panel на хосте
+:host {
+  display: grid;
+  gap: 20px;
+  padding: 20px 24px 24px;
+}
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.code {
+  padding: 1px 6px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-small);
+  color: var(--p-ink);
+}
+
+.always {
+  color: var(--p-ink-2);
+  font-weight: 400;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 10px;
+}
+
+.title {
+  font-size: var(--p-text-xl);
+  line-height: 1.75rem;
+  letter-spacing: -0.017em;
+}
+
+.question {
+  margin-top: 4px;
+  color: var(--p-ink-2);
+}
+
+.summary {
+  max-width: 72ch;
+  margin-top: 8px;
+  font-size: var(--p-text-read);
+  line-height: 1.5rem;
+  letter-spacing: -0.009em;
+}
+
+// Вход, выход, проверка — список определений
+
+.io {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--p-line);
+
+  > div {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--p-line);
+  }
+
+  dt {
+    color: var(--p-ink-2);
+    font-size: var(--p-text-s);
+    line-height: 1.25rem;
+  }
+
+  dd {
+    margin: 0;
+    line-height: 1.25rem;
+  }
+}
+
+.gate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 16px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--p-ink);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--p-line-strong);
+  text-underline-offset: 3px;
+
+  tui-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--p-icon);
+  }
+
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+.gate-key {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  font-weight: 500;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  padding: 1px 8px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-small);
+  background: var(--p-surface-2);
+  font-size: var(--p-text-s);
+}
+
+// Исполнитель
+
+.agent {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.agent-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-control);
+  background: var(--p-surface-2);
+
+  tui-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--p-ink);
+  }
+
+  &.is-off tui-icon {
+    color: var(--p-icon);
+  }
+}
+
+.agent-name {
+  font-weight: 500;
+}
+
+.agent-text {
+  margin-top: 2px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-s);
+  line-height: 1.25rem;
+}
+
+// Последний запуск
+
+.last {
+  padding: 12px 14px;
+  border: 1px solid var(--p-line);
+  border-radius: var(--p-radius-control);
+  background: var(--p-surface-2);
+}
+
+.last-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.last-title {
+  font-weight: 500;
+}
+
+.last-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+}
+
+.last-text {
+  margin-top: 8px;
+  line-height: 1.25rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  :host {
+    padding: 16px;
+  }
+
+  .io > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}

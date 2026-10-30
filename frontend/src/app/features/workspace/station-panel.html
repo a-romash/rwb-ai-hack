@@ -1,0 +1,95 @@
+@let s = stage();
+@let stageInfo = info();
+<header class="head">
+  <p class="kicker">
+    <span class="code">{{ s.code }}</span>
+    <span class="num">Шаг {{ s.position }} из {{ total() }}</span>
+    @if (stageInfo.always) {
+      <span class="always">Выполняется всегда</span>
+    }
+  </p>
+  <div class="title-row">
+    <h2 class="title">{{ s.title }}</h2>
+    <app-status-chip [tone]="s.tone" [label]="s.statusLabel" [live]="s.live" />
+  </div>
+  <p class="question">{{ stageInfo.question }}</p>
+  <p class="summary">{{ stageInfo.summary }}</p>
+</header>
+
+<dl class="io">
+  <div>
+    <dt>На входе</dt>
+    <dd>{{ stageInfo.input }}</dd>
+  </div>
+  <div>
+    <dt>На выходе</dt>
+    <dd>{{ stageInfo.output }}</dd>
+  </div>
+  <div>
+    <dt>Ворота</dt>
+    <dd>
+      @for (gate of gates(); track gate.key) {
+        <button type="button" class="gate-link" (click)="openGate.emit('gate:' + gate.key)">
+          <tui-icon icon="@tui.shield" />
+          <span class="gate-key">{{ gate.key }}</span>
+          {{ gate.name }}
+        </button>
+      } @empty {
+        <span class="muted">Нет: результат проверят ворота следующих шагов</span>
+      }
+    </dd>
+  </div>
+  <div>
+    <dt>Участники</dt>
+    <dd class="chips">
+      @for (name of participants(); track name) {
+        <span class="chip">{{ name }}</span>
+      }
+    </dd>
+  </div>
+</dl>
+
+<section class="agent" aria-label="Исполнитель шага">
+  @if (agent(); as a) {
+    <span class="agent-icon"><tui-icon [icon]="a.icon" /></span>
+    <div>
+      <p class="agent-name">{{ a.name }}</p>
+      <p class="agent-text">{{ a.summary }}</p>
+    </div>
+  } @else {
+    <span class="agent-icon is-off"><tui-icon icon="@tui.circle-dashed" /></span>
+    <div>
+      <p class="agent-name">Агент не подключён</p>
+      <p class="agent-text">Шаг выполнит дирижёр конвейера: сейчас его можно только описать.</p>
+    </div>
+  }
+</section>
+
+@if (job(); as j) {
+  <section class="last" aria-label="Последний запуск">
+    <div class="last-head">
+      <p class="last-title">Последний запуск</p>
+      <app-status-chip [tone]="jobView()!.tone" [label]="jobView()!.label" [live]="jobView()!.live" [quiet]="true" />
+    </div>
+    <p class="last-meta">
+      <span>{{ j.createdAt | relTime: now() }}</span>
+      <span class="num">{{ jobView()!.live ? 'идёт ' : 'длился ' }}{{ elapsed() }}</span>
+    </p>
+    @if (excerpt(); as text) {
+      <p class="last-text">{{ text }}</p>
+    } @else {
+      <p class="last-text muted">{{ jobView()!.hint }}</p>
+    }
+  </section>
+}
+
+@if (agent() || job()) {
+  <footer class="actions">
+    @if (agent(); as a) {
+      <button tuiButton type="button" size="s" [iconStart]="a.icon" (click)="run.emit(s.key)">Запустить {{ a.accusative }}</button>
+    }
+    @if (job()) {
+      <button tuiButton type="button" size="s" appearance="flat" iconStart="@tui.history" (click)="openRuns.emit()">Все запуски</button>
+    }
+  </footer>
+}

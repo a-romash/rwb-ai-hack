@@ -1,0 +1,57 @@
+<section class="pipeline panel" aria-labelledby="pipeline-heading">
+  <header class="pipeline-head">
+    <h2 id="pipeline-heading" class="pipeline-title">Конвейер RWB</h2>
+    <span class="pipeline-count num">{{ done() }} из {{ store.stages().length }} готово</span>
+  </header>
+  <app-pipeline-timeline
+    [items]="store.items()"
+    [selected]="selectedId()"
+    controls="station-panel"
+    label="Шаги и ворота конвейера. Стрелки вверх и вниз переключают строку."
+    (select)="select($event)"
+  />
+  <p class="pipeline-note">
+    Целиком конвейер запускает дирижёр в режиме A2 «{{ autonomy.name }}» — его API придёт в следующей поставке.
+    Пока шаги запускаются агентами по одному.
+  </p>
+</section>
+
+<div class="detail">
+  <section id="station-panel" class="panel" role="region" aria-live="polite" [attr.aria-label]="selectedGate() ? 'Ворота качества' : 'Шаг конвейера'">
+    @if (selectedStage(); as stage) {
+      <app-station-panel
+        [stage]="stage"
+        [total]="store.stages().length"
+        [job]="selectedJob()"
+        [now]="clock.now()"
+        (run)="run($event)"
+        (openRuns)="openRuns()"
+        (openGate)="select($event)"
+      />
+    }
+    @if (selectedGate(); as gate) {
+      <app-gate-panel [gate]="gate" (openStage)="select($event)" />
+    }
+  </section>
+
+  <section class="recent-block panel" aria-labelledby="recent-heading">
+    <div class="aside-head">
+      <h2 id="recent-heading" class="aside-title">Последние запуски</h2>
+      @if (store.runs().length) {
+        <a class="aside-link" routerLink="../runs">Все запуски</a>
+      }
+    </div>
+    @for (item of recent(); track item.run.id) {
+      <a class="recent" routerLink="../runs">
+        <tui-icon class="recent-icon" [icon]="item.agent?.icon ?? '@tui.bot'" />
+        <span class="recent-main">
+          <span class="recent-title">{{ item.agent?.name ?? item.run.agent }}@if (item.stage) {<span class="recent-stage">, {{ item.stage.code }} {{ item.stage.title }}</span>}</span>
+          <span class="recent-time">{{ item.run.createdAt | relTime: clock.now() }}</span>
+        </span>
+        <app-status-chip [tone]="item.view.tone" [label]="item.view.label" [live]="item.view.live" [quiet]="true" />
+      </a>
+    } @empty {
+      <p class="aside-empty">Агенты ещё не запускались. Выберите шаг с агентом и нажмите «Запустить».</p>
+    }
+  </section>
+</div>

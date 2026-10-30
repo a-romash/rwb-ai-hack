@@ -1,0 +1,165 @@
+// Дизайн-токены «Поток». Источник правды — DESIGN.md, раздел 5.
+// Чёрно-белая айдентика RWB: нейтральная шкала — Radix Gray, акцент — чёрный и белый, статусы — Radix Indigo, Green, Amber, Red.
+// Контраст пар проверен по WCAG 2.2: текст ≥ 4.5:1, иконки и графика статусов ≥ 3:1.
+
+:root {
+  // Поверхности
+  --p-bg: #fcfcfc; // gray-1: фон приложения и боковой панели
+  --p-surface: #ffffff; // панели, таблицы, диалоги
+  --p-surface-2: #f9f9f9; // gray-2: подложка внутри поверхности
+  --p-hover: #f0f0f0; // gray-3: наведение, выбранная строка
+  --p-press: #e8e8e8; // gray-4: нажатие
+  --p-sunken: #f9f9f9; // блоки кода и вставки
+  --p-overlay: rgba(0, 0, 0, 0.36);
+
+  // Линии
+  --p-line: #e0e0e0; // gray-5: разделители
+  --p-border: #d9d9d9; // gray-6: контуры панелей и полей
+  --p-line-strong: #cecece; // gray-7: наведение, связи
+
+  // Текст и иконки
+  --p-ink: #000000; // чёрный RWB
+  --p-ink-2: #646464; // gray-11
+  --p-ink-3: #646464; // третичного текста нет: всё мелкое — gray-11
+  --p-icon: #8d8d8d; // gray-9: неактивные иконки
+
+  // Фирменные цвета RWB — чёрный и белый, как логотип и сайт rwb.ru.
+  --p-brand: #000000;
+  --p-primary: #000000;
+  --p-primary-hover: #2b2b2b;
+  --p-primary-press: #000000;
+  --p-on-primary: #ffffff;
+
+  // Акцент: выбор, фокус, ссылки, активная вкладка — чёрный в светлой теме, белый в тёмной
+  --p-accent: #000000;
+  --p-accent-hover: #2b2b2b;
+  --p-accent-text: #000000;
+  --p-accent-soft: rgba(0, 0, 0, 0.05);
+  --p-accent-line: rgba(0, 0, 0, 0.24);
+
+  // Статусы: иконка (≥ 3:1) и текст (≥ 4.5:1) на поверхности
+  --p-idle: #8d8d8d;
+  --p-idle-text: #646464;
+  --p-idle-soft: #f0f0f0;
+  --p-run: #3e63dd;
+  --p-run-text: #3a5bc7;
+  --p-run-soft: #edf2fe;
+  --p-wait: #ab6400;
+  --p-wait-text: #ab6400;
+  --p-wait-soft: #fefbe9;
+  --p-ok: #218358;
+  --p-ok-text: #218358;
+  --p-ok-soft: #f4fbf6;
+  --p-fail: #ce2c31;
+  --p-fail-text: #ce2c31;
+  --p-fail-soft: #fff7f7;
+  --p-fail-line: #fdbdbe;
+  --p-wait-line: #f3d673;
+
+  --p-focus: #000000;
+  --p-selection: rgba(0, 0, 0, 0.12);
+
+  // Тени: в светлой теме — едва заметные
+  --p-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --p-shadow-pop: 0 12px 32px -8px rgba(16, 24, 40, 0.16), 0 2px 6px rgba(16, 24, 40, 0.06);
+  --p-shadow-bar: 0 -1px 0 var(--p-line), 0 -8px 24px -12px rgba(16, 24, 40, 0.12);
+
+  // Типографика: Inter для интерфейса, JetBrains Mono — для кода
+  --p-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --p-font-code: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --p-text-xs: 0.75rem; // 12: метаданные, бейджи
+  --p-text-s: 0.8125rem; // 13: вторичный текст
+  --p-text-m: 0.875rem; // 14: основной текст интерфейса
+  --p-text-base: 0.875rem;
+  --p-text-read: 0.9375rem; // 15: текст для чтения
+  --p-text-l: 1rem; // 16: заголовок раздела
+  --p-text-xl: 1.25rem; // 20: заголовок пустого состояния
+  --p-text-2xl: 1.5rem; // 24: заголовок страницы
+
+  // Радиусы по иерархии
+  --p-radius-small: 6px;
+  --p-radius-control: 8px;
+  --p-radius-card: 12px;
+  --p-radius-container: 12px;
+  --p-radius-dialog: 16px;
+  --p-radius-pill: 999px;
+
+  // Ритм
+  --p-gutter: 24px;
+  --p-content: 1200px;
+  --p-sidebar: 240px;
+  --p-sidebar-collapsed: 56px;
+  --p-topbar: 48px;
+
+  // Движение
+  --p-ease: cubic-bezier(0.2, 0, 0, 1);
+  --p-fast: 120ms;
+  --p-base: 200ms;
+
+  color-scheme: light;
+}
+
+[tuiTheme='dark'] {
+  --p-bg: #000000;
+  --p-surface: #111111;
+  --p-surface-2: #191919;
+  --p-hover: #222222;
+  --p-press: #2a2a2a;
+  --p-sunken: #0a0a0a;
+  --p-overlay: rgba(0, 0, 0, 0.7);
+
+  --p-line: #2a2a2a;
+  --p-border: #313131;
+  --p-line-strong: #484848;
+
+  --p-ink: #ffffff;
+  --p-ink-2: #b4b4b4;
+  --p-ink-3: #b4b4b4;
+  --p-icon: #7b7b7b;
+
+  --p-brand: #ffffff;
+  --p-primary: #ffffff;
+  --p-primary-hover: #e8e8e8;
+  --p-primary-press: #d9d9d9;
+  --p-on-primary: #000000;
+
+  --p-accent: #ffffff;
+  --p-accent-hover: #e8e8e8;
+  --p-accent-text: #ffffff;
+  --p-accent-soft: rgba(255, 255, 255, 0.07);
+  --p-accent-line: rgba(255, 255, 255, 0.3);
+
+  --p-idle: #7b7b7b;
+  --p-idle-text: #b4b4b4;
+  --p-idle-soft: #222222;
+  --p-run: #3e63dd;
+  --p-run-text: #9eb1ff;
+  --p-run-soft: #182449;
+  --p-wait: #ffc53d;
+  --p-wait-text: #ffca16;
+  --p-wait-soft: #1d180f;
+  --p-ok: #30a46c;
+  --p-ok-text: #3dd68c;
+  --p-ok-soft: #121b17;
+  --p-fail: #e5484d;
+  --p-fail-text: #ff9592;
+  --p-fail-soft: #201314;
+  --p-fail-line: #72232d;
+  --p-wait-line: #5c3d05;
+
+  --p-focus: #ffffff;
+  --p-selection: rgba(255, 255, 255, 0.24);
+
+  // Не none: токен входит в списки теней вместе с рамкой
+  --p-shadow-card: 0 0 0 0 transparent;
+  --p-shadow-pop: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --p-shadow-bar: 0 -1px 0 var(--p-line), 0 -8px 24px -12px rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --p-gutter: 16px;
+  }
+}

@@ -1,0 +1,139 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100vw - 32px));
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 16px 0 24px;
+}
+
+.title {
+  font-size: var(--p-text-l);
+  line-height: 1.5rem;
+  letter-spacing: -0.011em;
+}
+
+.subtitle {
+  margin-top: 2px;
+  color: var(--p-ink-2);
+}
+
+.body {
+  display: grid;
+  gap: 20px;
+  padding: 20px 24px 4px;
+}
+
+.block {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  color: var(--p-ink);
+  font-size: var(--p-text-m);
+  font-weight: 500;
+}
+
+.label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--p-accent-text);
+  font-size: var(--p-text-s);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--p-line-strong);
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+.agents {
+  justify-self: start;
+}
+
+.agent-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+
+.hint {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-s);
+  line-height: 1.25rem;
+}
+
+.instruction {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-control);
+  background: var(--p-surface);
+  color: var(--p-ink);
+  font: 400 var(--p-text-m) / 1.25rem var(--p-font);
+  letter-spacing: -0.006em;
+  resize: vertical;
+  transition:
+    border-color var(--p-fast) var(--p-ease),
+    box-shadow var(--p-fast) var(--p-ease);
+
+  &:hover {
+    border-color: var(--p-line-strong);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--p-focus);
+    box-shadow: 0 0 0 1px var(--p-focus);
+  }
+
+  &::placeholder {
+    color: var(--p-ink-2);
+  }
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 16px 12px 24px;
+  border-top: 1px solid var(--p-line);
+  background: var(--p-surface-2);
+}
+
+.keys {
+  display: inline-flex;
+  gap: 2px;
+  margin-right: auto;
+}
+
+@media (max-width: 560px) {
+  .keys {
+    display: none;
+  }
+
+  .foot button {
+    flex: 1 1 auto;
+  }
+}

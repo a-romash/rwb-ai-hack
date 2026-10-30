@@ -1,0 +1,35 @@
+<div class="toolbar">
+  <button tuiButton type="button" appearance="flat" size="s" iconStart="@tui.file-up" (click)="pickFile()">Загрузить файл</button>
+  <button tuiButton type="button" appearance="flat" size="s" iconStart="@tui.list" (click)="insertTemplate.emit()">Шаблон разделов</button>
+  @if (offerExample() && empty()) {
+    <button tuiButton type="button" appearance="flat" size="s" iconStart="@tui.sparkles" (click)="insertExample.emit()">Пример из кейса</button>
+  }
+  <input #file type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" hidden (change)="onFile($event)" />
+</div>
+
+<div class="sheet">
+  <textarea
+    #area
+    class="area"
+    rows="12"
+    spellcheck="true"
+    [id]="inputId()"
+    [value]="value()"
+    [attr.maxlength]="maxLength()"
+    [attr.placeholder]="placeholder()"
+    [attr.aria-invalid]="invalid() ? 'true' : null"
+    [attr.aria-describedby]="describedBy()"
+    (input)="onInput($event)"
+  ></textarea>
+  <div class="drop" aria-hidden="true">
+    <span>Отпустите файл — текст добавится в требования</span>
+  </div>
+</div>
+
+<div class="stats" aria-live="off">
+  <span class="num" [attr.data-load]="load()">{{ stats().chars }} из {{ stats().max }} символов</span>
+  <span class="num">{{ stats().words }}</span>
+  <span class="num" tuiHint="Оценка по длине текста: около 3,2 символа на токен Qwen. Точное число считает токенизатор модели.">
+    около {{ stats().tokens }} токенов
+  </span>
+</div>

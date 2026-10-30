@@ -1,0 +1,198 @@
+// Карточка запуска: кто, над чем, сколько, что получилось. Статус — иконкой и словом.
+:host {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-card);
+  background: var(--p-surface);
+  box-shadow: var(--p-shadow-card);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.agent-icon {
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-control);
+  background: var(--p-surface-2);
+  color: var(--p-ink);
+}
+
+.who-title {
+  font-weight: 500;
+  line-height: 1.25rem;
+}
+
+.who-stage {
+  margin-left: 6px;
+  color: var(--p-ink-2);
+  font-weight: 400;
+}
+
+.who-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin-top: 2px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+}
+
+.job-id {
+  font-family: var(--p-font-code);
+  cursor: help;
+}
+
+.hint {
+  display: grid;
+  gap: 2px;
+  color: var(--p-ink-2);
+  font-size: var(--p-text-s);
+  line-height: 1.25rem;
+}
+
+.hint-error {
+  color: var(--p-fail-text);
+}
+
+// Факты запуска: ходы, токены, длительность
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+
+  > div {
+    display: grid;
+  }
+
+  dt {
+    color: var(--p-ink-2);
+    font-size: var(--p-text-xs);
+    line-height: 1rem;
+    letter-spacing: 0;
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 500;
+  }
+}
+
+.result {
+  min-width: 0;
+}
+
+// Агент работает, а результата ещё нет: тонкая полоса неопределённого прогресса
+.progress {
+  position: relative;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--p-line);
+  overflow: hidden;
+
+  i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 30%;
+    border-radius: 1px;
+    background: var(--p-run);
+    animation: progress 1.4s var(--p-ease) infinite;
+  }
+}
+
+.assumptions {
+  padding: 12px 14px;
+  border: 1px solid var(--p-wait-line);
+  border-radius: var(--p-radius-control);
+  background: var(--p-wait-soft);
+}
+
+.assumptions-title {
+  font-weight: 500;
+}
+
+.assumptions ul {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: var(--p-text-s);
+  line-height: 1.25rem;
+}
+
+.prompt {
+  border-top: 1px solid var(--p-line);
+  padding-top: 10px;
+
+  summary {
+    width: fit-content;
+    color: var(--p-ink-2);
+    font-size: var(--p-text-s);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--p-ink);
+    }
+  }
+
+  pre {
+    max-height: 280px;
+    margin: 8px 0 0;
+    padding: 12px 14px;
+    overflow: auto;
+    border: 1px solid var(--p-line);
+    border-radius: var(--p-radius-control);
+    background: var(--p-sunken);
+    font-size: 12.5px;
+    line-height: 1.25rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: -4px -8px -6px;
+}
+
+.remove {
+  margin-left: auto;
+}
+
+@keyframes progress {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@media (max-width: 560px) {
+  :host {
+    padding: 14px 16px;
+  }
+
+  .head {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  app-status-chip {
+    grid-column: 2;
+  }
+}
