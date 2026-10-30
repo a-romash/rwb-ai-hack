@@ -202,6 +202,9 @@
 | `50be5c1` | `scaffold`: `Model.cs`/`Params.cs`; `hooks.in` с `Entity.field` и скалярами; `StageOutput`; починен шаблон (`Microsoft.Extensions.Hosting`, MTP) |
 | `ca88d9d` | Новый этап `tests` (JSON-кейсы, раннер `HookCases`); E2E под схему Артёма; JUnit-матчинг; `verify` по платформам; `hooks.json` + `method`/`returns`/`parameters` |
 | `d24de66` | Генерация API + API-кейсы; стенд продукта (Dockerfile, compose, smoke, healthcheck); PWA вместо Android; `pack.yaml` → `pack.json`; правки `develop`; `agent.py` |
+| `994c79c` | Сессия 2, платформа: вложения к проекту, профиль `tools`, CI платформы, шлюз LLM (один бюджет reasoning; обрезанный JSON — повтор с бо́льшим бюджетом), `reconcile`, суженный `dependents()`, `run_pipeline.py`/`local_chain.py` |
+| `f429be1` | Сессия 2, продукт: рендерер экранов, PWA, seed, таймер-переходы в `App.Worker`, CI продукта, отчёты сканеров и E2E, споры → QA, мутации по всем AC, профайлер (WKT, единицы) |
+| `d830a08` | Сессия 2: Студия на `/runs` (таймлайн, SSE, ворота, вопросы, артефакты, вложения), README и документы |
 
 ### Как решены конфликты слияния
 - `contracts/fixtures/tickets/ui.json` — версия Артёма (владелец).
@@ -297,6 +300,12 @@ Docker-демона нет. Поэтому **не проверены**:
 ---
 
 ## 8. Что дальше (по приоритету)
+
+### Статус после сессии 2 (локальный Docker)
+- **Сделано:** P0 1–4 (кроме PR — п. 5); P1 6, 7, 9, 11, 12; P2 13, 14, 15, 16, 18, 19 (`reconcile`, README), 20, 21.
+- **Проверено на Docker:** `docker compose up` платформы и `doctor`; образы инструментов; песочница на `tickets`: backend build/test 22/22, `dotnet format`, gitleaks JSON и trivy SARIF; admin и PWA собираются офлайн, jest зелёный; Студия — 40/40 E2E с axe.
+- **Не дошло до конца на момент пуша:** полный перепрогон цепочки `tickets` со стендом (admin+mobile), smoke и E2E на новых шаблонах; реальный прогон кейса №1 на модели (первые две попытки упали на analysis: HTTP 400 по reasoning и обрезка JSON в `acceptance`, оба исправлены, третья попытка шла во время пуша). Таймер-переходы компилируются, но на живой PostgreSQL не проверены.
+- **Открыто:** P1 8 (API-сценарии для AC без хуков), P1 10 (outbox/SSE в продукте), P2 17 (eval Сани на `harness/llm.py`), P2 19 (`input_hash` для пропуска), PR в `main`, закрытие #2/#4, итог в #3; в Студии нет E2E на загрузку вложений.
 
 ### P0 — до сдачи
 1. **Сквозная проверка на ветке интеграции:** фейковый прогон через API и Celery (раздел 7). Затем прогон с реальными этапами и `FakeLLM` на `tickets` через `run_stage_locally`: `analysis → spec → ui → scaffold → tests`. Дальше песочница нужна настоящая. Recorded-ответы для `analysis`/`spec` есть в `stages/*/tests/fixtures/*-responses.json`, через `stages/spec/eval.py::evaluate`.
