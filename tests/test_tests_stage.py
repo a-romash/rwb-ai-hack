@@ -83,12 +83,16 @@ class TestsStageTest(unittest.TestCase):
             report.write_text('<testsuite><testcase classname="App.Acceptance.Tests.Generated.AC_03_Tests" name="AC_03">'
                               '<failure message="Assert.Equal() Failure: Values differ"/></testcase></testsuite>')
             sandbox = FakeSandbox({('build', 'backend'): [ok()],
-                                   ('test', 'backend'): [ok(reports={'junit': 'product/reports/junit/backend/run.xml'})]})
+                                   ('test', 'backend'): [ok(reports={'junit': 'product/reports/junit/backend/run.xml'})] * 4})
             result = execute(StageInput(run_id='r', stage='tests', attempt=1, requirements='r', artifacts=artifacts), root, llm, sandbox)
             manifest = json.loads((root / result.artifacts['tests']).read_text(encoding='utf-8'))
-            self.assertEqual([t['ac'] for t in manifest['tests']], ['AC-03'])
-            self.assertTrue(manifest['tests'][0]['red_proof'])
-            self.assertEqual(manifest['tests'][0]['failure_kind'], 'assertion')
+            # AC-03 has hook cases; AC-01, AC-02, AC-08 get API scenarios from app.json (neutral for red-proof).
+            self.assertEqual([t['ac'] for t in manifest['tests']], ['AC-01', 'AC-02', 'AC-03', 'AC-08'])
+            by_ac = {t['ac']: t for t in manifest['tests']}
+            self.assertTrue(by_ac['AC-03']['red_proof'])
+            self.assertEqual(by_ac['AC-03']['failure_kind'], 'assertion')
+            self.assertEqual((by_ac['AC-02']['level'], by_ac['AC-02']['neutral']), ('api', True))
+            self.assertIn('product/backend/tests/App.Acceptance.Tests/cases/scenarios/AC-02.json', manifest['hashes'])
             case_file = 'product/backend/tests/App.Acceptance.Tests/cases/hooks/ResolutionRequired.json'
             self.assertIn(case_file, manifest['hashes'])
             self.assertEqual(len(json.loads((root / case_file).read_text(encoding='utf-8'))['cases']), 3)
@@ -98,3 +102,27 @@ class TestsStageTest(unittest.TestCase):
             self.assertEqual(sources['ResolutionRequired'], 'model')
             self.assertEqual(sources['SlaDeadline'], 'budget')
             self.assertTrue(any(path.startswith('product/admin-web/e2e/') for path in json.loads((root / 'reports/test-cases.json').read_text())['e2e']))
+
+
+class ScenariosTest(unittest.TestCase):
+    def test_command_scenario_walks_the_state_machine(self):
+        from stages.tests.scenarios import build
+        app = json.loads((FIXTURES / 'app.json').read_text(encoding='utf-8'))
+        analysis = json.loads((FIXTURES / 'analysis.json').read_text(encoding='utf-8'))
+        flows = build(app, analysis)
+        self.assertEqual(sorted(flows), ['AC-01', 'AC-02', 'AC-03', 'AC-08'])
+        steps = flows['AC-03'][0]['steps']
+        # Create as the role allowed to create, take it to in_progress, then resolve and read back.
+        self.assertEqual([(s['as'], s['path'].rsplit('/', 1)[-1]) for s in steps],
+                         [('employee', 'Ticket'), ('engineer', 'TakeTicket'), ('engineer', 'ResolveTicket'), ('engineer', '{id}')])
+        self.assertEqual(steps[2]['expect'], {'status': 200, 'json': {'status': 'resolved'}})
+        self.assertEqual(steps[2]['body']['id'], '{id}')
+        self.assertEqual(flows['AC-01'][0]['source'], 'create')
+
+    def test_timer_only_transition_gets_no_scenario(self):
+        from stages.tests.scenarios import build
+        app = json.loads((FIXTURES / 'app.json').read_text(encoding='utf-8'))
+        analysis = json.loads((FIXTURES / 'analysis.json').read_text(encoding='utf-8'))
+        # AC-07 needs the overdue state, reachable only by the timer: no HTTP scenario is invented.
+        self.assertNotIn('AC-07', build(app, analysis))
+

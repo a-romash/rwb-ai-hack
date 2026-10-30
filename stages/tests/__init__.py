@@ -12,6 +12,7 @@ from contracts.verification import TestsManifest, PlannedTest
 from harness.fakes import workspace_path
 from stages.quality import read, write, junit, assertion_failure
 from stages.tests import cases as hook_cases
+from stages.tests import scenarios as api_scenarios
 
 GENERATED = "product/backend/tests/App.Acceptance.Tests/Generated"
 
@@ -78,9 +79,19 @@ def execute(inp, workspace, llm, sandbox):
             stubs[hook['id']] = {'file': 'product/' + hook['file'], 'source': target.read_text(encoding='utf-8')}
     write(workspace, 'reports/redproof-stubs.json', stubs)
     covered, sources = _generate(workspace, analysis, app, hooks, llm)
-    tests = [PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ac.replace('-', '_')}.cs", level='unit',
-                         neutral=next((a.get('neutral_expectation', False) for a in analysis['acceptance'] if a['id'] == ac), False))
-             for ac in sorted(covered)]
+    # API scenarios exercise code the generator wrote, so they pass on the stubs: neutral for red-proof
+    # unless the criterion also has hook cases.
+    flows = api_scenarios.build(app, analysis)
+    for ac, found in flows.items():
+        api_scenarios.write(workspace_path, workspace, ac, found)
+    tests = []
+    for ac in sorted(set(covered) | set(flows)):
+        ident = ac.replace('-', '_')
+        neutral = next((a.get('neutral_expectation', False) for a in analysis['acceptance'] if a['id'] == ac), False)
+        if ac in covered:
+            tests.append(PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ident}.cs", level='unit', neutral=neutral))
+        else:
+            tests.append(PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ident}_Scenario.cs", level='api', neutral=True))
     from stages.tests.e2e import generate
     e2e = generate(workspace, read(workspace, inp.artifacts, 'ui', optional=True), app)
     build = sandbox.run('build', 'backend')
@@ -92,9 +103,11 @@ def execute(inp, workspace, llm, sandbox):
             t.failure_kind = 'compile'
     save(workspace, manifest)
     write(workspace, 'reports/test-cases.json', {'schema_version': 1, 'sources': sources, 'e2e': e2e,
-                                                 'covered': {ac: sorted(ids) for ac, ids in covered.items()}})
+                                                 'covered': {ac: sorted(ids) for ac, ids in covered.items()},
+                                                 'scenarios': {ac: [x['id'] for x in found] for ac, found in flows.items()}})
     return StageOutput(artifacts={'tests': 'reports/tests.json'},
-                       summary=f"Тесты для {len(tests)} из {len(manifest.acceptance)} AC; E2E-проходов: {len(e2e)}")
+                       summary=f"Тесты для {len(tests)} из {len(manifest.acceptance)} AC "
+                               f"(сценариев API: {sum(map(len, flows.values()))}); E2E-проходов: {len(e2e)}")
 
 
 def save(workspace, manifest):
