@@ -26,6 +26,11 @@ def state_texts(lang: str, platform: str) -> dict[str, str]:
     return {state: texts[state] for state in REQUIRED_STATES[platform]}
 
 
+def screen_name(base: str, suffix: str) -> str:
+    """Screen names are PascalCase (routes, page files), while app.json allows startSession or work_order."""
+    return "".join(part[:1].upper() + part[1:] for part in re.split(r"_+", base) if part) + suffix
+
+
 def kebab(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", screen_kebab(name)).strip("-")
 
@@ -57,14 +62,14 @@ def derive_base(raw_app: dict) -> UiSpec:
         fields = app.fields(entity)
         commands = _commands(app, entity)
         live = sorted(app.events(entity))
-        list_name, detail_name, form_name = f"{entity}List", f"{entity}Detail", f"{entity}Form"
+        list_name, detail_name, form_name = (screen_name(entity, kind) for kind in ("List", "Detail", "Form"))
 
         command_forms = {}
         for command in commands:
             roles = sorted(app.roles_for(command))
             if not _has_input(app, command) or not roles:
                 continue
-            name = f"{command}Form"
+            name = screen_name(command, "Form")
             prefix = kebab(name)
             command_forms[command] = name
             screens[name] = Screen(

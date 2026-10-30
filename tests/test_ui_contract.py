@@ -38,6 +38,12 @@ class UiContractTest(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Widget(kind="field", field="no-dots", testid="session-form.vehicle")
 
+    def test_derived_screen_names_are_pascal_case(self):
+        from stages.ui.base import screen_name
+        self.assertEqual(screen_name("startSession", "Form"), "StartSessionForm")
+        self.assertEqual(screen_name("work_order", "List"), "WorkOrderList")
+        self.assertEqual(screen_name("Ticket", "Detail"), "TicketDetail")
+
     def test_fixture_screens_with_data_have_required_states(self):
         for name, screen in load_ui(FIXTURE).screens.items():
             if screen.has_data:
