@@ -16,6 +16,16 @@ def context(analysis,app,hooks,openapi,ac):
             'openapi':openapi}
 
 
+def rule_values(analysis, ac):
+    ids=set(ac.get('rules', []))
+    values=[]
+    for rule in analysis.get('rules', []):
+        if rule.get('id') in ids:
+            for value in rule.get('params', {}).values():
+                values.append(value.get('value') if isinstance(value, dict) else value)
+    return values
+
+
 def execute(inp,workspace,llm,sandbox):
     workspace=workspace.resolve()
     analysis=read(workspace,inp.artifacts,'analysis');app=read(workspace,inp.artifacts,'app')
@@ -36,7 +46,7 @@ def execute(inp,workspace,llm,sandbox):
             code=llm(task_class='qa',system='Write xUnit tests using the supplied public contracts only. Tag each test with Trait("AC", acceptance.id). Use TestClock, never real time. Expected results must come from AC examples, not production algorithms. Return C# code only.',user=json.dumps(packet,ensure_ascii=False),output='code',task_id=ident)
         except BudgetExceeded:break
         target=workspace_path(workspace,file);target.parent.mkdir(parents=True,exist_ok=True);target.write_text(code,encoding='utf-8')
-        tests.append(PlannedTest(id=ident,ac=ident,file=file,level='unit',neutral=ac.get('neutral_expectation',False),lint=lint(code,ident)))
+        tests.append(PlannedTest(id=ident,ac=ident,file=file,level='unit',neutral=ac.get('neutral_expectation',False),lint=lint(code,ident,rule_values(analysis,ac))))
     from stages.tests.e2e import generate
     generate(workspace, read(workspace,inp.artifacts,'ui'))
     build=sandbox.run('build','backend')
@@ -45,7 +55,7 @@ def execute(inp,workspace,llm,sandbox):
         for t in tests:
             packet=context(analysis,app,hooks,api,next(ac for ac in analysis['acceptance'] if ac['id']==t.ac))
             code=llm(task_class='qa',system='Repair only this C# test compilation. Preserve AC and assertions.',user=json.dumps({'contract':packet,'test':workspace_path(workspace,t.file).read_text(),'errors':build.failed},ensure_ascii=False),output='code',task_id=t.ac)
-            workspace_path(workspace,t.file).write_text(code,encoding='utf-8');t.lint=lint(code,t.ac)
+            workspace_path(workspace,t.file).write_text(code,encoding='utf-8');t.lint=lint(code,t.ac,rule_values(analysis,next(a for a in analysis['acceptance'] if a['id']==t.ac)))
         build=sandbox.run('build','backend')
     manifest=TestsManifest(tests=tests,hashes={},acceptance=[a['id'] for a in analysis.get('acceptance',[])],build_ok=build.ok)
     if build.ok:
@@ -86,7 +96,7 @@ def repair(inp,workspace,llm,findings, *, sandbox=None):
     for t in data.tests:
         if t.ac not in affected:continue
         code=llm(task_class='qa',system='Repair the test according to findings, preserving its AC. Return C#.',user=json.dumps({'acceptance':next(a for a in analysis['acceptance'] if a['id']==t.ac),'test':workspace_path(workspace,t.file).read_text(),'findings':[f.model_dump() for f in findings]},ensure_ascii=False),output='code',task_id=t.ac)
-        workspace_path(workspace,t.file).write_text(code);t.lint=lint(code,t.ac)
+        workspace_path(workspace,t.file).write_text(code);t.lint=lint(code,t.ac,rule_values(analysis,next(a for a in analysis['acceptance'] if a['id']==t.ac)))
         if sandbox is None:raise ContractError('Для repair требуется песочница')
         build=sandbox.run('build','backend');data.build_ok=build.ok
         result=sandbox.run('test','backend',filter=t.ac) if build.ok else None

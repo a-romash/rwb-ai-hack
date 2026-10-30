@@ -49,3 +49,10 @@ class QualityTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 run(root,[{'id':'Rule','file':'hook.cs','refs':['AC-01']}],[PlannedTest(id='AC-01',ac='AC-01',file='test.cs',level='unit')],Broken())
             self.assertEqual(path.read_bytes(),source)
+
+    def test_lint_rejects_only_related_threshold(self):
+        from stages.tests import rule_values
+        analysis={'rules':[{'id':'BR-1','params':{'MIN':{'value':5}}},{'id':'BR-2','params':{'OTHER':{'value':10}}}]}
+        values=rule_values(analysis,{'rules':['BR-1']})
+        self.assertIn('TEST_FORBIDDEN',lint('// AC-1\nAssert.Equal(5, value);','AC-1',values))
+        self.assertNotIn('TEST_FORBIDDEN',lint('// AC-1\nAssert.Equal(10, value);','AC-1',values))
