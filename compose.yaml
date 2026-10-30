@@ -2,13 +2,21 @@ name: rwb-pipeline
 
 x-backend: &backend
   image: rwb-pipeline-backend:local
-  build: ./backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  env_file:
+    - path: ../.env
+      required: false
   environment: &backend-environment
     POSTGRES_USER: ${POSTGRES_USER:-pipeline}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pipeline}
     POSTGRES_DB: ${POSTGRES_DB:-pipeline}
     POSTGRES_HOST: postgres
     POSTGRES_PORT: 5432
+    WORKSPACES_DIR: /app/workspaces
+  volumes:
+    - workspaces:/app/workspaces
   restart: unless-stopped
 
 services:
@@ -59,3 +67,4 @@ services:
 
 volumes:
   postgres_data:
+  workspaces:

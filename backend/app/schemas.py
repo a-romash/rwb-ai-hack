@@ -47,3 +47,21 @@ class ProjectSummary(BaseModel):
 class ProjectRead(ProjectSummary):
     requirements: str
     stages: list[StageRead]
+
+
+AgentId = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[a-z][a-z0-9_-]{0,40}$")]
+
+
+class JobCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    agent: AgentId
+    prompt: Requirements | None = None
+
+
+class JobRead(BaseModel):
+    id: str
+    status: str
+    agent: str | None = None
+    subtype: str | None = None
+    result: str | None = None
+    num_turns: int | None = None

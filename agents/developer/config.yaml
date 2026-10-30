@@ -1,0 +1,9 @@
+mode: tools
+thinking: true
+effort: xhigh
+max_turns: 6
+autonomy: auto
+write_roots:
+  - backend/src/App.Domain/Hooks
+  - admin-web/src/app/custom
+  - db/seed
