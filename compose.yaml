@@ -1,0 +1,61 @@
+name: rwb-pipeline
+
+x-backend: &backend
+  image: rwb-pipeline-backend:local
+  build: ./backend
+  environment: &backend-environment
+    POSTGRES_USER: ${POSTGRES_USER:-pipeline}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pipeline}
+    POSTGRES_DB: ${POSTGRES_DB:-pipeline}
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:17.9-bookworm
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pipeline}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pipeline}
+      POSTGRES_DB: ${POSTGRES_DB:-pipeline}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    <<: *backend
+    command: ["sh", "-c", "alembic upgrade head && python -m app.init_broker && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "app.tasks:celery_app", "worker", "--loglevel=info", "--concurrency=1", "--without-gossip", "--without-mingle", "--without-heartbeat"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
