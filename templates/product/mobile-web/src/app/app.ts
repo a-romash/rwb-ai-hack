@@ -12,21 +12,23 @@ import {Session} from './screens/session';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatToolbarModule, MatButtonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <mat-toolbar>
-      <span class="title">{{ title }}</span>
-      <span class="spacer"></span>
-      @if (live.notifications().length; as count) {
-        <span class="badge" data-testid="app.notifications-count" role="status" [title]="latest()">{{ count }}</span>
-      }
-      @if (!online()) {
-        <span class="offline" role="status">Нет сети</span>
-      }
-      @if (canNotify()) {
-        <button mat-button type="button" data-testid="app.notifications" (click)="askNotifications()">
-          Уведомления
-        </button>
-      }
-    </mat-toolbar>
+    <header>
+      <mat-toolbar>
+        <span class="title">{{ title }}</span>
+        <span class="spacer"></span>
+        @if (live.notifications().length; as count) {
+          <span class="badge" data-testid="app.notifications-count" role="status" [title]="latest()">{{ count }}</span>
+        }
+        @if (!online()) {
+          <span class="offline" role="status">Нет сети</span>
+        }
+        @if (canNotify()) {
+          <button mat-button type="button" data-testid="app.notifications" (click)="askNotifications()">
+            Уведомления
+          </button>
+        }
+      </mat-toolbar>
+    </header>
     <main>
       <router-outlet />
     </main>
@@ -41,7 +43,8 @@ import {Session} from './screens/session';
   `,
   styles: `
     :host { display: flex; flex-direction: column; min-height: 100dvh; }
-    mat-toolbar { position: sticky; top: 0; z-index: 2; padding-top: env(safe-area-inset-top); }
+    header { position: sticky; top: 0; z-index: 2; }
+    mat-toolbar { padding-top: env(safe-area-inset-top); }
     .title { overflow: hidden; text-overflow: ellipsis; }
     .spacer { flex: 1; }
     .badge { min-width: 24px; padding: 2px 8px; border-radius: 999px; background: #b3261e; color: #fff; font-size: 0.8125rem; text-align: center; }

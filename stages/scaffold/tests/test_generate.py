@@ -162,6 +162,17 @@ class GenerateTests(unittest.TestCase):
         seed = _seed(app)
         self.assertEqual(seed["Ticket"][0]["author"], seed["Employee"][1]["id"])
         self.assertEqual(_seed(app), seed)                                     # stable ids
+        app["seed"]["Ticket"][0]["author"] = 2                                 # no such Employee row
+        with self.assertRaises(Exception) as caught:
+            _seed(app)
+        self.assertIn("seed.Ticket[0].author", str(caught.exception))
+
+    def test_command_records_its_input_on_the_entity(self):
+        from stages.scaffold.api import endpoints_cs
+        canonical = Path(__file__).resolve().parents[3] / "contracts/fixtures/tickets/app.json"
+        text = endpoints_cs(json.loads(canonical.read_text(encoding="utf-8")))
+        resolve = text[text.index("ApplyResolveTicket(AppDbContext"):]
+        self.assertIn("item.Resolution = cmd.Resolution;", resolve[:resolve.index("return moved")])
 
     def test_timer_transition_is_applied_by_the_worker(self):
         from stages.scaffold.api import timers_cs

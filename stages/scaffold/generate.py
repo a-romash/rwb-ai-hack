@@ -529,7 +529,11 @@ def _seed(app: dict) -> dict:
             for key, value in (row if isinstance(row, dict) else {}).items():
                 field = fields.get(key) or {}
                 ref = field.get("ref") if field.get("type") == "ref" else None
-                item[key] = _seed_id(ref, value) if ref and isinstance(value, int) and not isinstance(value, bool) else value
+                if ref and isinstance(value, int) and not isinstance(value, bool):
+                    if not 0 <= value < len((app.get("seed") or {}).get(ref) or []):
+                        _contract_error(f"seed.{entity}[{index}].{key}: no row {value} in seed.{ref}")
+                    value = _seed_id(ref, value)
+                item[key] = value
             result[entity].append(item)
     return result
 

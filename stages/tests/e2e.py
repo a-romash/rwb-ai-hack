@@ -42,6 +42,19 @@ def _widget(screen: dict, field: str, kinds: tuple[str, ...]) -> str:
     return found[0]
 
 
+def _row(app: dict, screen: dict, name: str, ref: str) -> str:
+    """The list row of a seed record, found by the text it shows: a query filters and orders rows,
+    so the seed index is not the row position."""
+    record = _seed(app, ref)
+    shown = [w["field"].split(".", 1)[1] for w in screen.get("widgets", []) if w.get("kind") == "field" and "." in w.get("field", "")]
+    text = next((record[f] for f in shown if isinstance(record.get(f), str) and record[f]), None)
+    rows = f"page.getByTestId({json.dumps(_kebab(name) + '.row')})"
+    if text is None:
+        raise ContractError(f"Строку {ref} на экране {name} не узнать: экран не показывает её текстовых полей")
+    # Walks share the stand, so a record created by another walk may show the same text.
+    return f"{rows}.filter({{hasText: {json.dumps(text, ensure_ascii=False)}}}).first()"
+
+
 def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
     screens = ui.get("screens", {})
     copy = ui.get("copy", {})
@@ -69,8 +82,7 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
             row = step.get("row")
             scope = "page"
             if row:
-                index = int(re.search(r"\[(\d+)\]", row["seed"]).group(1))
-                scope = f"page.getByTestId({json.dumps(_kebab(current) + '.row')}).nth({index})"
+                scope = _row(app, screen, current, row["seed"])
             if len(actions) == 1:
                 lines.append(f"await {scope}.getByTestId({json.dumps(actions[0])}).click();")
                 if any(a.get("confirm") for a in screen.get("actions", []) if a.get("testid") == actions[0]):
@@ -78,6 +90,9 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
             elif target in screens and target in screen.get("nav", []):
                 if row:
                     lines.append(f"await {scope}.click();")
+                elif screens[target].get("pattern") != "detail":
+                    # The screen's nav link carries the open record (?id=), a bare URL would lose it.
+                    lines.append(f"await page.getByTestId({json.dumps(_kebab(current) + '.nav-' + target)}).click();")
                 else:
                     lines.append(f"await page.goto({json.dumps('/' + target)});")
                 current = target
@@ -105,7 +120,7 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
             if expect.get("error"):
                 lines.append("await expect(page.getByRole('alert').first()).toBeVisible();")
             if expect.get("row"):
-                lines.append(f"await expect(page.getByTestId({json.dumps(_kebab(current) + '.row')}).first()).toBeVisible();")
+                lines.append(f"await expect({_row(app, screen, current, expect['row']['seed'])}).toBeVisible();")
         else:
             raise ContractError("Неподдерживаемый шаг UI")
     return lines

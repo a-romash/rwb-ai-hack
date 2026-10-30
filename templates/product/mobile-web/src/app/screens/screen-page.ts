@@ -175,7 +175,7 @@ export class ScreenPage {
         await this.load(false);
       }
     } catch (error) {
-      this.failure.set(error instanceof ApiError ? error.message : 'Не удалось выполнить действие');
+      this.failure.set(error instanceof ApiError ? failureText(error) : 'Не удалось выполнить действие');
     } finally {
       this.busy.set(false);
     }
@@ -183,7 +183,7 @@ export class ScreenPage {
 
   private send(action: Action, row: Row | null): Promise<Row | undefined> {
     const [owner, verb] = action.command.split('.');
-    const values = this.payload();
+    const values = this.payload(!['create', 'update', 'delete'].includes(verb));
     const id = row?.id ?? this.id();
     if (verb === 'create') return this.session.request('POST', `/${owner}`, {...defaults(owner), ...values});
     if (verb === 'update') return this.session.request('PUT', `/${owner}/${id}`, {...this.item(), ...values});
@@ -192,13 +192,14 @@ export class ScreenPage {
     return this.session.request('POST', `/${entity}/commands/${owner}`, {...values, id});
   }
 
-  private payload(): Record<string, unknown> {
+  /** Form values; a command also gets its blank text inputs, so its validator hook decides on them. */
+  private payload(command = false): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const widget of this.fields) {
       const name = (widget.field ?? '').split('.')[1];
-      const value = this.values()[name];
-      if (value === undefined || value === '') continue;
       const type = fieldDef(MODEL, widget.field ?? '')?.type;
+      const value = this.values()[name] ?? (command && (type === 'string' || type === 'text') ? '' : undefined);
+      if (value === undefined || (value === '' && !command)) continue;
       result[name] =
         type && ['int', 'decimal', 'money', 'number'].includes(type)
           ? Number(value)
@@ -282,6 +283,11 @@ function entityOf(screen: Screen): string {
  * Required fields the form does not ask for. shortcut: a reference points at the first seeded row
  * (sign-in is by role, there is no user record); timestamps are now. Server-side defaults replace this.
  */
+/** A rejected guard answers with the hook name as title; ui.json copy has its text as error.<Hook>. */
+function failureText(error: ApiError): string {
+  return MODEL.copy[`error.${error.message}`] ?? (error.status === 400 ? 'Проверьте заполнение полей' : error.message);
+}
+
 function defaults(entity: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [name, def] of Object.entries(MODEL.entities[entity]?.fields ?? {})) {

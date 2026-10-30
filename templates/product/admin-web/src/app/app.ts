@@ -12,16 +12,18 @@ import {Session} from './screens/session';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatToolbarModule, MatSidenavModule, RouterOutlet, AppMenu],
   template: `
-    <mat-toolbar>
-      <span>{{ title }}</span>
-      <span class="spacer"></span>
-      @if (live.notifications().length; as count) {
-        <span class="badge" data-testid="app.notifications-count" role="status" [title]="latest()">{{ count }}</span>
-      }
-      @if (session.role(); as role) {
-        <span class="role" data-testid="app.role">{{ roles[role] ?? role }}</span>
-      }
-    </mat-toolbar>
+    <header>
+      <mat-toolbar>
+        <span>{{ title }}</span>
+        <span class="spacer"></span>
+        @if (live.notifications().length; as count) {
+          <span class="badge" data-testid="app.notifications-count" role="status" [title]="latest()">{{ count }}</span>
+        }
+        @if (session.role(); as role) {
+          <span class="role" data-testid="app.role">{{ roles[role] ?? role }}</span>
+        }
+      </mat-toolbar>
+    </header>
     <mat-sidenav-container class="shell">
       <mat-sidenav mode="side" opened>
         <app-menu />

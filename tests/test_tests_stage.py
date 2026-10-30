@@ -104,6 +104,20 @@ class TestsStageTest(unittest.TestCase):
             self.assertTrue(any(path.startswith('product/admin-web/e2e/') for path in json.loads((root / 'reports/test-cases.json').read_text())['e2e']))
 
 
+class E2ETest(unittest.TestCase):
+    def test_rows_and_nav_follow_what_the_screen_shows(self):
+        from stages.tests import e2e
+        app = json.loads((FIXTURES / 'app.json').read_text(encoding='utf-8'))
+        ui = json.loads((FIXTURES / 'ui.json').read_text(encoding='utf-8'))
+        with tempfile.TemporaryDirectory() as tmp:
+            e2e.generate(Path(tmp), ui, app)
+            spec = (Path(tmp) / 'product/admin-web/e2e/US-03.spec.ts').read_text(encoding='utf-8')
+        # Ticket[1] is not the second row of MyTickets: rows are found by the seed record's text.
+        self.assertIn('getByTestId("my-tickets.row").filter({hasText: "Сломался стул"}).first().click()', spec)
+        self.assertIn('getByTestId("ticket-detail.nav-ResolveTicketForm").click()', spec)
+        self.assertNotIn('nth(', spec)
+
+
 class ScenariosTest(unittest.TestCase):
     def test_command_scenario_walks_the_state_machine(self):
         from stages.tests.scenarios import build

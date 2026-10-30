@@ -65,6 +65,18 @@ def _computed(app: dict, entity: str) -> list[str]:
     return lines
 
 
+def _input_copies(spec: dict, fields: dict) -> list[str]:
+    """A command input named like a plain field of its entity is what the command records there."""
+    lines = []
+    for name, field in sorted((spec.get("input") or {}).items()):
+        target = fields.get(name)
+        if not target or target.get("computed_by") or target.get("type") == "state":
+            continue
+        if (target.get("type"), target.get("ref")) == (field.get("type"), field.get("ref")):
+            lines.append(f"            item.{pascal(name)} = cmd.{pascal(name)};")
+    return lines
+
+
 def _transitions(app: dict, command: str, spec: dict, entity: str) -> list[str]:
     """C# body applying the first transition of the command allowed from the current state."""
     machines = _section(app, "state_machines")
@@ -97,6 +109,7 @@ def _transitions(app: dict, command: str, spec: dict, entity: str) -> list[str]:
             else:
                 lines.append(f"            // Guard {guard} needs arguments the API does not have; wire it in custom.")
         lines.append(f"            item.{pascal(state_field)} = {enum}.{pascal(transition['to'])};")
+        lines += _input_copies(spec, fields)
         lines.append(f"            DomainEvents.Raise(db, {_cs(derived_event(entity, transition['name']))}, item, item.Id, time);")
         lines.append("            moved = true;")
         lines.append("        }")
@@ -223,7 +236,8 @@ def endpoints_cs(app: dict) -> str:
             out += ["        var moved = false;", *body,
                     "        return moved ? null : Results.Problem(title: \"transition\", statusCode: StatusCodes.Status409Conflict);"]
         else:
-            out += ["        return null;"]
+            fields = (entities[entity] or {}).get("fields", {})
+            out += [line[4:] for line in _input_copies(spec, fields)] + ["        return null;"]
         out += ["    }", ""]
     out[-1:] = ["}", ""]
     return "\n".join(out)
