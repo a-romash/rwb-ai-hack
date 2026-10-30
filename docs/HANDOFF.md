@@ -288,6 +288,22 @@ cd /tmp/gen/product/backend && dotnet build App.sln && dotnet test --solution Ap
 3. `POST /api/projects/{id}/runs {"autonomy":"A2"}`.
 4. Через ~20 с `GET /api/runs/{id}` — ожидается 8 этапов `succeeded`, прогон `partial`.
 
+### Langfuse: где модель крутится в циклах
+`docker compose --profile langfuse up -d`, UI — http://localhost:3000. Вход — `LANGFUSE_INIT_USER_EMAIL` и `LANGFUSE_INIT_USER_PASSWORD` из `.env`. При первом старте Langfuse создаёт по `.env` организацию, проект `pipeline` и ключи. Шаблон — `.env.example`. Без `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY` или `LANGFUSE_SECRET_KEY` трассы не отправляются.
+
+Отправку делает `backend/app/tracing.py`: фоновый поток, OTLP/HTTP JSON. Схема — по `architecture-v2.md`:
+- **trace** — прогон;
+- **span** `<этап> #<попытка>` — этап;
+- **generation** — одна попытка вызова модели, с промптом, ответом и токенами;
+- **оценки (scores)** на span этапа — итоги гейтов.
+
+Как читать циклы — по уровню generation в дереве трассы:
+- **WARNING `schema_error`** — ремонт формата, следующая попытка получает «Исправь формат ответа…»;
+- **WARNING `length`** — ответ обрезан: для JSON бюджет растёт вдвое, для текста — продолжение;
+- **ERROR `provider_error`** — ретрай после 429/5xx.
+
+Повторные span одного этапа (`spec #2`, `#3`) — это перезапуски. Фильтр по уровню WARNING показывает самые «дорогие» места.
+
 ### Чего не было в среде
 Docker-демона нет. Поэтому **не проверены**:
 - `docker compose up` платформы;

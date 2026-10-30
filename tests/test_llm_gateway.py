@@ -52,6 +52,12 @@ class Tests(unittest.TestCase):
             self.assertEqual(client.calls, 2)
             self.assertEqual(len(self.records), 3)
             self.assertTrue(self.records[-1]['from_cache'])
+    def test_each_attempt_reports_the_messages_it_sent(self):
+        gateway = self.gateway(Client(['bad', '{"count": 3}']))
+        gateway(task_class='qa', system='s', user='u', output=Output)
+        self.assertEqual([len(r['messages']) for r in self.records], [2, 4])
+        self.assertEqual((self.records[0]['output'], self.records[0]['status']), ('bad', 'schema_error'))
+        self.assertIn('Исправь формат ответа', self.records[1]['messages'][-1]['content'])
     def test_retry_and_schema_failure(self):
         class RetryClient:
             calls = 0

@@ -165,11 +165,14 @@ class Gateway:
             record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started', 'prompt_sha': prompt_sha})
             own_requests.append(record)
             started = time.monotonic()
+            # Snapshot for tracing: repairs and continuations extend `messages` in place.
+            sent = [dict(message) for message in messages]
             try:
                 response = self.transport.complete(messages, schema=schema if structured else None, effort=effort,
                     reasoning_tokens=reasoning_tokens, temperature=temperature, max_tokens=max_tokens)
             except (TransportError, RateLimitExceeded, AdmissionLimitExceeded, ContractError) as exc:
-                self.finish(record, {'status': 'provider_error', 'usage': getattr(exc,'usage',None), 'latency_ms': int((time.monotonic()-started)*1000)})
+                self.finish(record, {'status': 'provider_error', 'usage': getattr(exc,'usage',None), 'latency_ms': int((time.monotonic()-started)*1000),
+                                     'messages': sent, 'max_tokens': max_tokens, 'error': str(exc)})
                 if isinstance(exc,(RateLimitExceeded,AdmissionLimitExceeded,ContractError)):
                     raise
                 if exc.unsupported_schema and structured:
@@ -185,7 +188,8 @@ class Gateway:
             usage = response.get('usage') or {}
             part = response.get('content') or ''
             content += part
-            fields = {'usage': usage, 'latency_ms': int((time.monotonic()-started)*1000)}
+            fields = {'usage': usage, 'latency_ms': int((time.monotonic()-started)*1000), 'messages': sent, 'output': part,
+                      'finish_reason': response.get('finish_reason'), 'max_tokens': max_tokens}
             if response.get('finish_reason') == 'length':
                 self.finish(record, {**fields, 'status': 'ok'})
                 if continuations >= 3:
@@ -212,7 +216,7 @@ class Gateway:
                 else:
                     value = stored = content
             except (ValidationError, ValueError) as exc:
-                self.finish(record, {**fields, 'status': 'schema_error', 'repair_rounds': repairs})
+                self.finish(record, {**fields, 'status': 'schema_error', 'repair_rounds': repairs, 'error': str(exc)})
                 if repairs >= 2:
                     raise ContractError('Ответ модели не соответствует контракту') from exc
                 repairs += 1

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from sqlalchemy import delete, select, text, update
 
+from app import tracing
 from app.database import SessionLocal
 from app.models import Artifact, Event, GateResult, LLMCall, Question, Run, SpecFlag, StageRun, TestHash, ToolRun, utc_now
 from harness.fakes import run_stage_locally
@@ -20,6 +21,11 @@ from contracts.stage import ContractError, StageInput
 
 def _event(session, run_id, kind, payload):
     session.add(Event(run_id=run_id, type=kind, payload=payload))
+    if tracing.enabled() and kind == 'stage.finished':
+        row = _latest(session, run_id)[payload['stage']]
+        tracing.stage(row, session.scalars(select(GateResult).where(GateResult.stage_run_id == row.id)).all())
+    elif tracing.enabled() and kind == 'run.finished':
+        tracing.run(session.get(Run, run_id))
 
 
 def _lock(session, run_id):

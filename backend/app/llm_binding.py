@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+from app import tracing
 from app.database import SessionLocal
 from app.models import Event, LLMCall, Run
 from harness.llm import Gateway, HTTPTransport, PROFILES, TASKS
@@ -47,6 +48,7 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
             call.repair_rounds = values.get('repair_rounds', 0)
             call.ts_end = datetime.now(timezone.utc)
             session.add(Event(run_id=run_id, type='llm.call', payload={'id': str(call_id), 'status': call.status, 'from_cache': call.from_cache}))
+            tracing.generation(call, values)
 
     def budget(exclude_unknown=()):
         with SessionLocal() as session:
