@@ -3,6 +3,7 @@ import {MatButtonModule} from '@angular/material/button';
 import {MatToolbarModule} from '@angular/material/toolbar';
 import {RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
 import {MODEL} from './generated/model';
+import {LiveEvents} from './screens/events';
 import {Session} from './screens/session';
 
 /** Mobile shell: top bar, the screen, and the role's menu as a bottom tab bar. */
@@ -14,6 +15,9 @@ import {Session} from './screens/session';
     <mat-toolbar>
       <span class="title">{{ title }}</span>
       <span class="spacer"></span>
+      @if (live.notifications().length; as count) {
+        <span class="badge" data-testid="app.notifications-count" role="status" [title]="latest()">{{ count }}</span>
+      }
       @if (!online()) {
         <span class="offline" role="status">Нет сети</span>
       }
@@ -40,6 +44,7 @@ import {Session} from './screens/session';
     mat-toolbar { position: sticky; top: 0; z-index: 2; padding-top: env(safe-area-inset-top); }
     .title { overflow: hidden; text-overflow: ellipsis; }
     .spacer { flex: 1; }
+    .badge { min-width: 24px; padding: 2px 8px; border-radius: 999px; background: #b3261e; color: #fff; font-size: 0.8125rem; text-align: center; }
     .offline { font-size: 0.8125rem; padding: 2px 8px; border-radius: 999px; background: #fdecea; color: #8c1d18; }
     main { flex: 1; padding-bottom: 72px; }
     .tabs {
@@ -55,6 +60,8 @@ import {Session} from './screens/session';
 })
 export class App {
   readonly session = inject(Session);
+  readonly live = inject(LiveEvents);
+  readonly latest = computed(() => this.live.notifications().map((item) => item.text).join('\n'));
   readonly title = MODEL.title || 'Mobile';
   readonly online = signal(navigator.onLine);
   readonly permission = signal(typeof Notification === 'undefined' ? 'denied' : Notification.permission);

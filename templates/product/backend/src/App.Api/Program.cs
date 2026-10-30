@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using App.Api;
+using App.Api.Features;
 using App.Api.Features.Generated;
 using App.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -87,7 +88,9 @@ using (var scope = app.Services.CreateScope())
 {
     // Prototype stand: the schema follows the generated model; migrations come with the first release.
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (db.Database.EnsureCreated() && app.Configuration["Seed"] != "false")
+    var created = db.Database.EnsureCreated();
+    EventsEndpoints.EnsureNotifyTrigger(db);
+    if (created && app.Configuration["Seed"] != "false")
     {
         SeedData.Load(db, Path.Combine(app.Environment.ContentRootPath, "seed.json"),
             app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions, app.Logger,
@@ -127,6 +130,7 @@ api.MapGet("/auth/me", (ClaimsPrincipal user) => Results.Ok(new { role = user.Fi
     .RequireAuthorization();
 
 GeneratedEndpoints.Map(api);
+EventsEndpoints.Map(api);
 
 app.Run();
 return 0;

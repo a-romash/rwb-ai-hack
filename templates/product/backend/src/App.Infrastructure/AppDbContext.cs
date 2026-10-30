@@ -8,6 +8,16 @@ public sealed partial class AppDbContext(DbContextOptions<AppDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureGenerated(modelBuilder);
+        modelBuilder.Entity<Outbox.DomainEvent>(table =>
+        {
+            table.ToTable("domain_events");
+            table.HasIndex(x => x.Type);
+        });
+        modelBuilder.Entity<Outbox.Notification>(table =>
+        {
+            table.ToTable("notifications");
+            table.HasIndex(x => x.Role);
+        });
         // PostgreSQL stores timestamptz in UTC only.
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         {

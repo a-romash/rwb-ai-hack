@@ -11,7 +11,7 @@ from pathlib import Path
 
 from contracts.stage import StageOutput
 
-from .api import api_cases, dbcontext_cs, endpoints_cs, timers_cs
+from .api import api_cases, dbcontext_cs, endpoints_cs, notifications_cs, timers_cs
 from .domain import SCALARS, hook_input, model_cs, param_type, params_cs
 from .models import HookContract, HookExample, HookSpec
 
@@ -76,6 +76,7 @@ def execute(inp, workspace: Path, llm, sandbox) -> StageOutput:
             )
     _write(workspace, "product/backend/src/App.Api/Features/Generated/Endpoints.cs", endpoints_cs(app))
     _write(workspace, "product/backend/src/App.Infrastructure/Generated/AppDbContext.Model.cs", dbcontext_cs(app))
+    _write(workspace, "product/backend/src/App.Infrastructure/Generated/Notifications.cs", notifications_cs(app))
     _write(workspace, "product/backend/src/App.Infrastructure/Generated/Timers.cs", timers_cs(app))
     _write(workspace, "product/backend/tests/App.Generated.Tests/cases/api.json", _dump(api_cases(app)))
     entities = app.get("entities") if isinstance(app.get("entities"), dict) else {}

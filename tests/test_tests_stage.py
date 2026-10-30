@@ -114,7 +114,10 @@ class ScenariosTest(unittest.TestCase):
         steps = flows['AC-03'][0]['steps']
         # Create as the role allowed to create, take it to in_progress, then resolve and read back.
         self.assertEqual([(s['as'], s['path'].rsplit('/', 1)[-1]) for s in steps],
-                         [('employee', 'Ticket'), ('engineer', 'TakeTicket'), ('engineer', 'ResolveTicket'), ('engineer', '{id}')])
+                         [('employee', 'Ticket'), ('engineer', 'TakeTicket'), ('engineer', 'ResolveTicket'), ('engineer', '{id}'),
+                          ('engineer', 'events')])
+        # The transition reaches the outbox under the event name the ui stage derives.
+        self.assertEqual(steps[-1]['expect']['contains'], {'type': 'TicketResolved', 'entity_id': '{id}'})
         self.assertEqual(steps[2]['expect'], {'status': 200, 'json': {'status': 'resolved'}})
         self.assertEqual(steps[2]['body']['id'], '{id}')
         self.assertEqual(flows['AC-01'][0]['source'], 'create')

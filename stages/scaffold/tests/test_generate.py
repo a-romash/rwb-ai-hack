@@ -8,6 +8,7 @@ from stages.scaffold import execute
 from stages.scaffold.generate import template_copy_paths
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
+REPO = Path(__file__).resolve().parents[3]
 
 EQUIPMENT_FILES = [
     "product/admin-web/e2e/pages/ItemList.ts",
@@ -221,3 +222,29 @@ def _assert_canonical(path: Path) -> None:
     canonical = (json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     if raw != canonical:
         raise AssertionError(f"{path.name} is not canonical JSON")
+
+
+class EventsTests(unittest.TestCase):
+    def test_transitions_and_notifications_reach_the_outbox(self):
+        from stages.scaffold.api import endpoints_cs, events_of, notifications_cs, timers_cs
+        app = json.loads((REPO / "contracts/fixtures/tickets/app.json").read_text(encoding="utf-8"))
+        events = events_of(app)
+        self.assertEqual(events["TicketTaken"], "Ticket")
+        self.assertEqual(events["TicketExpired"], "Ticket")
+        self.assertIn("TicketCreated", events)
+        endpoints = endpoints_cs(app)
+        self.assertIn('DomainEvents.Raise(db, "TicketTaken", item, item.Id, time);', endpoints)
+        self.assertIn('DomainEvents.Raise(db, "TicketCreated", item, item.Id, time);', endpoints)
+        self.assertIn('DomainEvents.Raise(db, "TicketExpired", item, item.Id, time);', timers_cs(app))
+        notifications = notifications_cs(app)
+        self.assertIn('if (type == "TicketExpired" && record is Ticket item)', notifications)
+        self.assertIn('("dispatcher", "TicketOverdue", "Заявка «" + item.Title + "» просрочена", "web")', notifications)
+
+    def test_notification_on_unknown_event_is_marked_not_invented(self):
+        from stages.scaffold.api import notifications_cs
+        app = json.loads((REPO / "contracts/fixtures/tickets/app.json").read_text(encoding="utf-8"))
+        app["notifications"] = {"Ghost": {"on": "NothingHappened", "to": "dispatcher", "channels": ["web"], "text": "x"}}
+        text = notifications_cs(app)
+        self.assertIn("event NothingHappened is not raised", text)
+        self.assertNotIn("yield return", text)
+

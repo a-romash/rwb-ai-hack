@@ -305,7 +305,25 @@ Docker-демона нет. Поэтому **не проверены**:
 - **Сделано:** P0 1–4 (кроме PR — п. 5); P1 6, 7, 9, 11, 12; P2 13, 14, 15, 16, 18, 19 (`reconcile`, README), 20, 21.
 - **Проверено на Docker:** `docker compose up` платформы и `doctor`; образы инструментов; песочница на `tickets`: backend build/test 22/22, `dotnet format`, gitleaks JSON и trivy SARIF; admin и PWA собираются офлайн, jest зелёный; Студия — 40/40 E2E с axe.
 - **Не дошло до конца на момент пуша:** полный перепрогон цепочки `tickets` со стендом (admin+mobile), smoke и E2E на новых шаблонах; реальный прогон кейса №1 на модели (первые две попытки упали на analysis: HTTP 400 по reasoning и обрезка JSON в `acceptance`, оба исправлены, третья попытка шла во время пуша). Таймер-переходы компилируются, но на живой PostgreSQL не проверены.
-- **Открыто:** P1 8 (API-сценарии для AC без хуков), P1 10 (outbox/SSE в продукте), P2 17 (eval Сани на `harness/llm.py`), P2 19 (`input_hash` для пропуска), PR в `main`, закрытие #2/#4, итог в #3; в Студии нет E2E на загрузку вложений.
+- **Открыто после сессии 2:** P1 8 (API-сценарии для AC без хуков), P1 10 (outbox/SSE в продукте), P2 17 (eval Сани на `harness/llm.py`), P2 19 (`input_hash` для пропуска), PR в `main`, закрытие #2/#4, итог в #3; в Студии нет E2E на загрузку вложений.
+
+### Статус после сессии 3 (без Docker: .NET 10, Node, PostgreSQL 16 локально)
+- **P1 8 сделано — API-сценарии AC** (`stages/tests/scenarios.py`, раннер `App.Acceptance.Tests/ScenarioCases.cs`):
+  - AC, связанный в `app.json` с командой (по `traces` или через историю с той же ролью), получает сценарий: создать запись ролью с `create`, довести командами до нужного состояния (BFS по переходам), выполнить команду, проверить код, новое состояние и событие в `/api/events`;
+  - AC без команды, если роль истории может создать сущность — создать и прочитать;
+  - модель не участвует; кейсы — `cases/scenarios/<AC>.json`, класс на AC с `Trait("AC")`;
+  - сценарии нейтральны для red-proof (проверяют сгенерированный код), если у AC нет кейсов хуков;
+  - на `tickets` покрыты AC-01, 02, 03, 08; AC-07 (только таймер и уведомление) — нет.
+- **P1 10 сделано — outbox и SSE (R17):**
+  - `DomainEvent` (`domain_events`) и `Notification` (`notifications`) в `App.Infrastructure/Outbox`, `DomainEvents.Raise` в той же транзакции;
+  - события `<Entity>Created` и по каждому переходу (команды и таймеры) с именами из `stages.ui.appview.derived_event` — совпадают с `live` в `ui.json`;
+  - `app.json notifications` → `Generated/Notifications.cs` (текст с полями записи, адресат — роль);
+  - API: `GET /api/events?after=`, `GET /api/events/stream` (SSE, `Last-Event-ID`/`after`), `GET /api/notifications?after=`; роль видит события сущностей, которые может читать; PostgreSQL — триггер `NOTIFY domain_events` + `LISTEN`, другие провайдеры — опрос раз в секунду;
+  - фронт: `screens/events.ts` (`LiveEvents`) — один fetch-поток с `Authorization` и переподключением; `live`-экраны перезагружаются по своим событиям (опрос 60 с как страховка); счётчик уведомлений в шапке админки и PWA, браузерные уведомления.
+- **Проверено на живом PostgreSQL** (сгенерированный `tickets`, `dotnet` без Docker): схема, seed, вход по ролям (неизвестная роль 401), права 403, переход и 409, таймер воркера `in_progress → overdue`, `--healthcheck`, `infra/smoke.py` (все роли), события в SSE за < 2 с через NOTIFY, уведомление диспетчеру с текстом, инженеру — пусто. В браузере (Playwright + `ng serve`): строка ушла из списка за 76 мс после `TakeTicket` без перезагрузки, после таймера счётчик уведомлений = 4.
+- **Найдено и исправлено:** seed загружался без вычисляемых полей (`due_at` = null, таймер его не трогал) — `SeedData.Load` вызывает `GeneratedEndpoints.Compute`.
+- **Найдено, не исправлено:** канонический `contracts/fixtures/tickets/ui.json` (Артём) ссылается на запрос `OverdueTickets`, которого нет в каноническом `app.json` (Саня), поэтому экран `Alerts` пуст. Фикстуры надо свести (или пересобрать `ui.json` этапом `ui` от `app.json` Сани).
+- **Открыто:** P2 17, P2 19, PR в `main`, закрытие #2/#4, итог в #3, E2E Студии на вложения; полный прогон стенда в Docker на новых шаблонах; реальный прогон кейса №1 на модели.
 
 ### P0 — до сдачи
 1. **Сквозная проверка на ветке интеграции:** фейковый прогон через API и Celery (раздел 7). Затем прогон с реальными этапами и `FakeLLM` на `tickets` через `run_stage_locally`: `analysis → spec → ui → scaffold → tests`. Дальше песочница нужна настоящая. Recorded-ответы для `analysis`/`spec` есть в `stages/*/tests/fixtures/*-responses.json`, через `stages/spec/eval.py::evaluate`.

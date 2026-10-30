@@ -14,6 +14,7 @@ import json
 from collections import deque
 
 from stages.scaffold.api import _body, _ops
+from stages.ui.appview import derived_event
 
 GENERATED = "product/backend/tests/App.Acceptance.Tests/Generated"
 CASES = "product/backend/tests/App.Acceptance.Tests/cases/scenarios"
@@ -37,8 +38,8 @@ def _state_field(app: dict, entity: str) -> tuple[str, dict] | None:
     return None
 
 
-def _moves(app: dict, entity: str, grants: set[str]) -> list[tuple[str, str, list[str], str]]:
-    """(command, role, from states, to) for command transitions of the entity's machine."""
+def _moves(app: dict, entity: str, grants: set[str]) -> list[tuple[str, str, list[str], str, str]]:
+    """(command, role, from states, to, transition) for command transitions of the entity's machine."""
     found = _state_field(app, entity)
     if not found:
         return []
@@ -57,7 +58,7 @@ def _moves(app: dict, entity: str, grants: set[str]) -> list[tuple[str, str, lis
             transition = by_name.get(name)
             if transition and str(effect).startswith("transition:"):
                 states = transition["from"] if isinstance(transition["from"], list) else [transition["from"]]
-                moves.append((command, role, states, transition["to"]))
+                moves.append((command, role, states, transition["to"], name))
     return moves
 
 
@@ -68,7 +69,7 @@ def _path(initial: str, targets: set[str], moves) -> list[tuple[str, str, str]] 
         state, steps = queue.popleft()
         if state in targets:
             return steps
-        for command, role, states, to in moves:
+        for command, role, states, to, _ in moves:
             if state in states and to not in seen:
                 seen.add(to)
                 queue.append((to, steps + [(command, role, to)]))
@@ -100,7 +101,7 @@ def _command_scenario(app: dict, ac: str, command: str, grants: set[str]) -> dic
     creator = _creator(entity, grants, [])
     if not targets or not creator:
         return None
-    for command_name, role, states, to in targets:
+    for command_name, role, states, to, transition in targets:
         path = _path(machine.get("initial"), set(states), moves)
         if path is None:
             continue
@@ -109,11 +110,15 @@ def _command_scenario(app: dict, ac: str, command: str, grants: set[str]) -> dic
             body = {"id": "{id}", **_body(_section(app, "commands")[step_command].get("input") or {}, app)}
             steps.append({"as": step_role, "method": "POST", "path": f"/api/{entity}/commands/{step_command}",
                           "body": body, "expect": {"status": 200, "json": {field: step_to}}})
+        # The transition is published to the outbox (R17): the event feed shows it for a reader.
+        event = derived_event(entity, transition)
         reader = role if f"{role}|{entity}.read" in grants else next(
             (g.split("|")[0] for g in sorted(grants) if g.endswith(f"|{entity}.read")), None)
         if reader:
             steps.append({"as": reader, "method": "GET", "path": f"/api/{entity}/{{id}}", "body": None,
                           "expect": {"status": 200, "json": {field: to}}})
+            steps.append({"as": reader, "method": "GET", "path": "/api/events", "body": None,
+                          "expect": {"status": 200, "contains": {"type": event, "entity_id": "{id}"}}})
         return {"id": f"{ac}-{command}", "source": "command", "steps": steps}
     return None
 

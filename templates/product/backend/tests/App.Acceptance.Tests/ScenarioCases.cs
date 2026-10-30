@@ -53,13 +53,20 @@ public static class ScenarioCases
                 var where = $"step {index + 1} {step.Method} {step.Path} as {step.As}";
                 Assert.True(step.Expect.Status == (int)response.StatusCode,
                     $"Assert.Equal() Failure: {where}: expected {step.Expect.Status}, actual {(int)response.StatusCode} {text}");
-                if (step.Expect.Json is not null || step.Save is not null)
+                if (step.Expect.Json is not null || step.Expect.Contains is not null || step.Save is not null)
                 {
                     using var document = JsonDocument.Parse(text);
                     foreach (var (field, expected) in step.Expect.Json ?? [])
                     {
                         Assert.True(document.RootElement.TryGetProperty(field, out var actual), $"{where}: no field {field}");
                         Assert.Equal(expected.ToString(), actual.ToString());
+                    }
+                    if (step.Expect.Contains is { } wanted)
+                    {
+                        // Some element of the array has all the given fields ("{id}" filled in).
+                        var found = document.RootElement.EnumerateArray().Any(element => wanted.All(pair =>
+                            element.TryGetProperty(pair.Key, out var actual) && actual.ToString() == Fill(pair.Value.ToString(), saved)));
+                        Assert.True(found, $"Assert.Equal() Failure: {where}: no element with {JsonSerializer.Serialize(wanted)} in {text}");
                     }
                     if (step.Save is not null)
                     {
@@ -112,5 +119,5 @@ public static class ScenarioCases
 
     public sealed record Step(string As, string Method, string Path, JsonElement? Body, Expectation Expect, string? Save);
 
-    public sealed record Expectation(int Status, Dictionary<string, JsonElement>? Json);
+    public sealed record Expectation(int Status, Dictionary<string, JsonElement>? Json, Dictionary<string, JsonElement>? Contains);
 }

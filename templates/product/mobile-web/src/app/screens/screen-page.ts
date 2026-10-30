@@ -10,6 +10,7 @@ import {AppKpiCard} from '../ui/kpi-card';
 import {AppPage} from '../ui/page';
 import {Action, Row, Screen, Widget} from './model';
 import {currentUser, display, enumValues, fieldDef, fieldLabel, matches, ordered} from './query';
+import {LiveEvents} from './events';
 import {ApiError, Session} from './session';
 
 type View = 'loading' | 'ready' | 'empty' | 'error' | 'forbidden' | 'offline';
@@ -76,11 +77,16 @@ export class ScreenPage {
 
   constructor() {
     const timers = [setInterval(() => this.now.set(Date.now()), 30_000)];
-    // shortcut: live events refresh by polling; switch to the product SSE stream once events are generated.
+    const stops: Array<() => void> = [];
     if (this.screen.live?.length && this.kind !== 'form') {
-      timers.push(setInterval(() => void this.load(false), 15_000));
+      // The outbox stream refreshes the screen at once; a slow poll covers a stream that is down.
+      stops.push(inject(LiveEvents).on(this.screen.live, () => void this.load(false)));
+      timers.push(setInterval(() => void this.load(false), 60_000));
     }
-    inject(DestroyRef).onDestroy(() => timers.forEach(clearInterval));
+    inject(DestroyRef).onDestroy(() => {
+      timers.forEach(clearInterval);
+      stops.forEach((stop) => stop());
+    });
     void this.load(true);
   }
 

@@ -41,6 +41,11 @@ export class Session {
     return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
   }
 
+  /** Authorization header value for streams that cannot go through request(). */
+  async authorization(): Promise<string> {
+    return `Bearer ${await this.signIn()}`;
+  }
+
   private signIn(): Promise<string> {
     const role = this.role();
     if (!role) {
