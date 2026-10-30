@@ -12,15 +12,15 @@ import {ProjectsStore} from '../../core/state/projects.store';
 import {ShellService} from '../../core/state/shell.service';
 import {plural} from '../../core/util/text';
 import {fullDate} from '../../core/util/time';
-import {FlowMap} from '../../shared/ui/flow-map/flow-map';
-import {FlowMini} from '../../shared/ui/flow-map/flow-mini';
-import {FlowStation, previewStations} from '../../shared/ui/flow-map/flow.model';
+import {PipelineChain} from '../../shared/ui/pipeline/pipeline-chain';
+import {PipelineMini} from '../../shared/ui/pipeline/pipeline-mini';
+import {buildPipeline, PipelineStage} from '../../shared/ui/pipeline/pipeline.model';
 import {RelTimePipe} from '../../shared/ui/rel-time.pipe';
 import {StatusChip} from '../../shared/ui/status-chip';
 
 interface Row {
   project: ProjectSummary;
-  stations: FlowStation[];
+  stages: PipelineStage[];
   status: StatusView;
   done: number;
 }
@@ -36,8 +36,8 @@ interface Row {
     TuiInput,
     TuiSegmented,
     TuiSkeleton,
-    FlowMap,
-    FlowMini,
+    PipelineChain,
+    PipelineMini,
     StatusChip,
     RelTimePipe,
   ],
@@ -51,7 +51,6 @@ export class ProjectsPage {
 
   protected readonly query = signal('');
   protected readonly sort = signal(0);
-  protected readonly preview = previewStations();
   protected readonly fullDate = fullDate;
 
   protected readonly rows = computed<Row[]>(() => {
@@ -75,13 +74,7 @@ export class ProjectsPage {
 
   private row(project: ProjectSummary): Row {
     const runs = this.jobs.list(project.id);
-    const latest = this.jobs.latestByStage(project.id);
-    const stations = previewStations().map(station => {
-      const job = latest.get(station.key);
-      if (!job) return station;
-      const view = jobStatusView(job.status, job.subtype, job.stale);
-      return {...station, tone: view.tone, statusLabel: view.label, live: view.live, fromJob: true};
-    });
+    const stages = buildPipeline(runs);
     const live = runs.find(run => jobStatusView(run.status, run.subtype, run.stale).live);
     const last = runs[0];
     const status: StatusView = live
@@ -89,7 +82,7 @@ export class ProjectsPage {
       : last
         ? jobStatusView(last.status, last.subtype, last.stale)
         : {tone: 'idle', label: 'Не запускался', live: false};
-    return {project, stations, status, done: stations.filter(station => station.tone === 'ok').length};
+    return {project, stages, status, done: stages.filter(stage => stage.tone === 'ok').length};
   }
 
   protected readonly stageCount = STAGE_CATALOG.length;

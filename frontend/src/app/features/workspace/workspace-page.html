@@ -36,7 +36,11 @@
           </div>
         } @else {
           <div class="title-row">
-            <h1 class="page-title title" [tuiSkeleton]="!project">{{ project?.name ?? 'Загружаем проект' }}</h1>
+            @if (project) {
+              <h1 class="page-title title">{{ project.name }}</h1>
+            } @else {
+              <h1 class="page-title title"><span [tuiSkeleton]="true">Загружаем проект</span></h1>
+            }
             @if (project) {
               <button tuiIconButton type="button" size="xs" appearance="flat" iconStart="@tui.pencil" tuiHint="Переименовать" (click)="startRename()">
                 Переименовать
@@ -47,12 +51,12 @@
         <div class="meta">
           @if (project) {
             <span class="meta-item">
-              <app-flow-mini [stations]="store.stations()" />
+              <app-pipeline-mini [stages]="store.stages()" />
               <span class="num">{{ stagesLabel() }}</span>
             </span>
             <span class="meta-item" [attr.title]="fullDate(project.updated_at)">Изменён {{ project.updated_at | relTime: clock.now() }}</span>
           } @else {
-            <span class="meta-item" [tuiSkeleton]="true">10 этапов, изменён сегодня</span>
+            <span class="meta-item" [tuiSkeleton]="true">8 шагов конвейера, изменён сегодня</span>
           }
         </div>
       </div>
@@ -65,7 +69,7 @@
     </header>
 
     <nav class="tabs" aria-label="Разделы проекта">
-      <a class="tab" routerLink="flow" routerLinkActive="is-active" ariaCurrentWhenActive="page">Поток</a>
+      <a class="tab" routerLink="flow" routerLinkActive="is-active" ariaCurrentWhenActive="page">Конвейер</a>
       <a class="tab" routerLink="requirements" routerLinkActive="is-active" ariaCurrentWhenActive="page">Требования</a>
       <a class="tab" routerLink="runs" routerLinkActive="is-active" ariaCurrentWhenActive="page">
         Запуски

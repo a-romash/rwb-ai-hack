@@ -16,9 +16,12 @@
       >
         Открыть меню
       </button>
-      <a class="brand" routerLink="/projects" aria-label="Поток — к списку проектов">
-        <app-brand-mark />
-        <span class="wordmark">Поток</span>
+      <a class="brand" routerLink="/projects" aria-label="Поток для RWB — к списку проектов">
+        <app-rwb-logo />
+        <span class="brand-text">
+          <i class="brand-divider" aria-hidden="true"></i>
+          <app-potok-wordmark class="wordmark" />
+        </span>
       </a>
       <button tuiIconButton type="button" appearance="flat" size="s" iconStart="@tui.search" (click)="openPalette()">Поиск и команды</button>
     </header>
@@ -27,9 +30,12 @@
 
     <nav id="sidebar" class="sidebar" aria-label="Основная навигация" [cdkTrapFocus]="menuOpen()" (keydown.escape)="closeMenu()">
       <div class="sidebar-head">
-        <a class="brand" routerLink="/projects" aria-label="Поток — к списку проектов">
-          <app-brand-mark />
-          <span class="wordmark">Поток</span>
+        <a class="brand" routerLink="/projects" aria-label="Поток для RWB — к списку проектов">
+          <app-rwb-logo />
+          <span class="brand-text">
+            <i class="brand-divider" aria-hidden="true"></i>
+            <app-potok-wordmark class="wordmark" />
+          </span>
         </a>
         <button tuiIconButton type="button" appearance="flat" size="s" iconStart="@tui.x" class="close" (click)="closeMenu()">Закрыть меню</button>
       </div>

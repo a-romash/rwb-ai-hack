@@ -55,10 +55,12 @@
   font-size: var(--p-text-s);
   font-weight: 500;
   cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--p-line-strong);
+  text-underline-offset: 3px;
 
   &:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    text-decoration-color: currentColor;
   }
 }
 

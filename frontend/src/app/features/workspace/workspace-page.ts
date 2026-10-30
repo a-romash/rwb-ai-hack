@@ -12,7 +12,7 @@ import {ShellService} from '../../core/state/shell.service';
 import {ToastService} from '../../core/state/toast.service';
 import {plural} from '../../core/util/text';
 import {fullDate} from '../../core/util/time';
-import {FlowMini} from '../../shared/ui/flow-map/flow-mini';
+import {PipelineMini} from '../../shared/ui/pipeline/pipeline-mini';
 import {RelTimePipe} from '../../shared/ui/rel-time.pipe';
 import {RunLauncher} from './run-launcher';
 import {WorkspaceStore} from './workspace.store';
@@ -20,7 +20,7 @@ import {WorkspaceStore} from './workspace.store';
 @Component({
   selector: 'app-workspace-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, TuiButton, TuiHint, TuiIcon, TuiInput, TuiSkeleton, FlowMini, RelTimePipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, TuiButton, TuiHint, TuiIcon, TuiInput, TuiSkeleton, PipelineMini, RelTimePipe],
   providers: [WorkspaceStore, RunLauncher],
   templateUrl: './workspace-page.html',
   styleUrl: './workspace-page.less',
@@ -38,10 +38,10 @@ export class WorkspacePage {
   protected readonly fullDate = fullDate;
   protected readonly analyst = AGENTS.analyst;
 
-  protected readonly done = computed(() => this.store.stations().filter(station => station.tone === 'ok').length);
+  protected readonly done = computed(() => this.store.stages().filter(stage => stage.tone === 'ok').length);
   protected readonly stagesLabel = computed(() => {
-    const total = this.store.stations().length;
-    return `${this.done()} из ${total} ${plural(total, ['этапа', 'этапов', 'этапов'])} готово`;
+    const total = this.store.stages().length;
+    return `${this.done()} из ${total} ${plural(total, ['шага', 'шагов', 'шагов'])} конвейера готово`;
   });
 
   constructor() {
@@ -65,7 +65,7 @@ export class WorkspacePage {
   }
 
   protected runAnalyst(): void {
-    this.launcher.open('business_analysis', 'analyst');
+    this.launcher.open('analysis', 'analyst');
   }
 
   protected startRename(): void {

@@ -6,7 +6,7 @@ import {StudioApi} from '../../core/api/projects.api';
 import {jobStatusView} from '../../core/pipeline/status';
 import {JobRecord, JobsStore, StartJob} from '../../core/state/jobs.store';
 import {ProjectsStore} from '../../core/state/projects.store';
-import {buildStations} from '../../shared/ui/flow-map/flow.model';
+import {buildPipeline, pipelineItems} from '../../shared/ui/pipeline/pipeline.model';
 
 /** Состояние открытого проекта. Живёт столько же, сколько экран проекта, и общее для его вкладок. */
 @Injectable()
@@ -24,11 +24,10 @@ export class WorkspaceStore {
     const id = this.id();
     return id ? this.jobs.list(id) : [];
   });
-  readonly latestByStage = computed(() => {
-    const id = this.id();
-    return id ? this.jobs.latestByStage(id) : new Map<string, JobRecord>();
-  });
-  readonly stations = computed(() => buildStations(this.project()?.stages ?? [], this.latestByStage()));
+  /** Шаги конвейера RWB со статусами последних запусков агентов. */
+  readonly stages = computed(() => buildPipeline(this.runs()));
+  /** Шаги и ворота качества по порядку прохождения. */
+  readonly items = computed(() => pipelineItems(this.stages()));
   readonly liveRuns = computed(() => this.runs().filter(run => jobStatusView(run.status, run.subtype, run.stale).live).length);
 
   open(id: string): void {

@@ -26,11 +26,11 @@ import {ShellService} from '../../core/state/shell.service';
       width: 40px;
       height: 40px;
       margin-bottom: 10px;
-      border: 1px solid var(--p-border);
+      border: 1px solid var(--p-accent-line);
       border-radius: var(--p-radius-control);
-      background: var(--p-surface-2);
+      background: var(--p-accent-soft);
     }
-    .empty-icon tui-icon { width: 20px; height: 20px; color: var(--p-ink-2); }
+    .empty-icon tui-icon { width: 20px; height: 20px; color: var(--p-accent); }
     .code { color: var(--p-ink-2); font-size: var(--p-text-xs); font-weight: 500; letter-spacing: 0; }
     .empty-title { font-size: var(--p-text-xl); line-height: 1.75rem; letter-spacing: -0.017em; }
     .empty-text { max-width: 48ch; color: var(--p-ink-2); }

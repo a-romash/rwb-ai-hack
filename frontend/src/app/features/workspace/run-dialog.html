@@ -2,7 +2,7 @@
   <div>
     <h2 id="run-title" class="title">Запуск агента</h2>
     @if (stage) {
-      <p class="subtitle">Этап «{{ stage.short }}»: {{ stage.question.toLowerCase() }}</p>
+      <p class="subtitle">{{ stage.code }} «{{ stage.title }}»: {{ stage.question.toLowerCase() }}</p>
     } @else {
       <p class="subtitle">Агент получит требования проекта и вашу инструкцию.</p>
     }

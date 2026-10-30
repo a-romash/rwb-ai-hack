@@ -28,12 +28,11 @@ for (const theme of ['light', 'dark'] as const) {
       await expectNoSeriousViolations(page);
     });
 
-    test('линия потока', async ({page}) => {
+    test('конвейер', async ({page}) => {
       const project = makeProject('Парковочный помощник');
       await mockApi(page, {projects: [project]});
       await page.goto(`/projects/${project.id}/flow`);
       await expect(page.locator('#station-panel')).toBeVisible();
-      await page.waitForTimeout(1500); // линия дорисовывается — проверяем финальное состояние
       await expectNoSeriousViolations(page);
     });
   });

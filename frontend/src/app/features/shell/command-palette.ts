@@ -42,7 +42,7 @@ export class CommandPalette {
     if (current) {
       const name = this.projects.items().find(project => project.id === current)?.name ?? 'Проект';
       commands.push(
-        {id: 'tab-flow', group: name, label: 'Поток', hint: 'Линия этапов', icon: '@tui.workflow', keywords: 'поток линия этапы станции', run: () => this.go(['/projects', current, 'flow'])},
+        {id: 'tab-flow', group: name, label: 'Конвейер', hint: 'Шаги Э1–Э7 и ворота', icon: '@tui.workflow', keywords: 'конвейер поток этапы шаги ворота', run: () => this.go(['/projects', current, 'flow'])},
         {id: 'tab-req', group: name, label: 'Требования', hint: 'Текст и полнота', icon: '@tui.file-text', keywords: 'требования текст редактор', run: () => this.go(['/projects', current, 'requirements'])},
         {id: 'tab-runs', group: name, label: 'Запуски', hint: 'Агенты и результаты', icon: '@tui.history', keywords: 'запуски агенты история результаты', run: () => this.go(['/projects', current, 'runs'])},
       );

@@ -2,22 +2,24 @@ import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@ang
 import {Router, RouterLink} from '@angular/router';
 import {TuiIcon} from '@taiga-ui/core';
 import {agentInfo} from '../../core/pipeline/agents.catalog';
-import {stageInfo} from '../../core/pipeline/stages.catalog';
+import {AUTONOMY, stageInfo} from '../../core/pipeline/stages.catalog';
 import {jobStatusView} from '../../core/pipeline/status';
 import {Clock} from '../../core/state/clock.service';
 import {JobRecord} from '../../core/state/jobs.store';
-import {FlowMap} from '../../shared/ui/flow-map/flow-map';
+import {latestRun, PipelineGate, PipelineStage} from '../../shared/ui/pipeline/pipeline.model';
+import {PipelineTimeline} from '../../shared/ui/pipeline/pipeline-timeline';
 import {RelTimePipe} from '../../shared/ui/rel-time.pipe';
 import {StatusChip} from '../../shared/ui/status-chip';
+import {GatePanel} from './gate-panel';
 import {RunLauncher} from './run-launcher';
 import {StationPanel} from './station-panel';
 import {WorkspaceStore} from './workspace.store';
 
-/** Вкладка «Поток»: линия этапов и описание выбранной станции. */
+/** Вкладка «Конвейер»: шаги Э1–Э7 с воротами качества и описание выбранной строки. */
 @Component({
   selector: 'app-flow-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, TuiIcon, FlowMap, StationPanel, StatusChip, RelTimePipe],
+  imports: [RouterLink, TuiIcon, PipelineTimeline, StationPanel, GatePanel, StatusChip, RelTimePipe],
   templateUrl: './flow-tab.html',
   styleUrl: './flow-tab.less',
 })
@@ -28,19 +30,28 @@ export class FlowTab {
   private readonly router = inject(Router);
 
   private readonly picked = signal<string | null>(null);
+  protected readonly autonomy = AUTONOMY.A2;
 
-  /** Без явного выбора — первая станция, которая ещё не готова: туда и стоит идти. */
-  protected readonly selectedKey = computed(() => {
-    const stations = this.store.stations();
+  /** Без явного выбора — первый шаг, который ещё не готов: туда и стоит идти. */
+  protected readonly selectedId = computed(() => {
+    const items = this.store.items();
     const picked = this.picked();
-    if (picked && stations.some(station => station.key === picked)) return picked;
-    return (stations.find(station => station.tone !== 'ok') ?? stations[0])?.key ?? null;
+    if (picked && items.some(item => item.id === picked)) return picked;
+    return (this.store.stages().find(stage => stage.tone !== 'ok') ?? this.store.stages()[0])?.id ?? null;
   });
-  protected readonly selected = computed(() => this.store.stations().find(station => station.key === this.selectedKey()) ?? null);
+  protected readonly selectedStage = computed<PipelineStage | null>(() => {
+    const item = this.store.items().find(entry => entry.id === this.selectedId());
+    return item?.kind === 'stage' ? item : null;
+  });
+  protected readonly selectedGate = computed<PipelineGate | null>(() => {
+    const item = this.store.items().find(entry => entry.id === this.selectedId());
+    return item?.kind === 'gate' ? item : null;
+  });
   protected readonly selectedJob = computed<JobRecord | null>(() => {
-    const key = this.selectedKey();
-    return key ? this.store.latestByStage().get(key) ?? null : null;
+    const stage = this.selectedStage();
+    return stage ? latestRun(this.store.runs(), stage.key) : null;
   });
+  protected readonly done = computed(() => this.store.stages().filter(stage => stage.tone === 'ok').length);
   protected readonly recent = computed(() =>
     this.store
       .runs()
@@ -53,8 +64,8 @@ export class FlowTab {
       })),
   );
 
-  protected select(key: string): void {
-    this.picked.set(key);
+  protected select(id: string): void {
+    this.picked.set(id);
   }
 
   protected run(stageKey: string): void {

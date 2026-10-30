@@ -70,15 +70,6 @@ export class JobsStore {
     return this.records()[projectId] ?? [];
   }
 
-  /** Последний запуск по каждому этапу. */
-  latestByStage(projectId: string): Map<string, JobRecord> {
-    const latest = new Map<string, JobRecord>();
-    for (const record of this.list(projectId)) {
-      if (record.stageKey && !latest.has(record.stageKey)) latest.set(record.stageKey, record);
-    }
-    return latest;
-  }
-
   start(projectId: string, job: StartJob): Observable<JobRecord> {
     const body = job.prompt ? {agent: job.agent, prompt: job.prompt} : {agent: job.agent};
     return this.api.createJob(projectId, body).pipe(

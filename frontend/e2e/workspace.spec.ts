@@ -2,30 +2,36 @@ import {expect, test} from '@playwright/test';
 import {makeProject, mockApi} from './fixtures';
 
 test.describe('Рабочая область проекта', () => {
-  test('линия потока: 10 станций, выбор мышью и стрелками', async ({page, isMobile}) => {
+  test('конвейер RWB: шаги Э1–Э7 с воротами, выбор мышью и стрелками', async ({page, isMobile}) => {
     const project = makeProject('Парковочный помощник');
     await mockApi(page, {projects: [project]});
     await page.goto(`/projects/${project.id}/flow`);
 
     const panel = page.locator('#station-panel');
-    await expect(panel.getByRole('heading', {level: 2, name: 'Бизнес-анализ'})).toBeVisible();
+    await expect(panel.getByRole('heading', {level: 2, name: 'Анализ требований'})).toBeVisible();
 
-    const stations = page.locator('app-flow-map [data-key]');
-    await expect(stations).toHaveCount(10);
+    // 8 шагов и 7 ворот: G0, G1, G1.5, G2, G3, G4, G5
+    const rows = page.locator('app-pipeline-timeline [data-key]');
+    await expect(rows).toHaveCount(15);
 
-    await page.locator('[data-key="backend"]').click();
-    await expect(panel.getByRole('heading', {level: 2, name: 'Backend'})).toBeVisible();
-    await expect(panel).toContainText('Как работает сервер?');
+    await page.locator('[data-key="develop"]').click();
+    await expect(panel.getByRole('heading', {level: 2, name: 'Разработка'})).toBeVisible();
+    await expect(panel).toContainText('Как это сделать?');
 
     if (!isMobile) {
-      await page.locator('[data-key="backend"]').focus();
-      await page.keyboard.press('ArrowRight');
-      await expect(panel.getByRole('heading', {level: 2, name: 'База данных'})).toBeVisible();
-      await expect(page.locator('[data-key="database"]')).toBeFocused();
+      await page.locator('[data-key="develop"]').focus();
+      await page.keyboard.press('ArrowDown');
+      await expect(panel.getByRole('heading', {level: 2, name: 'Проверки и стенд'})).toBeVisible();
+      await page.keyboard.press('ArrowDown');
+      await expect(panel.getByRole('heading', {level: 2, name: 'Сборка и проверки'})).toBeVisible();
+      await expect(page.locator('[data-key="gate:G3"]')).toBeFocused();
     }
 
-    await page.locator('[data-key="security"]').click();
+    await page.locator('[data-key="verify"]').click();
     await expect(panel).toContainText('Агент не подключён');
+    await panel.getByRole('button', {name: /G4/}).click();
+    await expect(panel.getByRole('heading', {level: 2, name: 'Стенд'})).toBeVisible();
+    await expect(panel).toContainText('Health, smoke и E2E');
   });
 
   test('запуск аналитика: инструкция этапа, опрос статуса и результат', async ({page}) => {
@@ -57,8 +63,8 @@ test.describe('Рабочая область проекта', () => {
     await expect(card).toContainText('Неоднозначно: что такое «большая сумма».');
     await expect(card).toContainText('Шагов');
 
-    await page.getByRole('link', {name: 'Поток', exact: true}).click();
-    await expect(page.locator('[data-key="business_analysis"]')).toHaveAttribute('data-tone', 'ok');
+    await page.getByRole('link', {name: 'Конвейер', exact: true}).click();
+    await expect(page.locator('[data-key="analysis"]')).toHaveAttribute('data-tone', 'ok');
   });
 
   test('ошибка агента показывается как ошибка, а не как успех задачи', async ({page}) => {
@@ -88,7 +94,7 @@ test.describe('Рабочая область проекта', () => {
     await editor.fill('Кладовщик принимает товар и сканирует штрихкод.');
     await expect(page.getByText('Есть несохранённые изменения')).toBeVisible();
 
-    await page.getByRole('link', {name: 'Поток', exact: true}).click();
+    await page.getByRole('link', {name: 'Конвейер', exact: true}).click();
     await expect(page.getByRole('alertdialog')).toContainText('Уйти без сохранения?');
     await page.getByRole('alertdialog').getByRole('button', {name: 'Остаться'}).click();
 

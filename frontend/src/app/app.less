@@ -55,11 +55,23 @@
   text-decoration: none;
 }
 
-.wordmark {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+.brand-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
+
+.brand-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--p-line-strong);
+}
+
+.wordmark {
+  height: 15px;
+}
+
+
 
 .close {
   display: none;
@@ -163,11 +175,11 @@
   }
 
   &.is-active {
-    background: var(--p-hover);
+    background: var(--p-accent-soft);
     color: var(--p-ink);
 
     tui-icon {
-      color: var(--p-ink);
+      color: var(--p-accent);
     }
   }
 }
@@ -368,9 +380,13 @@
   .sidebar-head {
     justify-content: center;
     padding: 0;
+
+    app-rwb-logo {
+      height: 13px;
+    }
   }
 
-  .wordmark,
+  .brand-text,
   .search-text,
   .search-keys,
   .nav-text,

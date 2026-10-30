@@ -2,13 +2,13 @@ import {expect, test} from '@playwright/test';
 import {makeProject, mockApi} from './fixtures';
 
 test.describe('Список проектов', () => {
-  test('пустой список приглашает начать и показывает линию из 10 этапов', async ({page}) => {
+  test('пустой список приглашает начать и показывает конвейер RWB', async ({page}) => {
     await mockApi(page);
     await page.goto('/projects');
 
     await expect(page.getByRole('heading', {level: 1, name: 'Проекты'})).toBeVisible();
     await expect(page.getByRole('heading', {level: 2, name: 'Проектов пока нет'})).toBeVisible();
-    await expect(page.locator('app-flow-map .station, app-flow-map .vstation')).toHaveCount(10);
+    await expect(page.locator('app-pipeline-chain li')).toHaveCount(8);
     await page.getByRole('link', {name: 'Создать проект'}).click();
     await expect(page).toHaveURL(/\/projects\/new$/);
   });

@@ -1,38 +1,55 @@
-@let s = station();
-@let stage = info();
+@let s = stage();
+@let stageInfo = info();
 <header class="head">
   <p class="kicker">
-    <span class="num">Этап {{ s.position }} из {{ total() }}</span>
-    <span class="phase">{{ phase().name }}</span>
+    <span class="code">{{ s.code }}</span>
+    <span class="num">Шаг {{ s.position }} из {{ total() }}</span>
+    @if (stageInfo.always) {
+      <span class="always">Выполняется всегда</span>
+    }
   </p>
   <div class="title-row">
-    <h2 class="title">{{ stage?.short ?? s.label }}</h2>
+    <h2 class="title">{{ s.title }}</h2>
     <app-status-chip [tone]="s.tone" [label]="s.statusLabel" [live]="s.live" />
   </div>
-  @if (stage) {
-    <p class="question">{{ stage.question }}</p>
-    <p class="summary">{{ stage.summary }}</p>
-  }
+  <p class="question">{{ stageInfo.question }}</p>
+  <p class="summary">{{ stageInfo.summary }}</p>
 </header>
 
-@if (stage) {
-  <dl class="io">
-    <div>
-      <dt>На входе</dt>
-      <dd>{{ stage.input }}</dd>
-    </div>
-    <div>
-      <dt>На выходе</dt>
-      <dd>{{ stage.output }}</dd>
-    </div>
-    <div>
-      <dt>Проверка</dt>
-      <dd>{{ stage.check }}</dd>
-    </div>
-  </dl>
-}
+<dl class="io">
+  <div>
+    <dt>На входе</dt>
+    <dd>{{ stageInfo.input }}</dd>
+  </div>
+  <div>
+    <dt>На выходе</dt>
+    <dd>{{ stageInfo.output }}</dd>
+  </div>
+  <div>
+    <dt>Ворота</dt>
+    <dd>
+      @for (gate of gates(); track gate.key) {
+        <button type="button" class="gate-link" (click)="openGate.emit('gate:' + gate.key)">
+          <tui-icon icon="@tui.shield" />
+          <span class="gate-key">{{ gate.key }}</span>
+          {{ gate.name }}
+        </button>
+      } @empty {
+        <span class="muted">Нет: результат проверят ворота следующих шагов</span>
+      }
+    </dd>
+  </div>
+  <div>
+    <dt>Участники</dt>
+    <dd class="chips">
+      @for (name of participants(); track name) {
+        <span class="chip">{{ name }}</span>
+      }
+    </dd>
+  </div>
+</dl>
 
-<section class="agent" aria-label="Исполнитель этапа">
+<section class="agent" aria-label="Исполнитель шага">
   @if (agent(); as a) {
     <span class="agent-icon"><tui-icon [icon]="a.icon" /></span>
     <div>
@@ -43,7 +60,7 @@
     <span class="agent-icon is-off"><tui-icon icon="@tui.circle-dashed" /></span>
     <div>
       <p class="agent-name">Агент не подключён</p>
-      <p class="agent-text">Этап выполнит конвейер, когда для него появится исполнитель. Пока его можно только описать.</p>
+      <p class="agent-text">Шаг выполнит дирижёр конвейера: сейчас его можно только описать.</p>
     </div>
   }
 </section>

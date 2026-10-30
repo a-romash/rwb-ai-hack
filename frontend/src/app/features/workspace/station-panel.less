@@ -17,10 +17,16 @@
   letter-spacing: 0;
 }
 
-.phase {
+.code {
   padding: 1px 6px;
   border: 1px solid var(--p-border);
   border-radius: var(--p-radius-small);
+  color: var(--p-ink);
+}
+
+.always {
+  color: var(--p-ink-2);
+  font-weight: 400;
 }
 
 .title-row {
@@ -75,6 +81,52 @@
     margin: 0;
     line-height: 1.25rem;
   }
+}
+
+.gate-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 16px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--p-ink);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--p-line-strong);
+  text-underline-offset: 3px;
+
+  tui-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--p-icon);
+  }
+
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+.gate-key {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  font-weight: 500;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  padding: 1px 8px;
+  border: 1px solid var(--p-border);
+  border-radius: var(--p-radius-small);
+  background: var(--p-surface-2);
+  font-size: var(--p-text-s);
 }
 
 // Исполнитель

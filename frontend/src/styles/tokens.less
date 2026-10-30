@@ -1,45 +1,46 @@
 // Дизайн-токены «Поток». Источник правды — DESIGN.md, раздел 5.
-// Нейтральная шкала — Radix Slate, акцент — Radix Indigo, статусы — Radix Green, Amber, Red.
+// Чёрно-белая айдентика RWB: нейтральная шкала — Radix Gray, акцент — чёрный и белый, статусы — Radix Indigo, Green, Amber, Red.
 // Контраст пар проверен по WCAG 2.2: текст ≥ 4.5:1, иконки и графика статусов ≥ 3:1.
 
 :root {
   // Поверхности
-  --p-bg: #fcfcfd; // slate-1: фон приложения и боковой панели
+  --p-bg: #fcfcfc; // gray-1: фон приложения и боковой панели
   --p-surface: #ffffff; // панели, таблицы, диалоги
-  --p-surface-2: #f9f9fb; // slate-2: подложка внутри поверхности
-  --p-hover: #f0f0f3; // slate-3: наведение, выбранная строка
-  --p-press: #e8e8ec; // slate-4: нажатие
-  --p-sunken: #f9f9fb; // блоки кода и вставки
-  --p-overlay: rgba(17, 17, 19, 0.36);
+  --p-surface-2: #f9f9f9; // gray-2: подложка внутри поверхности
+  --p-hover: #f0f0f0; // gray-3: наведение, выбранная строка
+  --p-press: #e8e8e8; // gray-4: нажатие
+  --p-sunken: #f9f9f9; // блоки кода и вставки
+  --p-overlay: rgba(0, 0, 0, 0.36);
 
   // Линии
-  --p-line: #e0e1e6; // slate-5: разделители
-  --p-border: #d9d9e0; // slate-6: контуры панелей и полей
-  --p-line-strong: #cdced6; // slate-7: наведение, связи графа
+  --p-line: #e0e0e0; // gray-5: разделители
+  --p-border: #d9d9d9; // gray-6: контуры панелей и полей
+  --p-line-strong: #cecece; // gray-7: наведение, связи
 
   // Текст и иконки
-  --p-ink: #1c2024; // slate-12
-  --p-ink-2: #60646c; // slate-11
-  --p-ink-3: #60646c; // третичного текста нет: всё мелкое — slate-11
-  --p-icon: #8b8d98; // slate-9: неактивные иконки
+  --p-ink: #000000; // чёрный RWB
+  --p-ink-2: #646464; // gray-11
+  --p-ink-3: #646464; // третичного текста нет: всё мелкое — gray-11
+  --p-icon: #8d8d8d; // gray-9: неактивные иконки
 
-  // Главная кнопка — чернильная
-  --p-primary: #1c2024;
-  --p-primary-hover: #33383d;
-  --p-primary-press: #0f1215;
+  // Фирменные цвета RWB — чёрный и белый, как логотип и сайт rwb.ru.
+  --p-brand: #000000;
+  --p-primary: #000000;
+  --p-primary-hover: #2b2b2b;
+  --p-primary-press: #000000;
   --p-on-primary: #ffffff;
 
-  // Акцент: выбор, прогресс, ссылки
-  --p-accent: #3e63dd; // indigo-9
-  --p-accent-hover: #3358d4; // indigo-10
-  --p-accent-text: #3a5bc7; // indigo-11
-  --p-accent-soft: #edf2fe; // indigo-3
-  --p-accent-line: #abbdf9; // indigo-7
+  // Акцент: выбор, фокус, ссылки, активная вкладка — чёрный в светлой теме, белый в тёмной
+  --p-accent: #000000;
+  --p-accent-hover: #2b2b2b;
+  --p-accent-text: #000000;
+  --p-accent-soft: rgba(0, 0, 0, 0.05);
+  --p-accent-line: rgba(0, 0, 0, 0.24);
 
   // Статусы: иконка (≥ 3:1) и текст (≥ 4.5:1) на поверхности
-  --p-idle: #8b8d98;
-  --p-idle-text: #60646c;
-  --p-idle-soft: #f0f0f3;
+  --p-idle: #8d8d8d;
+  --p-idle-text: #646464;
+  --p-idle-soft: #f0f0f0;
   --p-run: #3e63dd;
   --p-run-text: #3a5bc7;
   --p-run-soft: #edf2fe;
@@ -55,8 +56,8 @@
   --p-fail-line: #fdbdbe;
   --p-wait-line: #f3d673;
 
-  --p-focus: #3e63dd;
-  --p-selection: rgba(62, 99, 221, 0.18);
+  --p-focus: #000000;
+  --p-selection: rgba(0, 0, 0, 0.12);
 
   // Тени: в светлой теме — едва заметные
   --p-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
@@ -99,37 +100,38 @@
 }
 
 [tuiTheme='dark'] {
-  --p-bg: #111113;
-  --p-surface: #18191b;
-  --p-surface-2: #1d1e21;
-  --p-hover: #212225;
-  --p-press: #272a2d;
-  --p-sunken: #111113;
-  --p-overlay: rgba(0, 0, 0, 0.6);
+  --p-bg: #000000;
+  --p-surface: #111111;
+  --p-surface-2: #191919;
+  --p-hover: #222222;
+  --p-press: #2a2a2a;
+  --p-sunken: #0a0a0a;
+  --p-overlay: rgba(0, 0, 0, 0.7);
 
-  --p-line: #2e3135;
-  --p-border: #363a3f;
-  --p-line-strong: #43484e;
+  --p-line: #2a2a2a;
+  --p-border: #313131;
+  --p-line-strong: #484848;
 
-  --p-ink: #edeef0;
-  --p-ink-2: #b0b4ba;
-  --p-ink-3: #b0b4ba;
-  --p-icon: #696e77;
+  --p-ink: #ffffff;
+  --p-ink-2: #b4b4b4;
+  --p-ink-3: #b4b4b4;
+  --p-icon: #7b7b7b;
 
-  --p-primary: #edeef0;
-  --p-primary-hover: #ffffff;
-  --p-primary-press: #d8d9dc;
-  --p-on-primary: #111113;
+  --p-brand: #ffffff;
+  --p-primary: #ffffff;
+  --p-primary-hover: #e8e8e8;
+  --p-primary-press: #d9d9d9;
+  --p-on-primary: #000000;
 
-  --p-accent: #3e63dd;
-  --p-accent-hover: #5472e4;
-  --p-accent-text: #9eb1ff;
-  --p-accent-soft: #182449;
-  --p-accent-line: #3a4f97;
+  --p-accent: #ffffff;
+  --p-accent-hover: #e8e8e8;
+  --p-accent-text: #ffffff;
+  --p-accent-soft: rgba(255, 255, 255, 0.07);
+  --p-accent-line: rgba(255, 255, 255, 0.3);
 
-  --p-idle: #696e77;
-  --p-idle-text: #b0b4ba;
-  --p-idle-soft: #212225;
+  --p-idle: #7b7b7b;
+  --p-idle-text: #b4b4b4;
+  --p-idle-soft: #222222;
   --p-run: #3e63dd;
   --p-run-text: #9eb1ff;
   --p-run-soft: #182449;
@@ -145,8 +147,8 @@
   --p-fail-line: #72232d;
   --p-wait-line: #5c3d05;
 
-  --p-focus: #5472e4;
-  --p-selection: rgba(84, 114, 228, 0.32);
+  --p-focus: #ffffff;
+  --p-selection: rgba(255, 255, 255, 0.24);
 
   // Не none: токен входит в списки теней вместе с рамкой
   --p-shadow-card: 0 0 0 0 transparent;

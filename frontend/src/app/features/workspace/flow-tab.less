@@ -1,25 +1,57 @@
 :host {
   display: grid;
-  gap: 16px;
-}
-
-.map {
-  padding: 20px;
-}
-
-.detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: 400px minmax(0, 1fr);
   align-items: start;
   gap: 16px;
 }
 
-.aside {
-  display: grid;
-  gap: 16px;
+// Конвейер
+
+.pipeline {
+  position: sticky;
+  top: 16px;
+  padding: 12px 8px 12px;
 }
 
-.aside-block {
+.pipeline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px 10px;
+}
+
+.pipeline-title {
+  font-size: var(--p-text-m);
+  line-height: 1.25rem;
+  font-weight: 600;
+}
+
+.pipeline-count {
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  letter-spacing: 0;
+}
+
+.pipeline-note {
+  margin: 10px 12px 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--p-line);
+  color: var(--p-ink-2);
+  font-size: var(--p-text-xs);
+  line-height: 1rem;
+  letter-spacing: 0;
+}
+
+// Описание и запуски
+
+.detail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.recent-block {
   padding: 16px;
 }
 
@@ -35,18 +67,19 @@
   font-size: var(--p-text-m);
   line-height: 1.25rem;
   font-weight: 600;
-  letter-spacing: -0.006em;
 }
 
+// Ссылки в чёрно-белой гамме отличаются подчёркиванием, а не цветом
 .aside-link {
   color: var(--p-accent-text);
   font-size: var(--p-text-s);
   font-weight: 500;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: var(--p-line-strong);
+  text-underline-offset: 3px;
 
   &:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    text-decoration-color: currentColor;
   }
 }
 
@@ -102,72 +135,12 @@
   line-height: 1.25rem;
 }
 
-.legend {
-  ul {
-    display: grid;
-    gap: 8px;
-    margin: 12px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--p-ink-2);
-    font-size: var(--p-text-s);
-  }
-
-  tui-icon {
-    width: 16px;
-    height: 16px;
-    flex: none;
-    color: var(--p-icon);
-
-    &[data-tone='run'] {
-      color: var(--p-run);
-    }
-
-    &[data-tone='wait'] {
-      color: var(--p-wait);
-    }
-
-    &[data-tone='ok'] {
-      color: var(--p-ok);
-    }
-
-    &[data-tone='fail'] {
-      color: var(--p-fail);
-    }
-  }
-
-  .dash {
-    width: 16px;
-    height: 0;
-    flex: none;
-    border-top: 1.5px dashed var(--p-line-strong);
-  }
-}
-
-.legend-note {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--p-line);
-  color: var(--p-ink-2);
-  font-size: var(--p-text-xs);
-  line-height: 1rem;
-  letter-spacing: 0;
-}
-
 @media (max-width: 1100px) {
-  .detail {
+  :host {
     grid-template-columns: minmax(0, 1fr);
   }
-}
 
-@media (max-width: 720px) {
-  .map {
-    padding: 12px 8px;
+  .pipeline {
+    position: static;
   }
 }

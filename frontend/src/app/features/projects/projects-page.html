@@ -2,7 +2,7 @@
   <header class="page-head">
     <div>
       <h1 class="page-title">Проекты</h1>
-      <p class="page-lead">Требования, этапы и запуски агентов для каждого продукта.</p>
+      <p class="page-lead">Продукты, которые проходят конвейер RWB: требования, шаги Э1–Э7 и запуски агентов.</p>
     </div>
     @if (store.items().length) {
       <a tuiButton size="s" iconStart="@tui.plus" routerLink="/projects/new">Новый проект</a>
@@ -35,8 +35,8 @@
         <span class="empty-icon" aria-hidden="true"><tui-icon icon="@tui.folder-plus" /></span>
         <h2 id="empty-title" class="empty-title">Проектов пока нет</h2>
         <p class="empty-text">
-          Опишите продукт обычным текстом. Агенты проведут требования через {{ stageCount }} этапов — от&nbsp;бизнес-анализа
-          до&nbsp;документации.
+          Опишите продукт обычным текстом. Конвейер RWB проведёт требования через {{ stageCount }} шагов — от&nbsp;анализа
+          требований до&nbsp;отчёта, с&nbsp;воротами качества на&nbsp;переходах.
         </p>
         <div class="empty-actions">
           <a tuiButton size="m" iconStart="@tui.plus" routerLink="/projects/new">Создать проект</a>
@@ -46,8 +46,8 @@
         </div>
       </div>
       <div class="empty-map">
-        <p class="label">Этапы, через которые пройдёт проект</p>
-        <app-flow-map [stations]="preview" [interactive]="false" />
+        <p class="label">Шаги конвейера RWB</p>
+        <app-pipeline-chain />
       </div>
     </section>
   } @else {
@@ -65,7 +65,7 @@
     <div class="table panel">
       <div class="row head" aria-hidden="true">
         <span>Название</span>
-        <span>Этапы</span>
+        <span>Конвейер</span>
         <span>Последний запуск</span>
         <span class="end">Изменён</span>
       </div>
@@ -75,8 +75,8 @@
             <a class="row project" [routerLink]="['/projects', row.project.id]">
               <span class="name">{{ row.project.name }}</span>
               <span class="stages">
-                <app-flow-mini [stations]="row.stations" />
-                <span class="stages-count num" aria-hidden="true">{{ row.done }}/{{ row.stations.length }}</span>
+                <app-pipeline-mini [stages]="row.stages" />
+                <span class="stages-count num" aria-hidden="true">{{ row.done }}/{{ row.stages.length }}</span>
               </span>
               <app-status-chip class="status" [tone]="row.status.tone" [label]="row.status.label" [live]="row.status.live" />
               <span class="date end num" [attr.title]="fullDate(row.project.updated_at)">{{ row.project.updated_at | relTime: clock.now() }}</span>

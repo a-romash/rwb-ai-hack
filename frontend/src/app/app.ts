@@ -12,7 +12,8 @@ import {ProjectsStore} from './core/state/projects.store';
 import {ShellService} from './core/state/shell.service';
 import {ThemeService} from './core/state/theme.service';
 import {CommandPalette} from './features/shell/command-palette';
-import {BrandMark} from './shared/ui/brand-mark';
+import {PotokWordmark} from './shared/ui/potok-wordmark';
+import {RwbLogo} from './shared/ui/rwb-logo';
 import {ToastHost} from './shared/ui/toast-host';
 
 const RECENT_LIMIT = 8;
@@ -20,7 +21,7 @@ const RECENT_LIMIT = 8;
 @Component({
   selector: 'app-root',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CdkTrapFocus, TuiRoot, TuiButton, TuiIcon, TuiHint, BrandMark, ToastHost],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CdkTrapFocus, TuiRoot, TuiButton, TuiIcon, TuiHint, RwbLogo, PotokWordmark, ToastHost],
   templateUrl: './app.html',
   styleUrl: './app.less',
   host: {'(document:keydown)': 'onKeydown($event)'},

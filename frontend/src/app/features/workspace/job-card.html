@@ -6,7 +6,7 @@
     <p class="who-title">
       {{ agent()?.name ?? j.agent }}
       @if (stage(); as s) {
-        <span class="who-stage">этап «{{ s.short }}»</span>
+        <span class="who-stage">{{ s.code }} «{{ s.title }}»</span>
       }
     </p>
     <p class="who-meta">

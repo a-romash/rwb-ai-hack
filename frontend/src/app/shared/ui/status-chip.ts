@@ -1,7 +1,6 @@
 import {ChangeDetectionStrategy, Component, computed, input} from '@angular/core';
 import {TuiIcon} from '@taiga-ui/core';
-import {Tone} from '../../core/pipeline/status';
-import {toneIcon} from './flow-map/flow.model';
+import {Tone, toneIcon} from '../../core/pipeline/status';
 
 /** Статус одной строкой: иконка и слово, без цветной подложки. Пока процесс идёт, иконка вращается. */
 @Component({

@@ -28,10 +28,10 @@ import {WorkspaceStore} from './workspace.store';
         <span class="empty-icon" aria-hidden="true"><tui-icon icon="@tui.square-terminal" /></span>
         <h3 class="empty-title">Запусков пока нет</h3>
         <p class="empty-text">
-          Начните с аналитика: он разберёт требования, найдёт пробелы и перечислит допущения. Результат и статус появятся здесь
-          и на линии этапов.
+          Начните с аналитика на шаге Э1: он разберёт требования, найдёт пробелы и перечислит допущения. Результат и статус
+          появятся здесь и на конвейере.
         </p>
-        <button tuiButton type="button" size="m" [iconStart]="analyst.icon" (click)="launch('business_analysis', 'analyst')">
+        <button tuiButton type="button" size="m" [iconStart]="analyst.icon" (click)="launch('analysis', 'analyst')">
           Запустить {{ analyst.accusative }}
         </button>
       </div>
@@ -48,10 +48,10 @@ import {WorkspaceStore} from './workspace.store';
       width: 40px;
       height: 40px;
       margin-bottom: 10px;
-      border: 1px solid var(--p-border);
+      border: 1px solid var(--p-accent-line);
       border-radius: var(--p-radius-control);
-      background: var(--p-surface-2);
-      tui-icon { width: 20px; height: 20px; color: var(--p-ink-2); }
+      background: var(--p-accent-soft);
+      tui-icon { width: 20px; height: 20px; color: var(--p-accent); }
     }
     .empty-title { font-size: var(--p-text-xl); line-height: 1.75rem; letter-spacing: -0.017em; }
     .empty-text { max-width: 54ch; margin-bottom: 18px; color: var(--p-ink-2); line-height: 1.25rem; }

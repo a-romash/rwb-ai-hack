@@ -1,64 +1,57 @@
-<section class="map panel" aria-labelledby="flow-heading">
-  <h2 id="flow-heading" class="visually-hidden">Линия этапов</h2>
-  <app-flow-map
-    [stations]="store.stations()"
-    [selected]="selectedKey()"
+<section class="pipeline panel" aria-labelledby="pipeline-heading">
+  <header class="pipeline-head">
+    <h2 id="pipeline-heading" class="pipeline-title">Конвейер RWB</h2>
+    <span class="pipeline-count num">{{ done() }} из {{ store.stages().length }} готово</span>
+  </header>
+  <app-pipeline-timeline
+    [items]="store.items()"
+    [selected]="selectedId()"
     controls="station-panel"
-    label="Этапы проекта. Стрелки переключают этап."
+    label="Шаги и ворота конвейера. Стрелки вверх и вниз переключают строку."
     (select)="select($event)"
   />
+  <p class="pipeline-note">
+    Целиком конвейер запускает дирижёр в режиме A2 «{{ autonomy.name }}» — его API придёт в следующей поставке.
+    Пока шаги запускаются агентами по одному.
+  </p>
 </section>
 
 <div class="detail">
-  @if (selected(); as station) {
-    <app-station-panel
-      id="station-panel"
-      class="panel"
-      role="region"
-      aria-live="polite"
-      [attr.aria-label]="'Этап: ' + station.label"
-      [station]="station"
-      [total]="store.stations().length"
-      [job]="selectedJob()"
-      [now]="clock.now()"
-      (run)="run($event)"
-      (openRuns)="openRuns()"
-    />
-  }
+  <section id="station-panel" class="panel" role="region" aria-live="polite" [attr.aria-label]="selectedGate() ? 'Ворота качества' : 'Шаг конвейера'">
+    @if (selectedStage(); as stage) {
+      <app-station-panel
+        [stage]="stage"
+        [total]="store.stages().length"
+        [job]="selectedJob()"
+        [now]="clock.now()"
+        (run)="run($event)"
+        (openRuns)="openRuns()"
+        (openGate)="select($event)"
+      />
+    }
+    @if (selectedGate(); as gate) {
+      <app-gate-panel [gate]="gate" (openStage)="select($event)" />
+    }
+  </section>
 
-  <aside class="aside">
-    <section class="aside-block panel" aria-labelledby="recent-heading">
-      <div class="aside-head">
-        <h2 id="recent-heading" class="aside-title">Последние запуски</h2>
-        @if (store.runs().length) {
-          <a class="aside-link" routerLink="../runs">Все запуски</a>
-        }
-      </div>
-      @for (item of recent(); track item.run.id) {
-        <a class="recent" routerLink="../runs">
-          <tui-icon class="recent-icon" [icon]="item.agent?.icon ?? '@tui.bot'" />
-          <span class="recent-main">
-            <span class="recent-title">{{ item.agent?.name ?? item.run.agent }}@if (item.stage) {<span class="recent-stage">, {{ item.stage.short }}</span>}</span>
-            <span class="recent-time">{{ item.run.createdAt | relTime: clock.now() }}</span>
-          </span>
-          <app-status-chip [tone]="item.view.tone" [label]="item.view.label" [live]="item.view.live" [quiet]="true" />
-        </a>
-      } @empty {
-        <p class="aside-empty">Агенты ещё не запускались. Выберите этап с агентом и нажмите «Запустить».</p>
+  <section class="recent-block panel" aria-labelledby="recent-heading">
+    <div class="aside-head">
+      <h2 id="recent-heading" class="aside-title">Последние запуски</h2>
+      @if (store.runs().length) {
+        <a class="aside-link" routerLink="../runs">Все запуски</a>
       }
-    </section>
-
-    <section class="aside-block panel legend" aria-labelledby="legend-heading">
-      <h2 id="legend-heading" class="aside-title">Как читать линию</h2>
-      <ul>
-        <li><tui-icon icon="@tui.circle-dashed" data-tone="idle" />Не запускался</li>
-        <li><tui-icon icon="@tui.loader-circle" data-tone="run" />Агент работает</li>
-        <li><tui-icon icon="@tui.circle-alert" data-tone="wait" />Нужен ответ или результат частичный</li>
-        <li><tui-icon icon="@tui.circle-check" data-tone="ok" />Готово</li>
-        <li><tui-icon icon="@tui.circle-x" data-tone="fail" />Ошибка</li>
-        <li><span class="dash" aria-hidden="true"></span>Этап без агента</li>
-      </ul>
-      <p class="legend-note">Статус этапа — последний запуск агента из этой Студии. Статусы прогона конвейера появятся, когда их начнёт отдавать API.</p>
-    </section>
-  </aside>
+    </div>
+    @for (item of recent(); track item.run.id) {
+      <a class="recent" routerLink="../runs">
+        <tui-icon class="recent-icon" [icon]="item.agent?.icon ?? '@tui.bot'" />
+        <span class="recent-main">
+          <span class="recent-title">{{ item.agent?.name ?? item.run.agent }}@if (item.stage) {<span class="recent-stage">, {{ item.stage.code }} {{ item.stage.title }}</span>}</span>
+          <span class="recent-time">{{ item.run.createdAt | relTime: clock.now() }}</span>
+        </span>
+        <app-status-chip [tone]="item.view.tone" [label]="item.view.label" [live]="item.view.live" [quiet]="true" />
+      </a>
+    } @empty {
+      <p class="aside-empty">Агенты ещё не запускались. Выберите шаг с агентом и нажмите «Запустить».</p>
+    }
+  </section>
 </div>

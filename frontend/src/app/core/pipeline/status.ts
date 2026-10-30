@@ -66,3 +66,20 @@ export function jobStatusView(status: string, subtype: string | null, stale = fa
   }
   return {phase: 'failed', tone: 'fail', label: 'Сбой задачи', live: false, terminal: true, hint: 'Задача упала в worker. Подробности — в docker compose logs worker.'};
 }
+
+/** Иконка статуса: одна и та же в конвейере, таблицах и бейджах. */
+export function toneIcon(tone: Tone, live = false): string {
+  if (live) return '@tui.loader-circle';
+  switch (tone) {
+    case 'ok':
+      return '@tui.circle-check';
+    case 'fail':
+      return '@tui.circle-x';
+    case 'wait':
+      return '@tui.circle-alert';
+    case 'run':
+      return '@tui.clock';
+    default:
+      return '@tui.circle-dashed';
+  }
+}
