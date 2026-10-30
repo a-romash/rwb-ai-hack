@@ -32,7 +32,7 @@ docker compose exec api python -m unittest discover -s tests -v
 docker compose exec api python -m app.tasks
 ```
 
-Вторая команда отправляет задачу в очередь PostgreSQL, ждёт ответа worker и выводит `Queue check passed` с идентификатором задачи. Для диагностики: `docker compose logs worker`.
+Вторая команда отправляет задачу в очередь PostgreSQL, ждёт ответа worker и выводит `Queue check passed` с идентификатором задачи. Для диагностики: `docker compose logs worker-llm worker-build worker-io`.
 
 Для локальной разработки интерфейса после запуска Compose: `cd frontend && npm ci && npm start`. Dev-сервер проксирует `/api` на Compose по адресу `localhost:8080`.
 
@@ -57,3 +57,5 @@ docker compose exec api python -m app.tasks
 Для реального прогона подключите этапы коллег в `stages/`, проверки в `gates/`, доверенный `templates/product/pack.yaml` и настройте `OPENROUTER_API_KEY`. Для вызовов Docker build-воркер использует смонтированный сокет и путь рабочего каталога на хосте. `python -m harness doctor` проверяет готовность окружения.
 
 После аварии сначала остановите все воркеры, затем выполните `docker compose exec api python -m harness recover <run_id> --worker-stopped`; повтор упавшего этапа — `POST /api/runs/{run_id}/stages/{key}/retry`. Не запускайте восстановление при работающем воркере: автоматического отзыва выполнения нет.
+
+Проверка Python из корня: `PYTHONPATH=backend python -m unittest discover -s tests -v`. Build-воркер имеет доступ к Docker daemon и должен работать на доверенном изолированном хосте.
