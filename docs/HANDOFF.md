@@ -414,7 +414,7 @@ Docker-демона нет. Поэтому **не проверены**:
 ---
 
 ## 9. Подводные камни среды и процесса
-- **Docker Desktop на Windows, bind mount `./workspaces`:** процесс воркера дважды намертво завис в `p9_client_rpc` (состояние D, ввод-вывод стоит) на шаге `report` сразу после `verify`, и один раз так же в `scripts/local_chain.py`. Помогает только `docker compose restart worker-llm` и `python -m harness recover <run> --worker-stopped`. Обход: держать репозиторий в файловой системе WSL (ext4, `\wsl$\...`) и запускать `docker compose` оттуда, а не из `C:\`.
+- **Docker Desktop на Windows, bind mount `./workspaces`:** процесс воркера дважды намертво завис в `p9_client_rpc` (состояние D, ввод-вывод стоит) на шаге `report` сразу после `verify`, и один раз так же в `scripts/local_chain.py`. Помогает только `docker compose restart worker-llm` и `python -m harness recover <run> --worker-stopped`. Обход: держать репозиторий в файловой системе WSL (ext4, например `~/rwb-ai-hack` внутри WSL) и запускать `docker compose` оттуда, а не из `C:\Users\...`.
 - **Бюджет минут считается по часам с момента старта прогона**, включая простой между ручными перезапусками шагов. После долгой отладки шаги получают `BudgetExceeded` без вызовов модели (так `develop` оставил 23 заглушки).
 - **Прокси:**
   - открыты: GitHub, nuget.org, npm registry, PyPI, apt;
