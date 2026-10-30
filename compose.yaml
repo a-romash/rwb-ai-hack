@@ -81,7 +81,7 @@ services:
 
   worker-llm:
     <<: *backend
-    command: ["celery", "-A", "app.tasks:celery_app", "worker", "-Q", "llm,celery", "--loglevel=info", "--concurrency=1", "--without-gossip", "--without-mingle"]
+    command: ["celery", "-A", "app.tasks:celery_app", "worker", "-Q", "llm,celery", "--loglevel=info", "--concurrency=${LLM_WORKER_CONCURRENCY:-5}", "--without-gossip", "--without-mingle"]
     depends_on:
       api:
         condition: service_healthy
@@ -91,7 +91,7 @@ services:
     volumes:
       - ./workspaces:/app/workspaces
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["celery", "-A", "app.tasks:celery_app", "worker", "-Q", "build", "--loglevel=info", "--concurrency=1", "--without-gossip", "--without-mingle"]
+    command: ["celery", "-A", "app.tasks:celery_app", "worker", "-Q", "build", "--loglevel=info", "--concurrency=${BUILD_WORKER_CONCURRENCY:-4}", "--without-gossip", "--without-mingle"]
     depends_on:
       api:
         condition: service_healthy

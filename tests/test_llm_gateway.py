@@ -31,6 +31,14 @@ class Tests(unittest.TestCase):
         transport.complete([], schema=None, effort='low', reasoning_tokens=1500, temperature=1.0, max_tokens=10)
         # OpenRouter answers 400 when both reasoning.effort and reasoning.max_tokens are present.
         self.assertEqual(sent[0]['reasoning'], {'enabled': True, 'max_tokens': 1500})
+    def test_dropped_connection_is_a_retryable_transport_error(self):
+        import http.client
+        from harness.llm import HTTPTransport
+        def opener(request, timeout):
+            raise http.client.RemoteDisconnected('Remote end closed connection without response')
+        with self.assertRaises(TransportError) as caught:
+            HTTPTransport(api_key='k', opener=opener).complete([], schema=None, effort=None, reasoning_tokens=0, temperature=0, max_tokens=10)
+        self.assertTrue(caught.exception.retryable)
     def test_truncated_json_is_asked_again_with_larger_budget(self):
         class Truncating:
             budgets = []

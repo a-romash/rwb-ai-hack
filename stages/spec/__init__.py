@@ -176,6 +176,20 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
     return StageOutput(artifacts={"app": ARTIFACT, "spec_notes": "spec/spec-notes.json"}, summary=f"Спецификация содержит сущностей: {len(app.entities.root)}; правил в хуках: {len(app.hooks.root)}; команд: {len(app.commands.root)}.", flags=flags)
 
 
+def _fit_repair(payload: dict, limit: int) -> dict | None:
+    """Shrink the repair context step by step so one large finding does not stop the repair of the others."""
+    analysis, app = payload["analysis"], payload["app"]
+    compact_app = {section: {name: sorted(item.get("fields", {})) for name, item in value.items()} if section == "entities"
+                   else sorted(value) if isinstance(value, dict) else value
+                   for section, value in app.items() if section != "permissions"}
+    candidates = (
+        payload,
+        {**payload, "analysis": {key: analysis[key] for key in ("requirements", "roles", "rules") if key in analysis}},
+        {**payload, "analysis": {key: analysis[key] for key in ("requirements", "roles") if key in analysis}, "app": compact_app},
+    )
+    return next((item for item in candidates if size("system-analyst-repair", item, PatchResponse) <= limit), None)
+
+
 def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) -> StageOutput:
     validate_input(inp, "spec")
     analysis_name = inp.artifacts.get("analysis", "spec/analysis.json")
@@ -236,6 +250,10 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
                                         "enum": "Use ref for the name of a declared enum type.", "ref": "Use ref for a declared entity name.",
                                         "state": "Use machine for a declared state machine name.", "computed_by": "Only a declared hook name.",
                                         "roles": "Use declared role IDs, not human display labels."}
+            payload = _fit_repair(payload, window(llm))
+            if payload is None:
+                flags.append(ElementFlag(path=finding.path, status="questioned", reason="Контекст ремонта не помещается в профиль окна модели.", gate="G1"))
+                continue
             response = ask(llm, task_class="patch", agent="system-analyst-repair", payload=payload, output=PatchResponse, task_id=f"spec.repair.{inp.attempt}.{index_}")
             try:
                 updated = apply_patch(document, response, [normalized])

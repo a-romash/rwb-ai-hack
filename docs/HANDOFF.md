@@ -308,6 +308,15 @@ cd /tmp/gen/product/backend && dotnet build App.sln && dotnet test --solution Ap
 
 Повторные span одного этапа (`spec #2`, `#3`) — это перезапуски. Фильтр по уровню WARNING показывает самые «дорогие» места.
 
+### Быстрый цикл без полного прогона
+- **G1 и ремонт spec — офлайн на артефактах прогона.** `workspaces/<project>/runs/<run>/spec/{analysis,app}.json` уже есть после любого прогона.
+  - G1: `python -c "from gates.g1_spec import check; ..."` — секунды.
+  - Один раунд `stages.spec.repair` живой моделью на копии `spec/` — минуты.
+  - Ни analysis, ни генерацию spec гонять не нужно.
+- **Один этап заново:** `POST /api/runs/{id}/stages/spec/retry`. Готовый анализ переиспользуется; попытка ≥2 идёт мимо кэша первой.
+- **Несколько прогонов сразу:** `worker-llm` берёт 5 задач, `worker-build` — 4 (`LLM_WORKER_CONCURRENCY`, `BUILD_WORKER_CONCURRENCY`). Стенды разведены по `COMPOSE_PROJECT_NAME`. Запросы к провайдеру ограничивает `LLM_MAX_PARALLEL`.
+- **Анализ без reasoning** (`req_extract`, `req_lint`): на кейсе 1 с reasoning шаги обрывались по `length` и шли в 2–4 раза дольше. Шаги `spec_step` reasoning сохраняют: без него модель приложения беднее.
+
 ### Чего не было в среде
 Docker-демона нет. Поэтому **не проверены**:
 - `docker compose up` платформы;

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import os
 import random
@@ -22,7 +23,8 @@ from harness.llm_throttle import AdmissionLimitExceeded
 
 # reasoning effort, reasoning tokens, temperature, answer tokens
 TASKS = {
-    'req_extract': ('low', 1500, 1.0, 3000), 'req_lint': ('medium', 4000, 1.0, 3500),
+    # Analysis runs without reasoning: on case 1 reasoning ate the whole answer budget (length) 2-4x slower, see HANDOFF.
+    'req_extract': (None, 0, .7, 4500), 'req_lint': (None, 0, .7, 3500),
     'spec_step': ('medium', 6000, 1.0, 4000), 'ui': (None, 0, .7, 3000),
     'patch': (None, 0, .2, 2000), 'hook_1': (None, 0, .2, 1500),
     'hook_2': (None, 0, .2, 1500), 'hook_3': ('low', 2000, 1.0, 1500),
@@ -92,7 +94,8 @@ class HTTPTransport:
             finally:
                 exc.close()
             raise TransportError(f'HTTP {code}', code in (429, 500, 502, 503), bool(schema and code in (400, 422)), usage) from None
-        except (urllib.error.URLError, TimeoutError) as exc:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException) as exc:
+            # A connection dropped mid-response (RemoteDisconnected, IncompleteRead) is not wrapped in URLError by urllib.
             raise TransportError('Соединение с моделью недоступно', True) from exc
         except (ValueError, KeyError, IndexError, TypeError) as exc:
             raise TransportError('Некорректный ответ провайдера') from exc

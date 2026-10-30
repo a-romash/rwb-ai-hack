@@ -99,6 +99,13 @@ class SpecStageTests(unittest.TestCase):
         self.assertIn("окна", output.flags[-1].reason)
         self.assertEqual(llm.calls, [])
 
+    def test_repair_context_shrinks_before_giving_up(self) -> None:
+        from stages.spec import _fit_repair
+        payload = {"finding": {}, "target_pointer": "/hooks", "target_value": {}, "section_schema": {}, "binding_rules": {}, "app": {"entities": {}},
+                   "analysis": {"requirements": [], "roles": [], "rules": [], "user_stories": [{"text": "x" * 40000}]}}
+        self.assertNotIn("user_stories", _fit_repair(payload, 32768)["analysis"])
+        self.assertIsNone(_fit_repair({**payload, "target_value": "x" * 40000}, 32768))
+
     def test_bad_contract_cannot_be_repaired_silently(self) -> None:
         self.responses["spec.entities.0"] = {"Bad": {"extra": "unsupported"}}
         with self.assertRaises(ContractError):
