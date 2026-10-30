@@ -23,7 +23,8 @@
 - **Кейс №1** «Парковочный помощник для технических служб» выдан заранее — для подготовки.
 - **Кейс №2 скрыт.** Жюри запустит конвейер на нём в момент оценки. Поэтому главное свойство решения — надёжный автономный прогон на незнакомом требовании. **В коде конвейера нельзя зашивать ни парковки, ни любой другой домен.**
 - **Модель:** Qwen3.8-27B (через OpenRouter или локальный vLLM). Сильна в задачах уровня одной функции, слаба в длинных агентных сессиях, по умолчанию долго «думает», окно контекста у организаторов считаем малым (8–32 тыс. токенов). Отсюда принцип: **нет длинной агентной сессии — есть детерминированный конвейер из множества коротких проверяемых задач.**
-- **Стек генерируемого приложения задан ТЗ и не меняется:** Angular 20.1.6 (UI Kit — Angular Material), C# 14 / ASP.NET Core 10, PostgreSQL 17.9 + PostGIS, Kotlin 2.2.21 (Android, Compose M3), Kafka + REST, Docker / Docker Compose, GitLab CI/CD.
+- **Стек генерируемого приложения:** Angular 20.1.6 (UI Kit — Angular Material), C# 14 / ASP.NET Core 10, PostgreSQL 17.9 + PostGIS, REST + SSE, Docker / Docker Compose, GitLab CI/CD.
+- **Решение команды по стеку (ресурсов стенда мало):** вместо Kafka — события через PostgreSQL (outbox-таблица, обработчики через `FOR UPDATE SKIP LOCKED`, `LISTEN/NOTIFY` для живых обновлений); вместо нативного Android на Kotlin — **PWA** на Angular (`mobile-web/`): устанавливается на телефон, работает с геолокацией, уведомлениями и камерой через браузерные API. Это осознанное отступление от стека ТЗ: оно записывается в README продукта и в отчёт.
 - **Стек самой платформы** (уже в `main`): Angular 20.1.6 + Taiga UI 5 (Студия), FastAPI, SQLAlchemy + Alembic, Celery, PostgreSQL 17.9 — он же брокер Celery через Kombu SQLAlchemy transport. Redis, RabbitMQ и Langfuse не используем.
 - **Семь этапов по постановке RWB:** 1) приём и анализ требований; 2) системный анализ; 3) проектирование интерфейса; 4) разработка; 5) тестирование и безопасность; 6) сборка и развёртывание; 7) документация.
 - **Критерии (100 баллов):** анализ — 20, продукт и интерфейс — 15, архитектура и разработка — 20, тестирование и безопасность — 15, инфраструктура — 10, документация — 10, эффективность пайплайна (токены, время, попытки, автономность) — 10.
@@ -163,7 +164,7 @@ class SandboxResult(BaseModel):
 
 class Sandbox(Protocol):
     def run(self, kind: Literal["build", "test", "lint", "scan", "up", "smoke", "e2e", "down"],
-            target: Literal["backend", "admin", "mobile", "stack"], *,
+            target: Literal["backend", "admin", "pwa", "stack"], *,
             filter: str | None = None, timeout_s: int = 600) -> SandboxResult: ...
 ```
 
@@ -337,7 +338,7 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 - **каналы уведомлений:** `web`, `mobile`, `email`, `sms` (`email`/`sms` — через порт интеграции с mock);
 - **операции:** `<Entity>.create|read|update|delete` или имя команды.
 
-Неявное генератор выводит сам, в `app.json` это не пишется: CRUD, события на переходах (`TicketTaken`, `TicketExpired`, …), топики Kafka, тесты прав и переходов.
+Неявное генератор выводит сам, в `app.json` это не пишется: CRUD, события на переходах (`TicketTaken`, `TicketExpired`, …), записи в таблице событий, тесты прав и переходов.
 
 `contracts/app.py` дополнительно экспортирует `dependents(app, path) -> list[str]` — все пути, которые ссылаются на элемент (для пометки «под вопросом» зависимых).
 
@@ -382,6 +383,8 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 
 `data-testid` имеет вид `<screen-kebab>.<element>` и уникален в пределах приложения.
 
+`platform: mobile` — мобильный интерфейс (например, полевого сотрудника). Он поставляется как **PWA** (`mobile-web/`), а не нативное приложение. Возможности устройства — через браузерные API: `location` → Geolocation API (пока приложение открыто; фонового трекинга у PWA нет), `local_notification` → Notification API через service worker, `external_link` → переход по ссылке, `scan_code` → BarcodeDetector или `@zxing/browser`, `file_pick` → `<input type="file" capture>`. В E2E — эмуляция мобильного устройства, геолокации и разрешений Playwright.
+
 ### 3.8 Спецификация хука `hooks.json` (владелец — Иван)
 
 ```json
@@ -421,10 +424,13 @@ targets:
     test:  ["npx", "jest", "--ci"]
     e2e:   ["npx", "playwright", "test"]
     filter: ["--grep", "@{filter}"]
-  mobile:
-    image: rwb/tool-android:kt2.2.21
-    build: ["./gradlew", "--offline", "-p", "mobile", "assembleDebug"]
-    test:  ["./gradlew", "--offline", "-p", "mobile", "testDebugUnitTest"]
+  pwa:
+    image: rwb/tool-node:22-ng20.1.6
+    workdir: mobile-web
+    build: ["npm", "run", "build"]
+    test:  ["npx", "jest", "--ci"]
+    e2e:   ["npx", "playwright", "test"]
+    filter: ["--grep", "@{filter}"]
   stack:
     up:    ["docker", "compose", "-f", "infra/docker-compose.yml", "up", "-d", "--wait"]
     smoke: ["python3", "infra/smoke.py"]
@@ -433,8 +439,8 @@ scan:
   image: rwb/tool-security:1
   commands: [["gitleaks", "detect", "--source", "."], ["trivy", "fs", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]]
 write_roots: [backend/src/App.Domain/Hooks, backend/src/App.Api/Custom, admin-web/src/app/custom,
-              mobile/app/src/main/java/app/hooks, db/seed]
-readonly: [backend/tests, admin-web/e2e, spec]
+              mobile-web/src/app/custom, db/seed]
+readonly: [backend/tests, admin-web/e2e, mobile-web/e2e, spec]
 ```
 
 ### 3.10 Тестовый набор шаблона (владелец — Иван, потребитель — Тимофей)
@@ -454,7 +460,8 @@ public static class Seed { Task Load(AppFactory app, string name = "default"); }
 
 - Тесты AC — проект `backend/tests/App.Acceptance.Tests`, каждый тест помечен `[Trait("AC", "AC-07")]`.
 - Сгенерированные тесты прав и переходов — `backend/tests/App.Generated.Tests` (пишет генератор).
-- E2E — `admin-web/e2e/*.spec.ts`, заголовок теста начинается с `@AC-07`; page objects `admin-web/e2e/pages/*` генерируются из `data-testid` в `ui.json`.
+- E2E — `admin-web/e2e/*.spec.ts` и `mobile-web/e2e/*.spec.ts` (мобильная эмуляция Playwright), заголовок теста начинается с `@AC-07`; page objects `*/e2e/pages/*` генерируются из `data-testid` в `ui.json`.
+- `PublishedEvents` читает таблицу событий продукта (`domain_events`), а не брокер.
 
 ### 3.11 API Студии (владелец — Максим, потребитель — Артём)
 
@@ -555,7 +562,7 @@ class AcStatus(BaseModel):
 
 class Verification(BaseModel):
     schema_version: Literal[1] = 1
-    build: dict[str, bool]                   # backend/admin/mobile → собралось
+    build: dict[str, bool]                   # backend/admin/pwa → собралось
     tests: list[TestCase]
     mutations: list[dict]                    # хук, мутация, убита ли
     scans: list[dict]                        # инструмент, находки, high/critical
@@ -578,7 +585,7 @@ class DisputeDecision(BaseModel):
 |---|---|---|---|
 | Unit хуков | Примеры из AC и `hooks.json` | Модель `qa`, один параметризованный тест на AC; строка на каждый пример; границы N−1 / N / N+1 обязательны | `backend/tests/App.Acceptance.Tests/Hooks/` |
 | API по AC | Gherkin: Дано → сид и часы, Когда → команда, Тогда → query и события | Модель `qa`, через `AppFactory`, `Api.As(role)`, `TestClock`, `PublishedEvents` | `…/App.Acceptance.Tests/Api/` |
-| E2E | Проходы из `ui.json` | **Код, без модели**: шаг `open` → переход, `fill` → ввод по testid, `tap` → клик, `expect` → проверка; данные из `seed` | `admin-web/e2e/<US>.spec.ts`, заголовок `@AC-xx` |
+| E2E | Проходы из `ui.json` | **Код, без модели**: шаг `open` → переход, `fill` → ввод по testid, `tap` → клик, `expect` → проверка; данные из `seed` | `admin-web/e2e/<US>.spec.ts` (`platform: web`) и `mobile-web/e2e/<US>.spec.ts` (`platform: mobile`, эмуляция телефона, геолокации и разрешений Playwright), заголовок `@AC-xx` |
 | Права и переходы | `app.json` | Генерирует Иван | `App.Generated.Tests` |
 
 Правила для тестов (проверяет линтер тестов в G2):
@@ -619,7 +626,7 @@ def resolve(dispute: Dispute, workspace: Path, llm: LLM, sandbox: Sandbox) -> Di
 
 ### T4. Этап `verify`
 
-1. Сборка всех целей: `sandbox.run("build", t)` для `backend`, `admin` (и `mobile`, если есть).
+1. Сборка всех целей: `sandbox.run("build", t)` для `backend`, `admin`, `pwa`.
 2. Сверка хэшей тестов с `reports/tests.json`: расхождение — ошибка G3, а не предупреждение.
 3. Все тесты: `test` по целям, разбор JUnit → `TestCase[]`.
 4. **Green-proof (мутации):** для каждого реализованного хука 3–5 мутаций тела (перевернуть сравнение, сдвинуть числовую константу на единицу, `&&` ↔ `||`, вернуть другой вариант перечисления) → тесты хука по фильтру AC → хотя бы один тест должен покраснеть на каждой мутации. Выжившая мутация — находка (тестировщику дописать пример). После мутаций файл хука восстанавливается.

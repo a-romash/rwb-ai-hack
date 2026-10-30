@@ -23,7 +23,8 @@
 - **Кейс №1** «Парковочный помощник для технических служб» выдан заранее — для подготовки.
 - **Кейс №2 скрыт.** Жюри запустит конвейер на нём в момент оценки. Поэтому главное свойство решения — надёжный автономный прогон на незнакомом требовании. **В коде конвейера нельзя зашивать ни парковки, ни любой другой домен.**
 - **Модель:** Qwen3.8-27B (через OpenRouter или локальный vLLM). Сильна в задачах уровня одной функции, слаба в длинных агентных сессиях, по умолчанию долго «думает», окно контекста у организаторов считаем малым (8–32 тыс. токенов). Отсюда принцип: **нет длинной агентной сессии — есть детерминированный конвейер из множества коротких проверяемых задач.**
-- **Стек генерируемого приложения задан ТЗ и не меняется:** Angular 20.1.6 (UI Kit — Angular Material), C# 14 / ASP.NET Core 10, PostgreSQL 17.9 + PostGIS, Kotlin 2.2.21 (Android, Compose M3), Kafka + REST, Docker / Docker Compose, GitLab CI/CD.
+- **Стек генерируемого приложения:** Angular 20.1.6 (UI Kit — Angular Material), C# 14 / ASP.NET Core 10, PostgreSQL 17.9 + PostGIS, REST + SSE, Docker / Docker Compose, GitLab CI/CD.
+- **Решение команды по стеку (ресурсов стенда мало):** вместо Kafka — события через PostgreSQL (outbox-таблица, обработчики через `FOR UPDATE SKIP LOCKED`, `LISTEN/NOTIFY` для живых обновлений); вместо нативного Android на Kotlin — **PWA** на Angular (`mobile-web/`): устанавливается на телефон, работает с геолокацией, уведомлениями и камерой через браузерные API. Это осознанное отступление от стека ТЗ: оно записывается в README продукта и в отчёт.
 - **Стек самой платформы** (уже в `main`): Angular 20.1.6 + Taiga UI 5 (Студия), FastAPI, SQLAlchemy + Alembic, Celery, PostgreSQL 17.9 — он же брокер Celery через Kombu SQLAlchemy transport. Redis, RabbitMQ и Langfuse не используем.
 - **Семь этапов по постановке RWB:** 1) приём и анализ требований; 2) системный анализ; 3) проектирование интерфейса; 4) разработка; 5) тестирование и безопасность; 6) сборка и развёртывание; 7) документация.
 - **Критерии (100 баллов):** анализ — 20, продукт и интерфейс — 15, архитектура и разработка — 20, тестирование и безопасность — 15, инфраструктура — 10, документация — 10, эффективность пайплайна (токены, время, попытки, автономность) — 10.
@@ -163,7 +164,7 @@ class SandboxResult(BaseModel):
 
 class Sandbox(Protocol):
     def run(self, kind: Literal["build", "test", "lint", "scan", "up", "smoke", "e2e", "down"],
-            target: Literal["backend", "admin", "mobile", "stack"], *,
+            target: Literal["backend", "admin", "pwa", "stack"], *,
             filter: str | None = None, timeout_s: int = 600) -> SandboxResult: ...
 ```
 
@@ -337,7 +338,7 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 - **каналы уведомлений:** `web`, `mobile`, `email`, `sms` (`email`/`sms` — через порт интеграции с mock);
 - **операции:** `<Entity>.create|read|update|delete` или имя команды.
 
-Неявное генератор выводит сам, в `app.json` это не пишется: CRUD, события на переходах (`TicketTaken`, `TicketExpired`, …), топики Kafka, тесты прав и переходов.
+Неявное генератор выводит сам, в `app.json` это не пишется: CRUD, события на переходах (`TicketTaken`, `TicketExpired`, …), записи в таблице событий, тесты прав и переходов.
 
 `contracts/app.py` дополнительно экспортирует `dependents(app, path) -> list[str]` — все пути, которые ссылаются на элемент (для пометки «под вопросом» зависимых).
 
@@ -382,6 +383,8 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult: ...
 
 `data-testid` имеет вид `<screen-kebab>.<element>` и уникален в пределах приложения.
 
+`platform: mobile` — мобильный интерфейс (например, полевого сотрудника). Он поставляется как **PWA** (`mobile-web/`), а не нативное приложение. Возможности устройства — через браузерные API: `location` → Geolocation API (пока приложение открыто; фонового трекинга у PWA нет), `local_notification` → Notification API через service worker, `external_link` → переход по ссылке, `scan_code` → BarcodeDetector или `@zxing/browser`, `file_pick` → `<input type="file" capture>`. В E2E — эмуляция мобильного устройства, геолокации и разрешений Playwright.
+
 ### 3.8 Спецификация хука `hooks.json` (владелец — Иван)
 
 ```json
@@ -421,10 +424,13 @@ targets:
     test:  ["npx", "jest", "--ci"]
     e2e:   ["npx", "playwright", "test"]
     filter: ["--grep", "@{filter}"]
-  mobile:
-    image: rwb/tool-android:kt2.2.21
-    build: ["./gradlew", "--offline", "-p", "mobile", "assembleDebug"]
-    test:  ["./gradlew", "--offline", "-p", "mobile", "testDebugUnitTest"]
+  pwa:
+    image: rwb/tool-node:22-ng20.1.6
+    workdir: mobile-web
+    build: ["npm", "run", "build"]
+    test:  ["npx", "jest", "--ci"]
+    e2e:   ["npx", "playwright", "test"]
+    filter: ["--grep", "@{filter}"]
   stack:
     up:    ["docker", "compose", "-f", "infra/docker-compose.yml", "up", "-d", "--wait"]
     smoke: ["python3", "infra/smoke.py"]
@@ -433,8 +439,8 @@ scan:
   image: rwb/tool-security:1
   commands: [["gitleaks", "detect", "--source", "."], ["trivy", "fs", "--severity", "HIGH,CRITICAL", "--exit-code", "1", "."]]
 write_roots: [backend/src/App.Domain/Hooks, backend/src/App.Api/Custom, admin-web/src/app/custom,
-              mobile/app/src/main/java/app/hooks, db/seed]
-readonly: [backend/tests, admin-web/e2e, spec]
+              mobile-web/src/app/custom, db/seed]
+readonly: [backend/tests, admin-web/e2e, mobile-web/e2e, spec]
 ```
 
 ### 3.10 Тестовый набор шаблона (владелец — Иван, потребитель — Тимофей)
@@ -454,7 +460,8 @@ public static class Seed { Task Load(AppFactory app, string name = "default"); }
 
 - Тесты AC — проект `backend/tests/App.Acceptance.Tests`, каждый тест помечен `[Trait("AC", "AC-07")]`.
 - Сгенерированные тесты прав и переходов — `backend/tests/App.Generated.Tests` (пишет генератор).
-- E2E — `admin-web/e2e/*.spec.ts`, заголовок теста начинается с `@AC-07`; page objects `admin-web/e2e/pages/*` генерируются из `data-testid` в `ui.json`.
+- E2E — `admin-web/e2e/*.spec.ts` и `mobile-web/e2e/*.spec.ts` (мобильная эмуляция Playwright), заголовок теста начинается с `@AC-07`; page objects `*/e2e/pages/*` генерируются из `data-testid` в `ui.json`.
+- `PublishedEvents` читает таблицу событий продукта (`domain_events`), а не брокер.
 
 ### 3.11 API Студии (владелец — Максим, потребитель — Артём)
 
@@ -551,8 +558,8 @@ backend/
   src/App.Api/                 Minimal API (MapGroup по фичам), JWT, OpenAPI 3.1, SSE, health, ProblemDetails
   src/App.Application/         команды, запросы, обработчики, порты
   src/App.Domain/              сущности, машины состояний, Params, Hooks/
-  src/App.Infrastructure/      EF Core 10 + Npgsql (+ NetTopologySuite), миграции, outbox → Kafka, адаптеры
-  src/App.Worker/              консьюмеры, планировщик таймеров, публикатор outbox
+  src/App.Infrastructure/      EF Core 10 + Npgsql (+ NetTopologySuite), миграции, outbox → таблица `domain_events`, адаптеры
+  src/App.Worker/              обработчики событий из `domain_events`, планировщик таймеров
   tests/App.TestKit/           тестовый набор (§3.10)
   tests/App.Generated.Tests/   права и переходы — генерируются
   tests/App.Acceptance.Tests/  пустой проект: сюда пишет Тимофей
@@ -563,18 +570,25 @@ backend/
 
 **Admin-web (Angular 20.1.6 + Angular Material):** standalone, signals, `OnPush`, новый control flow; фасад из ~12 компонентов (`app-page`, `app-data-table`, `app-filter-bar`, `app-status-chip`, `app-map-view`, `app-timeline`, `app-kpi-card`, `app-empty-state`, `app-confirm-dialog`, `app-form-field`, …) с шпаргалкой ≤ 30 строк; клиент API из OpenAPI (`openapi-generator`, `typescript-angular`); SSE через `fetch` + `ReadableStream` (заголовок авторизации); Jest, Playwright, axe.
 
-**Infra:** `infra/docker-compose.yml` — `db` (`postgis/postgis:17`), `kafka` (KRaft), `backend`, `worker`, `admin` (nginx), `mock` (по `integrations`); health-check у каждого, `depends_on: service_healthy`, миграции и сид при старте; `infra/smoke.py` — вход демо-пользователем каждой роли и один запрос на роль. `.gitlab-ci.yml` — стадии `lint`, `build`, `test`, `security`, `package`, `deploy`, `e2e`, `docs` (скелет — «Трасса», `docs/trassa/p11.md`, приложение D).
+**Infra:** `infra/docker-compose.yml` — `db` (`postgis/postgis:17`), `backend`, `worker`, `admin` (nginx), `mobile` (nginx, PWA), `mock` (по `integrations`). Kafka нет — события в PostgreSQL; health-check у каждого, `depends_on: service_healthy`, миграции и сид при старте; `infra/smoke.py` — вход демо-пользователем каждой роли и один запрос на роль. `.gitlab-ci.yml` — стадии `lint`, `build`, `test`, `security`, `package`, `deploy`, `e2e`, `docs` (скелет — «Трасса», `docs/trassa/p11.md`, приложение D).
 
-**Mobile (Kotlin 2.2.21 + Compose M3)** — фаза 3, если команда подтвердит охват: ручной DI, DataStore, клиент Retrofit из OpenAPI, экраны из `ui.json` с `platform: mobile`, сборка `assembleDebug` без эмулятора.
+**События через PostgreSQL** (вместо Kafka — решение команды):
+- `domain_events` (`id` bigserial, `type`, `subject`, `payload` в конверте CloudEvents, `created_at`) пишется в **той же транзакции**, что и изменение сущности (outbox);
+- обработчики в `App.Worker` — цикл «взять пачку через `FOR UPDATE SKIP LOCKED` по позиции обработчика → выполнить → записать `processed_events(consumer, event_id)` в той же транзакции»; повторы с задержкой, после трёх неудач — отметка `failed` и запись в журнал администратора;
+- после коммита — `NOTIFY app_events, '<id>'`; мост SSE в `App.Api` слушает `LISTEN` и отдаёт события подписчикам по ролям и фильтрам;
+- задача очистки удаляет обработанные события старше срока хранения;
+- AsyncAPI-описание генерируется так же: канал = тип события.
+
+**Mobile — PWA `mobile-web/`** (вместо Kotlin/Android — решение команды): Angular 20.1.6 + Angular Material + `@angular/service-worker` (манифест, офлайн-кэш оболочки, установка на домашний экран); экраны из `ui.json` с `platform: mobile` в мобильной вёрстке; тот же клиент API и SSE, что в `admin-web`; возможности устройства через браузерные API (§3.7); Jest и Playwright с мобильной эмуляцией. Фаза 2.
 
 ### I2. Генератор `stages/scaffold/`
 
-1. `app.json` → нормализованная модель: имена во всех нотациях, развёрнутые соглашения (CRUD на каждую сущность, событие на каждый переход `<Entity><Transition>ed`, топик на модуль).
-2. Модель → `product/openapi.json` (CRUD + команды + запросы, роли в описании) → `openapi-generator`: клиенты TypeScript и Kotlin.
+1. `app.json` → нормализованная модель: имена во всех нотациях, развёрнутые соглашения (CRUD на каждую сущность, событие на каждый переход `<Entity><Transition>ed`, тип события в `domain_events`).
+2. Модель → `product/openapi.json` (CRUD + команды + запросы, роли в описании) → `openapi-generator`: клиент TypeScript, общий для `admin-web` и `mobile-web`.
 3. Модель → шаблоны Jinja по модулям: сущности, EF-конфигурации, миграции, DTO, эндпоинты с политиками из `permissions` (включая фильтр области `own`/`team`), машины состояний с таблицей переходов, таймеры (`timer`-триггеры), уведомления, outbox, сид, параметры `App.Domain.Params` из `params`.
 4. **Хуки:** для каждого хука из `app.json` — интерфейс `I<Name>Hook` в `Generated` и класс `<Name>Hook` в `Hooks/` с **нейтральной** заглушкой; регистрация в DI; если у хука `select` — генератор выполняет query и передаёт результат входом.
 5. **`hooks.json`:** для каждого хука `HookSpec`: файл, сигнатура, контракт из BR, `allowed_api` (публичные типы, которые нужны хуку), `examples` — из таблиц «Примеры» Gherkin связанных AC (разбор Gherkin — кодом).
-6. **Экраны admin-web из `ui.json`** по каталогу `contracts/ui_catalog.md` (Артём): маршруты, меню по ролям, страницы паттернов, виджеты, `data-testid`; page objects `admin-web/e2e/pages/*` из testid.
+6. **Экраны `admin-web` (`platform: web`) и `mobile-web` (`platform: mobile`) из `ui.json`** по каталогу `contracts/ui_catalog.md` (Артём): маршруты, меню по ролям, страницы паттернов, виджеты, `data-testid`; page objects `*/e2e/pages/*` из testid.
 7. **Тесты генератора:** права (каждая пара «роль × операция» → 200 или 403; `own` не видит чужое) и переходы (недопустимый → 409; событие на каждом переходе) → `App.Generated.Tests`.
 8. Форматтеры: `dotnet format`, `prettier`.
 9. `custom` → заглушка с текстом описания в `Custom/<id>/` и пометка в `reports/develop.json`.
@@ -605,7 +619,7 @@ backend/
 
 **Спор с тестом.** Если модель вместо кода вернула строку `// DISPUTE: <тест> — <причина>, <AC>`, вызови `stages.tests.dispute.resolve(...)` (контракт — `contracts/verification.py`, владелец Тимофей). `fix` → тест исправлен, лестница начинается заново; `reject` → аргумент и ответ — в контекст следующей попытки. Один спор на тест.
 
-**Места `custom`** — цикл с инструментами `harness/agent.py` (`read_file`, `write_file`, `build`, `run_tests`, `finish`): пути из `pack.yaml`, лимит ходов, откат к зелёному снимку при отсутствии прогресса. Доработай: мобильный путь записи; пути и команды из `pack.yaml` вместо констант; `effort` из класса задачи вместо `xhigh`.
+**Места `custom`** — цикл с инструментами `harness/agent.py` (`read_file`, `write_file`, `build`, `run_tests`, `finish`): пути из `pack.yaml`, лимит ходов, откат к зелёному снимку при отсутствии прогресса. Доработай: путь записи `mobile-web/src/app/custom`; пути и команды из `pack.yaml` вместо констант; `effort` из класса задачи вместо `xhigh`.
 
 **Выход:** `reports/develop.json`:
 
@@ -655,7 +669,7 @@ backend/
 Скопируй блок ниже в чат вместе с этим файлом целиком (и, если есть доступ, с репозиторием `a-romash/rwb-ai-hack`, ветка `main`).
 
 ```text
-Ты — сильный инженер (C# 14 / ASP.NET Core 10, EF Core, Angular 20 + Material, Kotlin, Python 3.12, Jinja2, Docker). Работаешь в команде из пяти человек над хакатонным проектом «универсальный ИИ-конвейер: бизнес-требования → работающее приложение». Выше — полный документ моей задачи: контекст кейса, архитектура, общие контракты команды (раздел 3) и мои задачи (раздел 5 и дальше).
+Ты — сильный инженер (C# 14 / ASP.NET Core 10, EF Core, Angular 20 + Material + PWA, Python 3.12, Jinja2, Docker). Работаешь в команде из пяти человек над хакатонным проектом «универсальный ИИ-конвейер: бизнес-требования → работающее приложение». Выше — полный документ моей задачи: контекст кейса, архитектура, общие контракты команды (раздел 3) и мои задачи (раздел 5 и дальше).
 
 Моя роль: Иван, генератор, шаблон продукта и агент-разработчик (scaffold, develop).
 Мои папки: `contracts/hooks.py`, `contracts/pack.py`, фикстура `hooks.json`, `templates/product/`, `stages/scaffold/`, `stages/develop/`, `harness/agent.py`. В чужие папки не пиши. Если там нужно изменение — оформи его отдельным пунктом «Запрос владельцу» с описанием и причиной.
