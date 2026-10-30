@@ -56,6 +56,16 @@ class SpecStageTests(unittest.TestCase):
         self.assertEqual(before, after)
         self.assertTrue(g1(self.workspace, self.inp.artifacts).passed)
 
+    def test_findings_on_one_element_share_one_repair_call(self) -> None:
+        self.responses["spec.state_machines.0"]["TicketFlow"]["states"].append("isolated")
+        execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        finding = next(f for f in g1(self.workspace, self.inp.artifacts).findings if f.code == "SM_UNREACHABLE")
+        llm = FakeLLM({"patch": {"operations": [{"op": "remove", "path": "/state_machines/TicketFlow/states/4"}]}})
+        repair(self.inp, self.workspace, llm, [finding, finding.model_copy(update={"code": "SM_DEADLOCK", "message": "Тупик."})])
+        self.assertEqual(len(llm.calls), 1)
+        self.assertIn("Тупик.", llm.calls[0]["user"])
+        self.assertTrue(g1(self.workspace, self.inp.artifacts).passed)
+
     def test_patch_rejects_outside_changes_and_document_is_unchanged(self) -> None:
         original = {"state_machines": {"Flow": {"states": ["new", "extra"]}}, "meta": {"name": "old"}}
         findings = [Finding(path="state_machines.Flow.states[1]", code="SM_UNREACHABLE", severity="error", message="Недостижимо.")]
@@ -105,6 +115,14 @@ class SpecStageTests(unittest.TestCase):
                    "analysis": {"requirements": [], "roles": [], "rules": [], "user_stories": [{"text": "x" * 40000}]}}
         self.assertNotIn("user_stories", _fit_repair(payload, 32768)["analysis"])
         self.assertIsNone(_fit_repair({**payload, "target_value": "x" * 40000}, 32768))
+
+    def test_entity_reference_without_target_is_rejected_at_generation(self) -> None:
+        entity = next(iter(self.responses["spec.entities.0"].values()))
+        for broken in ({"fields": {**entity["fields"], "author": {"type": "ref"}}}, {"owner": "Employee"}):
+            with self.subTest(broken=broken), self.assertRaises(ContractError):
+                responses = copy.deepcopy(self.responses)
+                next(iter(responses["spec.entities.0"].values())).update(broken)
+                execute(self.inp, self.workspace, FakeLLM(responses), FakeSandbox())
 
     def test_bad_contract_cannot_be_repaired_silently(self) -> None:
         self.responses["spec.entities.0"] = {"Bad": {"extra": "unsupported"}}

@@ -135,18 +135,25 @@ class RunnerIntegration(unittest.TestCase):
             self.assertEqual(session.get(Run, self.run_id).status, 'failed')
         self.assertEqual(snapshots[0]['status'], 'failed')
 
-    def test_failed_specification_gate_stops_the_chain_before_ui(self):
+    def _drain_with_g1_error(self, code):
         import contracts.gates
         real = contracts.gates.GateResult
         def failing_g1(gate, passed, findings):
-            return real(gate=gate, passed=passed and gate != 'G1', findings=findings)
+            if gate != 'G1':
+                return real(gate=gate, passed=passed, findings=findings)
+            return real(gate=gate, passed=False, findings=[contracts.gates.Finding(path='app', code=code, severity='error', message='x')])
         with patch.object(contracts.gates, 'GateResult', side_effect=failing_g1):
-            executed = self._drain()
-        self.assertEqual(executed, ['analysis', 'spec', 'report'])
+            return self._drain()
+
+    def test_unresolved_reference_in_specification_stops_the_chain_before_ui(self):
+        self.assertEqual(self._drain_with_g1_error('REF_UNRESOLVED'), ['analysis', 'spec', 'report'])
         with SessionLocal() as session:
             spec = session.scalars(select(StageRun).where(StageRun.run_id == self.run_id, StageRun.stage == 'spec')).one()
             self.assertEqual((spec.status, session.get(Run, self.run_id).status), ('failed', 'failed'))
             self.assertIn('G1', spec.error)
+
+    def test_quality_finding_of_specification_does_not_stop_the_chain(self):
+        self.assertIn('ui', self._drain_with_g1_error('US_NO_ENDPOINT'))
 
     def test_publish_failure_keeps_queued(self):
         with patch('app.tasks.run_stage.apply_async', side_effect=RuntimeError('offline')):

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import copy
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, model_validator
 
 from contracts.analysis import Analysis
 from contracts.app import (
@@ -22,8 +23,25 @@ from stages.analysis.symbols import normalize_section_roles
 from stages.spec.context import analysis_slice, empty_app, index
 
 ARTIFACT = "spec/app.json"
+
+
+class GeneratedEntities(EntitiesSection):
+    """Entities answer of the model: a dangling target is a schema error, so the gateway re-asks at once
+    instead of G1 multiplying it into hundreds of dependent findings."""
+
+    @model_validator(mode="after")
+    def _targets_are_named(self):
+        problems = [f"{name}.{key}: у поля типа {field.type} не указан ref" for name, entity in self.root.items()
+                    for key, field in entity.fields.items() if field.type in ("enum", "ref") and not field.ref]
+        problems += [f"{name}.owner: «{entity.owner}» не поле этой сущности; owner — ключ её поля" for name, entity in self.root.items()
+                     if entity.owner and entity.owner not in entity.fields]
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
+
+
 STEPS: tuple[tuple[str, tuple[tuple[str, type[BaseModel]], ...]], ...] = (
-    ("domain", (("meta", MetaSection), ("types", TypesSection), ("entities", EntitiesSection))),
+    ("domain", (("meta", MetaSection), ("types", TypesSection), ("entities", GeneratedEntities))),
     ("access", (("roles", RolesSection), ("permissions", PermissionsSection))),
     ("behavior", (("state_machines", StateMachinesSection),)),
     ("rules", (("params", ParamsSection), ("hooks", HooksSection))),
@@ -176,6 +194,9 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
     return StageOutput(artifacts={"app": ARTIFACT, "spec_notes": "spec/spec-notes.json"}, summary=f"Спецификация содержит сущностей: {len(app.entities.root)}; правил в хуках: {len(app.hooks.root)}; команд: {len(app.commands.root)}.", flags=flags)
 
 
+REPAIR_PARALLEL = 8
+
+
 def _fit_repair(payload: dict, limit: int) -> dict | None:
     """Shrink the repair context step by step so one large finding does not stop the repair of the others."""
     analysis, app = payload["analysis"], payload["app"]
@@ -190,6 +211,58 @@ def _fit_repair(payload: dict, limit: int) -> dict | None:
     return next((item for item in candidates if size("system-analyst-repair", item, PatchResponse) <= limit), None)
 
 
+def _repair_request(analysis_data: dict, app_data: dict, finding: Finding, limit: int) -> tuple[bool, Finding, dict | None]:
+    """Context for one repair call, built from the documents as they were at the start of the round."""
+    is_analysis = finding.path.startswith("analysis.")
+    document = analysis_data if is_analysis else app_data
+    address = finding.path.removeprefix("analysis.").removeprefix("app.")
+    normalized = finding.model_copy(update={"path": address})
+    location = pointer(document, address)
+    element = document
+    for key in tokens(location):
+        element = element[int(key)] if isinstance(element, list) else element.get(key)
+    analysis = Analysis.model_validate(analysis_data)
+    related = (encoded(element) if len(tokens(location)) > 1 else "") + finding.message
+    ancestors = app_data
+    if not is_analysis:
+        for key in tokens(location)[:-1]:
+            if isinstance(ancestors, dict):
+                related += " " + encoded(ancestors.get("traces", []))
+                ancestors = ancestors.get(key, {})
+            elif isinstance(ancestors, list) and key.isdecimal() and int(key) < len(ancestors):
+                ancestors = ancestors[int(key)]
+            else:
+                break
+    req_ids = {req.id for req in analysis.requirements if req.id in related}
+    for story in analysis.user_stories:
+        if story.id in related:
+            req_ids.update(story.req)
+    for rule in analysis.rules:
+        if rule.id in related:
+            req_ids.update(rule.req)
+    snapshot = index(app_data)
+    selected_stories = {story.id for story in analysis.user_stories if set(story.req) & req_ids}
+    for name, entity in snapshot["entities"].items():
+        if name not in related and not set(entity.get("traces", [])) & selected_stories:
+            snapshot["entities"][name] = {"fields": list(entity["fields"])}
+    snapshot["state_machines"] = {name: {"entity": machine["entity"], "transitions": [{key: t.get(key) for key in ("name", "guard", "trigger")} for t in machine["transitions"]]} for name, machine in snapshot["state_machines"].items()}
+    relevant = analysis_slice(analysis, req_ids)
+    relevant.pop("glossary", None)
+    relevant.pop("nfr", None)
+    if isinstance(element, list):
+        element = [{key: value for key, value in item.items() if key in ("id", "req", "rules", "stories")} for item in element if isinstance(item, dict)]
+    payload = {"finding": normalized.model_dump(), "target_pointer": location, "target_value": element,
+               "analysis": relevant, "app": snapshot}
+    section_name = tokens(location)[0]
+    section_model = Analysis if is_analysis else App
+    payload["section_schema"] = TypeAdapter(section_model.model_fields[section_name].annotation).json_schema()
+    payload["binding_rules"] = {"owner": "A key of a field inside the same entity, never an aggregate or service name.",
+                                "enum": "Use ref for the name of a declared enum type.", "ref": "Use ref for a declared entity name.",
+                                "state": "Use machine for a declared state machine name.", "computed_by": "Only a declared hook name.",
+                                "roles": "Use declared role IDs, not human display labels."}
+    return is_analysis, normalized, _fit_repair(payload, limit)
+
+
 def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) -> StageOutput:
     validate_input(inp, "spec")
     analysis_name = inp.artifacts.get("analysis", "spec/analysis.json")
@@ -201,62 +274,37 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
     flags: list[ElementFlag] = []
     changed_analysis = False
     changed_app = False
-    try:
-        for index_, finding in enumerate(findings):
-            is_analysis = finding.path.startswith("analysis.")
-            document = analysis_data if is_analysis else app_data
-            address = finding.path.removeprefix("analysis.").removeprefix("app.")
-            normalized = finding.model_copy(update={"path": address})
-            location = pointer(document, address)
-            element = document
-            for key in tokens(location):
-                element = element[int(key)] if isinstance(element, list) else element.get(key)
-            analysis = Analysis.model_validate(analysis_data)
-            related = (encoded(element) if len(tokens(location)) > 1 else "") + finding.message
-            ancestors = app_data
-            if not is_analysis:
-                for key in tokens(location)[:-1]:
-                    if isinstance(ancestors, dict):
-                        related += " " + encoded(ancestors.get("traces", []))
-                        ancestors = ancestors.get(key, {})
-                    elif isinstance(ancestors, list) and key.isdecimal() and int(key) < len(ancestors):
-                        ancestors = ancestors[int(key)]
-                    else:
-                        break
-            req_ids = {req.id for req in analysis.requirements if req.id in related}
-            for story in analysis.user_stories:
-                if story.id in related:
-                    req_ids.update(story.req)
-            for rule in analysis.rules:
-                if rule.id in related:
-                    req_ids.update(rule.req)
-            snapshot = index(app_data)
-            selected_stories = {story.id for story in analysis.user_stories if set(story.req) & req_ids}
-            for name, entity in snapshot["entities"].items():
-                if name not in related and not set(entity.get("traces", [])) & selected_stories:
-                    snapshot["entities"][name] = {"fields": list(entity["fields"])}
-            snapshot["state_machines"] = {name: {"entity": machine["entity"], "transitions": [{key: t.get(key) for key in ("name", "guard", "trigger")} for t in machine["transitions"]]} for name, machine in snapshot["state_machines"].items()}
-            relevant = analysis_slice(analysis, req_ids)
-            relevant.pop("glossary", None)
-            relevant.pop("nfr", None)
-            if isinstance(element, list):
-                element = [{key: value for key, value in item.items() if key in ("id", "req", "rules", "stories")} for item in element if isinstance(item, dict)]
-            payload = {"finding": normalized.model_dump(), "target_pointer": location, "target_value": element,
-                       "analysis": relevant, "app": snapshot}
-            section_name = tokens(location)[0]
-            section_model = Analysis if is_analysis else App
-            payload["section_schema"] = TypeAdapter(section_model.model_fields[section_name].annotation).json_schema()
-            payload["binding_rules"] = {"owner": "A key of a field inside the same entity, never an aggregate or service name.",
-                                        "enum": "Use ref for the name of a declared enum type.", "ref": "Use ref for a declared entity name.",
-                                        "state": "Use machine for a declared state machine name.", "computed_by": "Only a declared hook name.",
-                                        "roles": "Use declared role IDs, not human display labels."}
-            payload = _fit_repair(payload, window(llm))
-            if payload is None:
-                flags.append(ElementFlag(path=finding.path, status="questioned", reason="Контекст ремонта не помещается в профиль окна модели.", gate="G1"))
-                continue
-            response = ask(llm, task_class="patch", agent="system-analyst-repair", payload=payload, output=PatchResponse, task_id=f"spec.repair.{inp.attempt}.{index_}")
+    # One request per element: findings on the same path share a patch.
+    grouped: dict[str, Finding] = {}
+    for finding in findings:
+        same = grouped.get(finding.path)
+        grouped[finding.path] = same.model_copy(update={"message": f"{same.message} {finding.message}"}) if same else finding
+    requests = []
+    for finding in grouped.values():
+        try:
+            is_analysis, normalized, payload = _repair_request(analysis_data, app_data, finding, window(llm))
+        except PatchRejected:
+            flags.append(ElementFlag(path=finding.path, status="questioned", reason="Адрес находки не разрешается в элемент спецификации.", gate="G1"))
+            continue
+        if payload is None:
+            flags.append(ElementFlag(path=finding.path, status="questioned", reason="Контекст ремонта не помещается в профиль окна модели.", gate="G1"))
+        else:
+            requests.append((finding, is_analysis, normalized, payload))
+    # The model answers in parallel; patches are applied one by one, and a stale one is rejected until the next round.
+    with ThreadPoolExecutor(REPAIR_PARALLEL) as pool:
+        futures = [pool.submit(ask, llm, task_class="patch", agent="system-analyst-repair", payload=payload, output=PatchResponse,
+                               task_id=f"spec.repair.{inp.attempt}.{number}") for number, (_, _, _, payload) in enumerate(requests)]
+        for future, (finding, is_analysis, normalized, _) in zip(futures, requests):
             try:
-                updated = apply_patch(document, response, [normalized])
+                response = future.result()
+            except BudgetExceeded as exc:
+                flags.append(ElementFlag(path=finding.path, status="questioned", reason=f"Лимит адресного ремонта: {exc}.", gate="G1"))
+                continue
+            except ContractError:
+                flags.append(ElementFlag(path=finding.path, status="questioned", reason="Ответ модели на ремонт не соответствует контракту.", gate="G1"))
+                continue
+            try:
+                updated = apply_patch(analysis_data if is_analysis else app_data, response, [normalized])
                 if is_analysis:
                     Analysis.model_validate(updated)
                     changed_analysis = changed_analysis or updated != analysis_data
@@ -267,8 +315,6 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
                     app_data = updated
             except (PatchRejected, ValueError, TypeError):
                 flags.append(ElementFlag(path=finding.path, status="questioned", reason="Предложенный патч отклонён; исходный артефакт сохранён.", gate="G1"))
-    except BudgetExceeded as exc:
-        flags.extend(ElementFlag(path=f.path, status="questioned", reason=f"Лимит адресного ремонта: {exc}.", gate="G1") for f in findings)
     write_json(workspace, ARTIFACT, App.model_validate(app_data))
     artifacts = {"app": ARTIFACT}
     if changed_analysis:

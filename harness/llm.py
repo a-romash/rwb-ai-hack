@@ -7,6 +7,7 @@ import json
 import os
 import random
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -248,6 +249,7 @@ class LocalLLM:
     def __init__(self, *, max_tokens: int = 300_000, max_calls: int = 120, context_window: int = 32768,
                  transport=None, cache_dir: Path | None = None, sleep=time.sleep, tokenizer=None):
         self.calls: list[dict] = []
+        self._lock = threading.Lock()
         self.max_tokens, self.max_calls = max_tokens, max_calls
         profile = max((name for name, (_, window) in PROFILES.items() if window <= context_window),
                       key=lambda name: PROFILES[name][1], default='XS')
@@ -267,10 +269,12 @@ class LocalLLM:
         return self.gateway(**kwargs)
 
     def _start(self, meta: dict) -> int:
-        self.calls.append({'task_id': meta.get('task_id'), 'task_class': meta['task_class'], 'model': meta['model'],
+        # Stages call the model from several threads; the index must belong to this record.
+        with self._lock:
+            self.calls.append({'task_id': meta.get('task_id'), 'task_class': meta['task_class'], 'model': meta['model'],
                            'input_tokens': None, 'output_tokens': None, 'total_tokens': None, 'duration_ms': 0,
                            'status': 'started', 'from_cache': meta.get('from_cache', False)})
-        return len(self.calls) - 1
+            return len(self.calls) - 1
 
     def _finish(self, index: int, values: dict) -> None:
         usage = values.get('usage') or {}

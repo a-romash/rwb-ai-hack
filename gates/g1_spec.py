@@ -380,6 +380,11 @@ def param_literal(analysis: Analysis, app: App) -> list[Finding]:
     return result
 
 
+# References to elements that do not exist: generated code would not build or would silently lose behaviour.
+# The other findings are about quality and traceability; they go to the report without stopping the run.
+BLOCKING = frozenset({"REF_UNRESOLVED", "DATA_UNKNOWN_FIELD", "NTF_BAD_EVENT"})
+
+
 VALIDATORS: dict[str, Callable[[Analysis, App], list[Finding]]] = {
     "REF_UNRESOLVED": ref_unresolved, "REQ_UNCOVERED": req_uncovered,
     "BR_NO_AC": br_no_ac, "BR_NO_BOUNDARY": br_no_boundary,

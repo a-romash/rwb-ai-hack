@@ -38,7 +38,12 @@ def _latest(session, run_id):
     return {row.stage: row for row in rows}
 
 
-BLOCKING_GATES = frozenset({'G0', 'G1'})
+def _blocks(gate, result):
+    """Whether a gate still failing after repair stops the run: any G0 error, only reference errors of G1."""
+    from gates.g1_spec import BLOCKING
+    if gate == 'G0':
+        return not result.passed
+    return gate == 'G1' and any(f.severity == 'error' and f.code in BLOCKING for f in result.findings)
 
 
 APP_SECTIONS = frozenset({
@@ -331,7 +336,7 @@ def _execute(stage_id):
                 _event(session, run_id, 'question.asked', {'stage': stage, 'questions': [q.model_dump() for q in output.questions]})
             elif STAGES_BY_KEY[stage].gates and (run.autonomy == 'A0' or (run.autonomy == 'A1' and stage == 'spec')):
                 row.status, run.status = 'waiting_human', 'waiting'
-            elif blocked := [name for name, result in {name: result for name, _, result in gates}.items() if name in BLOCKING_GATES and not result.passed]:
+            elif blocked := [name for name, result in {name: result for name, _, result in gates}.items() if _blocks(name, result)]:
                 # Later stages would spend the budget on an analysis or specification already known to be wrong.
                 row.status, row.finished_at = 'failed', utc_now()
                 row.error = f"Гейт {', '.join(blocked)} не пройден после ремонта; дальнейшие этапы не запускаются"
