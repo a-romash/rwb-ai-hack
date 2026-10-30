@@ -1,0 +1,16 @@
+# rwb/tool-security:1
+FROM debian:bookworm-slim
+
+ARG GITLEAKS_VERSION=8.30.1
+ARG TRIVY_VERSION=0.76.1
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tar \
+    && curl -fsSL -o /tmp/gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+    && tar -xzf /tmp/gitleaks.tar.gz -C /usr/local/bin gitleaks \
+    && curl -fsSL -o /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+    && tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy \
+    && chmod +x /usr/local/bin/gitleaks /usr/local/bin/trivy \
+    && rm -rf /tmp/* /var/lib/apt/lists/*
+
+WORKDIR /src

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "screens": {
+    "ItemList": {
+      "platform": "web",
+      "roles": ["clerk"],
+      "pattern": "list",
+      "title": "Items",
+      "widgets": [
+        {"kind": "field", "field": "Item.name", "testid": "item-list.name"}
+      ]
+    },
+    "PhoneItem": {
+      "platform": "mobile",
+      "roles": ["clerk"],
+      "title": "Item",
+      "widgets": [
+        {"kind": "field", "testid": "phone.item"}
+      ]
+    }
+  }
+}

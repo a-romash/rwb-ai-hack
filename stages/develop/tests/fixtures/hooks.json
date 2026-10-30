@@ -1,0 +1,28 @@
+[
+  {
+    "id": "SlaDeadline",
+    "file": "backend/src/App.Domain/Hooks/SlaDeadlineHook.cs",
+    "language": "csharp",
+    "kind": "calculator",
+    "signature": "public System.DateTimeOffset Evaluate(System.DateTimeOffset created, string priority)",
+    "refs": ["BR-02", "AC-04"],
+    "contract": {"summary": "Срок по приоритету", "pre": ["created задан"], "post": ["срок не раньше created"]},
+    "examples": [],
+    "allowed_api": ["System.DateTimeOffset"],
+    "max_lines": 60,
+    "stub": "neutral"
+  },
+  {
+    "id": "ResolutionRequired",
+    "file": "backend/src/App.Domain/Hooks/ResolutionRequiredHook.cs",
+    "language": "csharp",
+    "kind": "validator",
+    "signature": "public bool Evaluate(string resolution)",
+    "refs": ["AC-07"],
+    "contract": {"summary": "Пустое значение не принимается", "pre": [], "post": ["false если строка пустая"]},
+    "examples": [],
+    "allowed_api": ["string"],
+    "max_lines": 40,
+    "stub": "neutral"
+  }
+]

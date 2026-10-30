@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "meta": {"name": "equipment", "title": "Equipment"},
+  "entities": {
+    "Item": {
+      "label": "Item",
+      "fields": {
+        "name": {"type": "string", "required": true, "label": "Name"}
+      }
+    }
+  },
+  "roles": {"clerk": {"name": "Clerk"}},
+  "permissions": [
+    {"role": "clerk", "op": "Item.read", "scope": "all"}
+  ],
+  "hooks": {
+    "MaxLaptops": {
+      "kind": "policy",
+      "in": ["Item"],
+      "rule": "BR-01",
+      "traces": ["AC-01"]
+    }
+  },
+  "commands": {},
+  "state_machines": {}
+}
