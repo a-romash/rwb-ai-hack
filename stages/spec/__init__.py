@@ -6,7 +6,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from pydantic import BaseModel, TypeAdapter, model_validator
+from pydantic import BaseModel, TypeAdapter
 
 from contracts.analysis import Analysis
 from contracts.app import (
@@ -25,23 +25,36 @@ from stages.spec.context import analysis_slice, empty_app, index
 ARTIFACT = "spec/app.json"
 
 
-class GeneratedEntities(EntitiesSection):
-    """Entities answer of the model: a dangling target is a schema error, so the gateway re-asks at once
-    instead of G1 multiplying it into hundreds of dependent findings."""
+def bind_entities(value: dict, data: dict) -> dict:
+    """Name the obvious targets the model leaves out: `ref` of ref/enum fields by the field name, and drop an
+    owner that is not a field of the entity (the model writes aggregate names like ParkingDomain there)."""
+    # shortcut: binding by name only takes a unique match; anything ambiguous stays for G1 and repair.
+    entities = list(dict.fromkeys([*data.get("entities", {}), *value]))
+    enums = [name for name, item in data.get("types", {}).items() if item.get("kind") == "enum"]
 
-    @model_validator(mode="after")
-    def _targets_are_named(self):
-        problems = [f"{name}.{key}: у поля типа {field.type} не указан ref" for name, entity in self.root.items()
-                    for key, field in entity.fields.items() if field.type in ("enum", "ref") and not field.ref]
-        problems += [f"{name}.owner: «{entity.owner}» не поле этой сущности; owner — ключ её поля" for name, entity in self.root.items()
-                     if entity.owner and entity.owner not in entity.fields]
-        if problems:
-            raise ValueError("; ".join(problems))
-        return self
+    def pick(names: list[str], field: str, owner: str) -> str | None:
+        words = re.findall(r"[A-Za-z][a-z0-9]*", re.sub(r"_?[Ii]ds?$", "", field))
+        for key in dict.fromkeys(["".join(words).lower(), words[-1].lower() if words else ""]):
+            for candidates in ([n for n in names if n.lower() == key], [n for n in names if n.lower().endswith(key) and n.lower().startswith(owner.lower())],
+                               [n for n in names if n.lower().endswith(key)], [n for n in names if n.lower().endswith(key.removesuffix("s"))]):
+                if key and len(candidates) == 1:
+                    return candidates[0]
+        return None
+
+    for name, entity in value.items():
+        fields = entity.get("fields", {})
+        if entity.get("owner") and entity["owner"] not in fields:
+            del entity["owner"]
+        for key, field in fields.items():
+            if field.get("type") in ("ref", "enum") and not field.get("ref"):
+                target = pick(entities if field["type"] == "ref" else enums, key, name)
+                if target:
+                    field["ref"] = target
+    return value
 
 
 STEPS: tuple[tuple[str, tuple[tuple[str, type[BaseModel]], ...]], ...] = (
-    ("domain", (("meta", MetaSection), ("types", TypesSection), ("entities", GeneratedEntities))),
+    ("domain", (("meta", MetaSection), ("types", TypesSection), ("entities", EntitiesSection))),
     ("access", (("roles", RolesSection), ("permissions", PermissionsSection))),
     ("behavior", (("state_machines", StateMachinesSection),)),
     ("rules", (("params", ParamsSection), ("hooks", HooksSection))),
@@ -165,6 +178,8 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                     response = ask(llm, task_class="spec_step", agent=f"system-analyst-{step}", payload=payload, output=model, task_id=f"spec.{section}.{part}")
                     value = response.model_dump(mode="json", by_alias=True, exclude_none=True)
                     value = normalize_section_roles(section, value, analysis.roles)
+                    if section == "entities":
+                        value = bind_entities(value, data)
                     if section == "meta":
                         if not part:
                             data[section] = value

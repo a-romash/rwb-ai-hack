@@ -116,13 +116,21 @@ class SpecStageTests(unittest.TestCase):
         self.assertNotIn("user_stories", _fit_repair(payload, 32768)["analysis"])
         self.assertIsNone(_fit_repair({**payload, "target_value": "x" * 40000}, 32768))
 
-    def test_entity_reference_without_target_is_rejected_at_generation(self) -> None:
-        entity = next(iter(self.responses["spec.entities.0"].values()))
-        for broken in ({"fields": {**entity["fields"], "author": {"type": "ref"}}}, {"owner": "Employee"}):
-            with self.subTest(broken=broken), self.assertRaises(ContractError):
-                responses = copy.deepcopy(self.responses)
-                next(iter(responses["spec.entities.0"].values())).update(broken)
-                execute(self.inp, self.workspace, FakeLLM(responses), FakeSandbox())
+    def test_obvious_entity_targets_are_bound_by_field_name(self) -> None:
+        from stages.spec import bind_entities
+        # Shape of the case 1 answer: no ref targets and aggregate names in owner.
+        value = {"Vehicle": {"owner": "FleetDomain", "fields": {"driver": {"type": "ref"}, "currentZone": {"type": "ref"}, "movementState": {"type": "enum"}, "points": {"type": "ref"}}},
+                 "ParkingSession": {"owner": "vehicleId", "fields": {"vehicleId": {"type": "ref"}, "status": {"type": "enum"}}},
+                 "Driver": {"fields": {}}, "ParkingZone": {"fields": {}}, "Tariff": {"fields": {"periods": {"type": "ref"}}}, "TariffPeriod": {"fields": {}}}
+        data = {"types": {"ParkingSessionStatus": {"kind": "enum"}, "RouteStatus": {"kind": "enum"}, "MovementState": {"kind": "enum"}}}
+        bound = bind_entities(value, data)
+        self.assertEqual({key: field.get("ref") for key, field in bound["Vehicle"]["fields"].items()},
+                         {"driver": "Driver", "currentZone": "ParkingZone", "movementState": "MovementState", "points": None})
+        self.assertEqual(bound["ParkingSession"]["fields"]["vehicleId"]["ref"], "Vehicle")
+        self.assertEqual(bound["ParkingSession"]["fields"]["status"]["ref"], "ParkingSessionStatus")
+        self.assertEqual(bound["Tariff"]["fields"]["periods"]["ref"], "TariffPeriod")
+        self.assertNotIn("owner", bound["Vehicle"])
+        self.assertEqual(bound["ParkingSession"]["owner"], "vehicleId")
 
     def test_bad_contract_cannot_be_repaired_silently(self) -> None:
         self.responses["spec.entities.0"] = {"Bad": {"extra": "unsupported"}}
