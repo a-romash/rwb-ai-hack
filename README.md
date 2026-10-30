@@ -45,3 +45,13 @@ docker compose exec api python -m app.tasks
 Общие интерфейсы, локальная проверка этапа и примеры API: [contracts/README.md](contracts/README.md).
 Запуск фейковой цепочки без БД и модели: `python -m harness.fake_stages`.
 Это поставка для независимой разработки этапов; HTTP API прогонов пока не реализован.
+
+## Прогоны пайплайна
+
+Платформа хранит состояние прогонов в PostgreSQL и использует его же как брокер Celery. Запуск: `docker compose up --build`. Рабочие каталоги сохраняются в `./workspaces`, PostgreSQL — в Docker volume. При старте API выполняется `alembic upgrade head`; миграцию вручную можно выполнить командой `docker compose exec api alembic upgrade head`.
+
+Для проверки без этапов команды и без модели запустите с `PIPELINE_FAKE_STAGES=1 docker compose up --build`. Создайте проект через `/api/projects`, затем прогон через `POST /api/projects/{project_id}/runs` с телом `{"autonomy":"A2","budget":{"tokens":1500000,"minutes":60}}`. Состояние и результаты доступны через `/api/runs/{run_id}`, `/artifacts`, `/events` и `/metrics`, документация API — `/api/docs`. Фейковый прогон с отсутствующими гейтами отмечается `partial`: реальная проверка не выполнена.
+
+Для реального прогона подключите этапы коллег в `stages/`, проверки в `gates/`, доверенный `templates/product/pack.yaml` и настройте `OPENROUTER_API_KEY`. Для вызовов Docker build-воркер использует смонтированный сокет и путь рабочего каталога на хосте. `python -m harness doctor` проверяет готовность окружения.
+
+После аварии сначала остановите все воркеры, затем выполните `docker compose exec api python -m harness recover <run_id> --worker-stopped`; повтор упавшего этапа — `POST /api/runs/{run_id}/stages/{key}/retry`. Не запускайте восстановление при работающем воркере: автоматического отзыва выполнения нет.

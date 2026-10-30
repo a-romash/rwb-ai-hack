@@ -6,3 +6,5 @@ celery[sqlalchemy]==5.5.3
 psycopg2-binary==2.9.11
 pydantic-settings==2.11.0
 httpx==0.28.1
+PyYAML==6.0.3
+tokenizers==0.22.2

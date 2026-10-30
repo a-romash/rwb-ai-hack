@@ -1,0 +1,32 @@
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from contracts.gates import Finding, GateResult
+from contracts.stage import ContractError, StageInput, StageOutput
+from gates.core import check_gate, run_gate
+
+
+class GateTests(unittest.TestCase):
+    def test_missing_gate_is_explicit_and_strict_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ContractError):
+                check_gate('G1', Path(tmp), {})
+            result = check_gate('G1', Path(tmp), {}, allow_missing=True)
+            self.assertEqual(result.findings[0].code, 'GATE_MISSING')
+
+    def test_two_repairs_then_pass(self):
+        finding = Finding(path='x', code='ERR', severity='error', message='Ошибка')
+        results = [GateResult(gate='G1', passed=False, findings=[finding])]*2 + [GateResult(gate='G1', passed=True)]
+        module = SimpleNamespace(repair=lambda inp, workspace, llm, findings: StageOutput(artifacts={}, summary='исправлено'))
+        inp = StageInput(run_id='1', stage='spec', attempt=1, requirements='r', artifacts={})
+        with tempfile.TemporaryDirectory() as tmp, patch('gates.core.check_gate', side_effect=results):
+            output, rounds = run_gate('G1', module, inp, Path(tmp), None, StageOutput(artifacts={}, summary='x'))
+        self.assertEqual(len(rounds), 3)
+        self.assertTrue(rounds[-1].passed)
+        self.assertEqual(output.summary, 'исправлено')
+
+if __name__ == '__main__':
+    unittest.main()

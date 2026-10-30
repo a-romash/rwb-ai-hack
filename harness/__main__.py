@@ -6,6 +6,13 @@ from .agent import run
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "doctor":
+        from .doctor import main as doctor_main
+        return doctor_main(argv[1:])
+    if argv and argv[0] == "recover":
+        from .recover import main as recover_main
+        return recover_main(argv[1:])
     parser = argparse.ArgumentParser(description="Trassa agent runner for qwen/qwen3.8-27b")
     parser.add_argument("-p", "--print", dest="prompt", help="task prompt; '-' reads stdin")
     parser.add_argument("--agent", help="path to agents/<id>")
