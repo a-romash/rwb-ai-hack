@@ -1,0 +1,65 @@
+:host { display: block; }
+.muted { color: var(--mat-sys-on-surface-variant, #5f6368); }
+.banner {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--mat-sys-error-container, #fde7e9);
+  color: var(--mat-sys-on-error-container, #410e0b);
+}
+.filters { display: flex; flex-wrap: wrap; gap: 12px; }
+label { display: grid; gap: 4px; font-size: 0.875rem; }
+label > span { color: var(--mat-sys-on-surface-variant, #5f6368); }
+input, select, textarea {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--mat-sys-outline-variant, #c4c7c5);
+  border-radius: 6px;
+  background: var(--mat-sys-surface, #fff);
+  color: inherit;
+}
+input[type='checkbox'] { justify-self: start; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--mat-sys-outline-variant, #e0e0e0); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--mat-sys-outline-variant, #eee); }
+th { font-weight: 500; font-size: 0.8125rem; color: var(--mat-sys-on-surface-variant, #5f6368); }
+tbody tr { cursor: pointer; }
+tbody tr:hover, tbody tr:focus-visible { background: var(--mat-sys-surface-container, #f4f6f8); outline: none; }
+.row-actions { text-align: right; white-space: nowrap; }
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--mat-sys-secondary-container, #e8eaf6);
+  font-size: 0.8125rem;
+}
+.late { color: var(--mat-sys-error, #b3261e); font-weight: 500; }
+.card {
+  padding: 16px 20px;
+  border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+  border-radius: 12px;
+  background: var(--mat-sys-surface, #fff);
+}
+.card h2 { margin: 0 0 12px; font-size: 1rem; font-weight: 500; }
+dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 24px; margin: 0; }
+dt { font-size: 0.8125rem; color: var(--mat-sys-on-surface-variant, #5f6368); }
+dd { margin: 2px 0 0; }
+.form { display: grid; gap: 16px; max-width: 640px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* Phones: table rows become cards, so a list stays readable without horizontal scroll. */
+@media (max-width: 600px) {
+  .table-wrap { border: 0; }
+  thead { display: none; }
+  tbody { display: grid; gap: 10px; }
+  tbody tr {
+    display: grid;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+    border-radius: 12px;
+  }
+  td { padding: 0; border: 0; }
+  .row-actions { text-align: left; padding-top: 6px; }
+}

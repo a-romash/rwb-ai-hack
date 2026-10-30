@@ -1,0 +1,226 @@
+<app-page [title]="screen.title">
+  <ng-container actions>
+    @for (target of nav; track target) {
+      @if (model.screens[target].pattern !== 'detail') {
+        <a
+          mat-stroked-button
+          [routerLink]="['/' + target]"
+          [queryParams]="kind === 'detail' && id() ? {id: id()} : {}"
+          [attr.data-testid]="kebab + '.nav-' + target"
+          >{{ model.screens[target].title }}</a
+        >
+      }
+    }
+  </ng-container>
+
+  @if (failure()) {
+    <p class="banner" role="alert">{{ failure() }}</p>
+  }
+
+  @switch (view()) {
+    @case ('loading') {
+      <p class="muted" role="status" aria-live="polite">{{ state('loading') }}</p>
+    }
+    @case ('empty') {
+      <app-empty-state [title]="state('empty')" />
+    }
+    @case ('ready') {
+      @if (kind === 'collection') {
+        @if (screen.filters?.length) {
+          <div class="filters" role="search">
+            @for (filter of screen.filters; track filter.testid) {
+              <label>
+                <span>{{ label({kind: 'field', testid: filter.testid, field: filter.field}) }}</span>
+                <select
+                  [attr.data-testid]="filter.testid"
+                  (change)="setFilter(filter.field, $any($event.target).value)"
+                >
+                  <option value="">Все</option>
+                  @for (option of filterOptions(filter.field); track option) {
+                    <option [value]="option">{{ option }}</option>
+                  }
+                </select>
+              </label>
+            }
+          </div>
+        }
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                @for (widget of fields; track widget.testid) {
+                  <th scope="col">{{ label(widget) }}</th>
+                }
+                @if (rowActions.length) {
+                  <th scope="col"><span class="sr-only">Действия</span></th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of visibleRows(); track row.id) {
+                <tr [attr.data-testid]="kebab + '.row'" (click)="open(row)" tabindex="0" (keydown.enter)="open(row)">
+                  @for (widget of fields; track widget.testid) {
+                    <td>
+                      <span
+                        [attr.data-testid]="widget.testid"
+                        [class.chip]="widget.kind === 'status'"
+                        [class.late]="overdue(widget, row)"
+                        >{{ text(widget, row) }}</span
+                      >
+                    </td>
+                  }
+                  @if (rowActions.length) {
+                    <td class="row-actions">
+                      @for (action of rowActions; track action.testid) {
+                        <button
+                          mat-flat-button
+                          type="button"
+                          [disabled]="busy()"
+                          [attr.data-testid]="action.testid"
+                          (click)="$event.stopPropagation(); run(action, row)"
+                        >
+                          {{ model.copy[action.command] ?? action.command }}
+                        </button>
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="fields.length + 1" class="muted">{{ state('empty') }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (kind === 'detail') {
+        @for (group of groups(); track group.title) {
+          <section class="card">
+            @if (group.title) {
+              <h2>{{ group.title }}</h2>
+            }
+            <dl>
+              @for (widget of group.widgets; track widget.testid) {
+                <div>
+                  <dt>{{ label(widget) }}</dt>
+                  <dd>
+                    <span
+                      [attr.data-testid]="widget.testid"
+                      [class.chip]="widget.kind === 'status'"
+                      [class.late]="overdue(widget, item())"
+                      >{{ text(widget, item()) }}</span
+                    >
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
+        }
+        @if (buttons.length) {
+          <div class="bar">
+            @for (widget of buttons; track widget.testid) {
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="busy()"
+                [attr.data-testid]="widget.testid"
+                (click)="run({command: widget.command!, testid: widget.testid}, item())"
+              >
+                {{ model.copy[widget.command!] ?? widget.command }}
+              </button>
+            }
+          </div>
+        }
+      }
+
+      @if (kind === 'form') {
+        <form class="card form" (submit)="$event.preventDefault()">
+          @for (widget of fields; track widget.testid) {
+            @let control = input(widget);
+            <label>
+              <span>{{ label(widget) }}</span>
+              @switch (control.type) {
+                @case ('textarea') {
+                  <textarea
+                    rows="4"
+                    [attr.data-testid]="widget.testid"
+                    [value]="values()[widget.field!.split('.')[1]] ?? ''"
+                    (input)="setValue(widget, $any($event.target).value)"
+                  ></textarea>
+                }
+                @case ('checkbox') {
+                  <input
+                    type="checkbox"
+                    [attr.data-testid]="widget.testid"
+                    [checked]="!!values()[widget.field!.split('.')[1]]"
+                    (change)="setValue(widget, $any($event.target).checked)"
+                  />
+                }
+                @case ('choice') {
+                  <!-- A text input with suggestions, so walks and people can type the value. -->
+                  <input
+                    [attr.list]="widget.testid + '-options'"
+                    [attr.data-testid]="widget.testid"
+                    [value]="values()[widget.field!.split('.')[1]] ?? ''"
+                    (input)="setValue(widget, $any($event.target).value)"
+                  />
+                  <datalist [id]="widget.testid + '-options'">
+                    @for (option of control.options; track option) {
+                      <option [value]="option"></option>
+                    }
+                  </datalist>
+                }
+                @default {
+                  <input
+                    [type]="control.type"
+                    [attr.data-testid]="widget.testid"
+                    [value]="values()[widget.field!.split('.')[1]] ?? ''"
+                    (input)="setValue(widget, $any($event.target).value)"
+                  />
+                }
+              }
+              @if (canLocate(widget)) {
+                <button mat-button type="button" (click)="locate(widget)">Моё местоположение</button>
+              }
+            </label>
+          }
+          <div class="bar">
+            @for (action of screen.actions ?? []; track action.testid) {
+              <button
+                mat-flat-button
+                type="submit"
+                [disabled]="busy()"
+                [attr.data-testid]="action.testid"
+                (click)="run(action, item())"
+              >
+                {{ model.copy[action.command] ?? 'Сохранить' }}
+              </button>
+            }
+          </div>
+        </form>
+      }
+
+      @if (kind === 'dashboard') {
+        <div class="kpis">
+          @for (widget of screen.widgets ?? []; track widget.testid) {
+            @if (widget.kind === 'kpi') {
+              <div [attr.data-testid]="widget.testid">
+                <app-kpi-card [label]="label(widget)" [value]="kpis()[widget.testid] ?? '—'" />
+              </div>
+            }
+          }
+        </div>
+        <nav class="bar" aria-label="Разделы">
+          @for (target of nav; track target) {
+            <a mat-stroked-button [routerLink]="['/' + target]">{{ model.screens[target].title }}</a>
+          }
+        </nav>
+      }
+    }
+    @default {
+      <p class="banner" role="alert">{{ state(view()) }}</p>
+    }
+  }
+</app-page>

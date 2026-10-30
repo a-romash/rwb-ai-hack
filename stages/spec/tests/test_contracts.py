@@ -307,6 +307,12 @@ class DependentsTests(unittest.TestCase):
         self.data["params"]["SLA_HIGHER"] = copy.deepcopy(self.data["params"]["SLA_HIGH"])
         self.assertEqual(self.paths("params.SLA_HIGHER"), [])
 
+    def test_transitive_field_does_not_mark_whole_entity(self) -> None:
+        paths = self.paths("hooks.SlaDeadline")
+        self.assertIn("entities.Ticket.fields.status", paths)
+        self.assertFalse([p for p in paths if p.startswith("permissions") or p == "seed.Ticket"], paths)
+        self.assertIn("seed.Ticket", self.paths("entities.Ticket.fields.title"))
+
     def test_unrelated_entity_is_not_affected(self) -> None:
         self.data["entities"]["Unrelated"] = {"label": "Независимая", "fields": {"title": {"type": "string"}}, "traces": []}
         self.assertEqual(self.paths("entities.Unrelated.fields.title"), [])

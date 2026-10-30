@@ -4,17 +4,18 @@ import json
 import os
 import re
 import shutil
+import uuid
 from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
 from contracts.stage import StageOutput
 
-from .api import api_cases, dbcontext_cs, endpoints_cs
+from .api import api_cases, dbcontext_cs, endpoints_cs, timers_cs
 from .domain import SCALARS, hook_input, model_cs, param_type, params_cs
 from .models import HookContract, HookExample, HookSpec
 
-# ponytail: mobile screens, kafka topics, and EF migrations are out of this stage.
+# ponytail: kafka topics and EF migrations are out of this stage.
 
 _ID = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _METHODS = {
@@ -60,16 +61,22 @@ def execute(inp, workspace: Path, llm, sandbox) -> StageOutput:
         )
     _write(workspace, "product/hooks.json", _dump(_normalize([hook["spec"] for hook in built])))
     _write(workspace, "product/openapi.json", _dump(_openapi(app)))
-    screens = _web_screens(ui)
-    _write(workspace, "product/admin-web/src/app/generated/routes.ts", _routes_ts(screens))
-    for name, screen in screens:
-        _write(
-            workspace,
-            f"product/admin-web/e2e/pages/{name}.ts",
-            _page_ts(name, _testids(screen)),
-        )
+    _write(workspace, "product/backend/src/App.Api/seed.json", _dump(_seed(app)))
+    screens = []
+    for target, mobile in (("admin-web", False), ("mobile-web", True)):
+        chosen = _web_screens(ui, mobile=mobile)
+        screens += chosen
+        _write(workspace, f"product/{target}/src/app/generated/routes.ts", _routes_ts(chosen))
+        _write(workspace, f"product/{target}/src/app/generated/model.ts", _model_ts(app, ui, chosen, mobile))
+        for name, screen in chosen:
+            _write(
+                workspace,
+                f"product/{target}/e2e/pages/{name}.ts",
+                _page_ts(name, _testids(screen)),
+            )
     _write(workspace, "product/backend/src/App.Api/Features/Generated/Endpoints.cs", endpoints_cs(app))
     _write(workspace, "product/backend/src/App.Infrastructure/Generated/AppDbContext.Model.cs", dbcontext_cs(app))
+    _write(workspace, "product/backend/src/App.Infrastructure/Generated/Timers.cs", timers_cs(app))
     _write(workspace, "product/backend/tests/App.Generated.Tests/cases/api.json", _dump(api_cases(app)))
     entities = app.get("entities") if isinstance(app.get("entities"), dict) else {}
     summary = "Scaffolded " + ", ".join((
@@ -458,7 +465,7 @@ def _openapi(app: dict) -> dict:
     return {"info": {"title": title, "version": "1.0.0"}, "openapi": "3.1.0", "paths": paths}
 
 
-def _web_screens(ui: dict) -> list[tuple[str, dict]]:
+def _web_screens(ui: dict, *, mobile: bool = False) -> list[tuple[str, dict]]:
     screens = ui.get("screens") or {}
     if not isinstance(screens, dict):
         _contract_error("screens must be an object")
@@ -467,7 +474,7 @@ def _web_screens(ui: dict) -> list[tuple[str, dict]]:
         screen = screens[name]
         if not isinstance(screen, dict):
             _contract_error("screen must be an object")
-        if screen.get("platform") == "mobile":
+        if (screen.get("platform") == "mobile") != mobile:
             continue
         _ident(str(name))
         chosen.append((str(name), screen))
@@ -499,6 +506,59 @@ def _routes_ts(screens: list[tuple[str, dict]]) -> str:
     if not blocks:
         return "export const routes = [\n];\n"
     return "export const routes = [\n" + ",\n".join(blocks) + ",\n];\n"
+
+
+# Seed rows get stable ids so the stand, the screens and the E2E walks agree on Ticket[0] without a lookup.
+_SEED_NAMESPACE = uuid.UUID("5f0c6a52-8d7e-4c1b-9a43-2f6d1e0b7a10")
+
+
+def _seed_id(entity: str, index: int) -> str:
+    return str(uuid.uuid5(_SEED_NAMESPACE, f"{entity}[{index}]"))
+
+
+def _seed(app: dict) -> dict:
+    """app.json seed with ids; an integer in a ref field is the 0-based row of the referenced entity."""
+    entities = app.get("entities") or {}
+    result = {}
+    for entity, rows in sorted((app.get("seed") or {}).items()):
+        fields = (entities.get(entity) or {}).get("fields") or {}
+        result[entity] = []
+        for index, row in enumerate(rows if isinstance(rows, list) else []):
+            item = {"id": _seed_id(entity, index)}
+            for key, value in (row if isinstance(row, dict) else {}).items():
+                field = fields.get(key) or {}
+                ref = field.get("ref") if field.get("type") == "ref" else None
+                item[key] = _seed_id(ref, value) if ref and isinstance(value, int) and not isinstance(value, bool) else value
+            result[entity].append(item)
+    return result
+
+
+def _model_ts(app: dict, ui: dict, screens: list[tuple[str, dict]], mobile: bool) -> str:
+    """Everything the generic screen renderer needs, as data: the app ships no hand-written screens."""
+    platform = "mobile" if mobile else "web"
+    seed = _seed(app)
+    model = {
+        "platform": platform,
+        "lang": (app.get("meta") or {}).get("lang", "ru-RU"),
+        "title": (app.get("meta") or {}).get("title") or (app.get("meta") or {}).get("name") or "",
+        "device": (ui.get("device") or {}).get(platform, []),
+        "screens": dict(screens),
+        "menus": {role: (menu or {}).get(platform, []) for role, menu in (ui.get("menus") or {}).items()},
+        "home": {role: (home or {}).get(platform) for role, home in (ui.get("home") or {}).items()},
+        "copy": ui.get("copy") or {},
+        "roles": {role: (data or {}).get("name", role) for role, data in (app.get("roles") or {}).items()},
+        "entities": app.get("entities") or {},
+        "types": app.get("types") or {},
+        "queries": app.get("queries") or {},
+        "commands": app.get("commands") or {},
+        "machines": app.get("state_machines") or {},
+        "seed_ids": {entity: [row["id"] for row in rows] for entity, rows in seed.items()},
+    }
+    return ("// Generated by the scaffold stage from app.json and ui.json. Do not edit.\n"
+            "import type {AppModel} from '../screens/model';\n\n"
+            # app.json carries more than the renderer reads; a named constant skips only the excess-property check.
+            "const DATA = " + json.dumps(model, indent=2, sort_keys=True, ensure_ascii=False) + ";\n\n"
+            "export const MODEL: AppModel = DATA;\n")
 
 
 def _page_ts(name: str, testids: list[str]) -> str:

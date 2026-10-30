@@ -2,7 +2,6 @@
 import json
 import re
 import xml.etree.ElementTree as ET
-from pathlib import Path
 from contracts.stage import ContractError
 from contracts.verification import TestCase
 from harness.fakes import workspace_path

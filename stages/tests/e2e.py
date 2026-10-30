@@ -73,6 +73,8 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
                 scope = f"page.getByTestId({json.dumps(_kebab(current) + '.row')}).nth({index})"
             if len(actions) == 1:
                 lines.append(f"await {scope}.getByTestId({json.dumps(actions[0])}).click();")
+                if any(a.get("confirm") for a in screen.get("actions", []) if a.get("testid") == actions[0]):
+                    lines.append('await page.getByTestId("confirm.ok").click();')
             elif target in screens and target in screen.get("nav", []):
                 if row:
                     lines.append(f"await {scope}.click();")
@@ -121,6 +123,8 @@ def generate(root, ui: dict, app: dict | None = None) -> list[str]:
             lines.append("test.use({...devices['Pixel 7']});")
         title = " ".join("@" + ac for ac in walk.get("covers", [])) + " " + ident
         lines.append("test(" + json.dumps(title.strip()) + ", async ({page}) => {")
+        # Demo sign-in: the app reads the role from localStorage and logs in through /api/auth/login.
+        lines.append(f"  await page.addInitScript((role) => localStorage.setItem('role', role), {json.dumps(walk.get('role', ''))});")
         lines += ["  " + line for line in _steps(walk, ui, app)]
         lines.append("});")
         relative = f"product/{target}/e2e/{ident}.spec.ts"

@@ -32,9 +32,12 @@ def run(workspace,hooks,planned,sandbox):
         for i,source in enumerate(changes):
             try:
                 path.write_text(source,encoding='utf-8')
-                result=sandbox.run('test','backend',filter=related[0].ac)
-                cases=junit(workspace,result,related)
-                assertion=any(c.status=='failed' and assertion_failure(c) for c in cases)
+                # Every AC of the hook may kill the mutant; stop at the first one that does.
+                cases=[];assertion=False
+                for test in related:
+                    found=junit(workspace,sandbox.run('test','backend',filter=test.ac),[test]);cases+=found
+                    assertion=any(c.status=='failed' and assertion_failure(c) for c in found)
+                    if assertion:break
                 reports.append({'hook':hook['id'],'mutation':i,'status':'killed' if assertion else 'survived' if cases and all(c.status=='passed' for c in cases) else 'invalid'})
             finally:
                 path.write_bytes(original)

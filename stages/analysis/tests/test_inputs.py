@@ -89,6 +89,25 @@ class InputTests(unittest.TestCase):
         self.assertEqual(geometry["bbox"], [37.0, 55.0, 37.01, 55.0])
         self.assertGreater(geometry["lengths"]["sum"], 600)
 
+    def test_wkt_text_ids_and_implicit_units(self) -> None:
+        zones = [{"externalZoneId": str(517641 + i), "geometry": f"LINESTRING ({30 + i / 100} 59.9, {30.01 + i / 100} 59.9)",
+                  "price": 28020, "priceDescription": "пн-пт 08:00-20:00, 280-280,2 ₽/час",
+                  "tariff": {"periods": [{"from": 480, "to": 1200, "price": 56000}]}} for i in range(3)]
+        zones[2]["geometry"] = "MULTILINESTRING ((30.1 59.9, 30.11 59.9), (30.2 59.9, 30.21 59.9))"
+        path = self.root / "input/spb.json"
+        path.write_text(json.dumps({"data": {"zones": zones}}, ensure_ascii=False), encoding="utf-8")
+        schema = profile(path, path.name).data_schema
+        self.assertEqual(schema["fields"]["externalZoneId"]["types"], {"numeric_string": 3})
+        self.assertEqual(schema["fields"]["geometry"]["types"], {"wkt": 3})
+        self.assertEqual(schema["geometry"]["types"], {"LineString": 2, "MultiLineString": 1})
+        self.assertGreater(schema["geometry"]["lengths"]["min"], 500)
+        self.assertEqual({path: hint["unit"] for path, hint in schema["units"].items()},
+                         {"price": "kopecks", "tariff.periods[].price": "kopecks",
+                          "tariff.periods[].from": "minutes_of_day", "tariff.periods[].to": "minutes_of_day"})
+        csv_path = self.root / "input/data.csv"
+        csv_path.write_text("id,value\n1,2\n", encoding="utf-8")
+        self.assertEqual(profile(csv_path, csv_path.name).data_schema["fields"]["id"]["types"], {"int": 1})
+
 
 if __name__ == "__main__":
     unittest.main()

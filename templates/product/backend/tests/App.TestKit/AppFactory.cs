@@ -20,6 +20,8 @@ public class AppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Tests arrange their own rows; the demo seed is for the stand.
+        builder.UseSetting("Seed", "false");
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<TimeProvider>(Clock);

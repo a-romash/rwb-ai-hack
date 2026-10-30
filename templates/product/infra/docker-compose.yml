@@ -2,7 +2,7 @@
 # (pack.json) has already fetched NuGet packages and node_modules. Events go through PostgreSQL
 # (R17), so there is no message broker. Host ports are ephemeral (127.0.0.1::<port>) so several
 # stands and the platform Studio never collide; `docker compose port backend 8080` shows them.
-# Local credentials only, not platform secrets. No ${VAR} interpolation: the sandbox rejects it.
+# Local credentials only, not platform secrets. No variable interpolation: the sandbox rejects any dollar sign.
 
 services:
   db:
@@ -70,6 +70,22 @@ services:
   admin:
     build:
       context: ../admin-web
+      network: none
+    ports:
+      - "127.0.0.1::80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  mobile:
+    build:
+      context: ../mobile-web
       network: none
     ports:
       - "127.0.0.1::80"

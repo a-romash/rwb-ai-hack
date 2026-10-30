@@ -1,4 +1,6 @@
-# rwb/tool-security:1
+# rwb/tool-security:1 — secrets and dependency scans for the sandbox and product CI.
+# Scans run without network, so the Trivy vulnerability DB is baked in at build time;
+# rebuild the image (docker compose --profile tools build tool-security) to refresh it.
 FROM debian:bookworm-slim
 
 ARG GITLEAKS_VERSION=8.30.1
@@ -12,5 +14,8 @@ RUN apt-get update \
     && tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy \
     && chmod +x /usr/local/bin/gitleaks /usr/local/bin/trivy \
     && rm -rf /tmp/* /var/lib/apt/lists/*
+
+RUN trivy image --cache-dir /opt/trivy --download-db-only --no-progress \
+    && chmod -R a+rX /opt/trivy
 
 WORKDIR /src

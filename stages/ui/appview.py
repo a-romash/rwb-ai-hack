@@ -107,6 +107,8 @@ class AppView:
         # The past-tense spelling is the generator's; accept any short suffix after Entity+Transition.
         for machine in self.machines.values():
             for transition in machine.get("transitions") or []:
+                if name == derived_event(machine["entity"], transition["name"]):
+                    return True  # take_overdue -> TicketTakenOverdue: the verb is inflected mid-name
                 stem = machine["entity"] + _pascal(transition["name"])
                 if name.startswith(stem) and len(name) - len(stem) <= 3:
                     return True

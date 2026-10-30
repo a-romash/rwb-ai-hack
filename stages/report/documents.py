@@ -1,5 +1,6 @@
 """Deterministic documentation and metrics; model text never supplies numbers."""
 import json
+import os
 from pathlib import Path
 from harness.fakes import workspace_path
 
@@ -14,9 +15,13 @@ def metrics(snapshot,develop,root,ac_count):
     result['tokens_per_ac']=tokens/ac_count if tokens is not None and ac_count else None
     result['interventions']=totals.get('manual_interventions')
     source=deterministic=0
-    for path in (root/'product').rglob('*'):
-        if not path.is_file() or path.suffix not in ('.cs','.ts','.html','.css','.sql'):continue
-        if any(p in ('node_modules','bin','obj','dist','.git') for p in path.parts):continue
+    files=[]
+    for folder,dirs,names in os.walk(root/'product'):
+        # Prune restored packages and build output: rglob would walk them first, minutes on a bind mount.
+        dirs[:]=[d for d in dirs if d not in ('node_modules','bin','obj','dist','.git','.nuget','.npm','.angular')]
+        files.extend(Path(folder)/name for name in names)
+    for path in files:
+        if path.suffix not in ('.cs','.ts','.html','.css','.sql'):continue
         try:lines=sum(bool(line.strip()) for line in path.read_text().splitlines())
         except (UnicodeError,OSError):continue
         source+=lines

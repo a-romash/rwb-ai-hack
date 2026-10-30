@@ -222,9 +222,38 @@ class LadderTest(unittest.TestCase):
         self.assertEqual(hook["status"], "implemented")
         self.assertEqual(hook["attempts"], 2)
         self.assertFalse(hook["first_pass"])
-        self.assertEqual(hook["disputes"], [{"test": "AC-04", "reason": "ожидание расходится с контрактом, AC-04"}])
+        self.assertEqual(hook["disputes"], [{"test": "AC-04", "reason": "ожидание расходится с контрактом, AC-04",
+                                             "decision": "reject", "decision_reason": "спор не рассмотрен: Не читается tests"}])
         self.assertEqual(len(sandbox.calls), 2)
         self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1", "hook_2"])
+        self.assertIn("спор не рассмотрен", llm.calls[1]["user"])
+
+    def test_dispute_goes_to_qa_and_the_verdict_back_to_the_ladder(self):
+        from contracts.verification import DisputeDecision, PlannedTest, TestsManifest
+        chosen = hooks("SlaDeadline")
+        tmp, root = layout(chosen)
+        test_file = root / "product" / "backend" / "tests" / "AC_04.cs"
+        test_file.parent.mkdir(parents=True)
+        test_file.write_text("// AC-04 cases\n", encoding="utf-8")
+        (root / "reports").mkdir()
+        manifest = TestsManifest(tests=[PlannedTest(id="AC-04", ac="AC-04", file="product/backend/tests/AC_04.cs", level="unit")],
+                                 hashes={}, acceptance=["AC-04"], build_ok=True)
+        (root / "reports" / "tests.json").write_text(manifest.model_dump_json(), encoding="utf-8")
+        (root / "spec").mkdir()
+        (root / "spec" / "analysis.json").write_text(json.dumps({"acceptance": [{"id": "AC-04", "text": "SLA 4 часа"}]}), encoding="utf-8")
+        llm = FakeLLM(["// DISPUTE: AC-04 — срок неверный\n", DisputeDecision(decision="reject", reason="Тест соответствует AC"), "return 7;\n"])
+        try:
+            execute(None, root, llm, FakeSandbox())
+            saved = report_of(root)
+            history = json.loads((root / "reports" / "disputes.json").read_text(encoding="utf-8"))
+        finally:
+            tmp.cleanup()
+        self.assertEqual(saved["hooks"][0]["status"], "implemented")
+        self.assertEqual(saved["hooks"][0]["disputes"][0]["decision"], "reject")
+        self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1", "qa", "hook_2"])
+        self.assertNotIn("return", llm.calls[1]["user"])  # QA never sees the hook body
+        self.assertIn("Тест соответствует AC", llm.calls[2]["user"])
+        self.assertEqual(history[0]["decision"], "reject")
 
 
 def _step(content="", tools=None):

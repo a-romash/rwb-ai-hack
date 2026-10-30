@@ -2,6 +2,7 @@
   "targets": {
     "backend": {
       "image": "rwb/tool-dotnet:10",
+      "workdir": "backend",
       "env": {
         "NUGET_PACKAGES": "/work/.nuget/packages",
         "DOTNET_CLI_HOME": "/tmp",
@@ -12,12 +13,12 @@
       "restore": [
         "dotnet",
         "restore",
-        "backend/App.sln"
+        "App.sln"
       ],
       "build": [
         "dotnet",
         "build",
-        "backend/App.sln",
+        "App.sln",
         "--nologo",
         "--no-restore"
       ],
@@ -25,7 +26,7 @@
         "dotnet",
         "test",
         "--solution",
-        "backend/App.sln",
+        "App.sln",
         "--no-restore",
         "--report-xunit-junit",
         "--results-directory",
@@ -46,8 +47,9 @@
       "workdir": "admin-web",
       "env": {
         "HOME": "/tmp",
-        "npm_config_cache": "/work/.npm",
-        "CI": "1"
+        "CI": "1",
+        "NPM_CONFIG_CACHE": "/work/.npm",
+        "BASE_URL": "http://admin"
       },
       "restore": [
         "npm",
@@ -73,15 +75,19 @@
       "filter": [
         "--grep",
         "@{filter}"
-      ]
+      ],
+      "reports": {
+        "json": "reports/e2e/admin.json"
+      }
     },
     "pwa": {
       "image": "rwb/tool-node:22",
       "workdir": "mobile-web",
       "env": {
         "HOME": "/tmp",
-        "npm_config_cache": "/work/.npm",
-        "CI": "1"
+        "CI": "1",
+        "NPM_CONFIG_CACHE": "/work/.npm",
+        "BASE_URL": "http://mobile"
       },
       "restore": [
         "npm",
@@ -107,7 +113,10 @@
       "filter": [
         "--grep",
         "@{filter}"
-      ]
+      ],
+      "reports": {
+        "json": "reports/e2e/pwa.json"
+      }
     },
     "stack": {
       "image": "python:3.12-slim",
@@ -151,20 +160,40 @@
         "detect",
         "--source",
         ".",
-        "--no-git"
+        "--no-git",
+        "--redact",
+        "--report-format",
+        "json",
+        "--report-path",
+        "reports/gitleaks.json"
       ],
       [
         "trivy",
         "fs",
+        "--cache-dir",
+        "/opt/trivy",
+        "--skip-db-update",
+        "--skip-java-db-update",
+        "--offline-scan",
         "--severity",
         "HIGH,CRITICAL",
         "--exit-code",
         "1",
+        "--ignore-policy",
+        "infra/trivy-pinned-stack.rego",
         "--skip-dirs",
         "node_modules,.nuget,.npm",
+        "--format",
+        "sarif",
+        "--output",
+        "reports/trivy.sarif",
         "."
       ]
-    ]
+    ],
+    "reports": {
+      "json": "reports/gitleaks.json",
+      "sarif": "reports/trivy.sarif"
+    }
   },
   "write_roots": [
     "backend/src/App.Domain/Hooks",

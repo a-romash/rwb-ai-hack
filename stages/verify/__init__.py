@@ -11,15 +11,15 @@ def execute(inp,workspace,llm,sandbox):
     develop=read(workspace,inp.artifacts,'develop',optional=True)
     build={};cases=[];scans=[];stand={'up':False,'smoke':False,'e2e':{},'down':False}
     mismatches=[p for p,h in plan.hashes.items() if describe(workspace,p)[0]!=h]
-    ui=read(workspace,inp.artifacts,'ui',optional=True)
-    platforms={screen.get('platform') for screen in ui.get('screens',{}).values()}
-    targets=['backend']+(['admin'] if 'web' in platforms or not platforms else [])+(['pwa'] if 'mobile' in platforms else [])
+    # The stand builds every web app offline from its restored node_modules, so each one present is built here.
+    targets=['backend']+[t for t,app in (('admin','admin-web'),('pwa','mobile-web')) if (workspace/'product'/app/'package.json').is_file()]
     for target in targets:
         try:result=sandbox.run('build',target)
         except ContractError as exc:
             # A platform the template cannot build yet is a failed check, not a crashed stage.
             build[target]=False;cases.append(TestCase(id=f'build/{target}',ac=None,level='unit',file='',status='not_run',message=str(exc)));continue
-        if result.exit_code==127:raise StageFailed('Песочница недоступна')
+        # 127 from a tool inside the container is a failed build; only a missing docker CLI is fatal.
+        if result.exit_code==127 and result.output_tail.startswith('Не удалось запустить инструмент'):raise StageFailed('Песочница недоступна')
         build[target]=result.ok
         if result.ok:
             tested=sandbox.run('test',target)

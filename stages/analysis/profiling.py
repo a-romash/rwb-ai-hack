@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import math
+import re
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +14,10 @@ from typing import Any
 from contracts.analysis import DataCard
 
 MAX_CARD_BYTES = 7000
+WKT = re.compile(r"^\s*(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)\b\s*(?:ZM|Z|M)?\s*(?:\(|EMPTY)", re.I)
+GEOJSON_TYPES = {"POINT": "Point", "LINESTRING": "LineString", "POLYGON": "Polygon", "MULTIPOINT": "MultiPoint",
+                 "MULTILINESTRING": "MultiLineString", "MULTIPOLYGON": "MultiPolygon", "GEOMETRYCOLLECTION": "GeometryCollection"}
+DAY_BOUNDS = {"from", "to", "start", "end", "begin", "until", "open", "close"}
 
 
 def _short(value: Any, depth: int = 0) -> Any:
@@ -27,7 +32,8 @@ def _short(value: Any, depth: int = 0) -> Any:
     return value
 
 
-def _kind(value: Any) -> str:
+def _kind(value: Any, text_numbers: bool = True) -> str:
+    """text_numbers: in CSV every value is text, so "42" is a number; in JSON it is an identifier."""
     if value is None or value == "":
         return "null"
     if isinstance(value, bool):
@@ -41,7 +47,12 @@ def _kind(value: Any) -> str:
     if isinstance(value, list):
         return "array"
     if isinstance(value, str):
+        if WKT.match(value):
+            return "wkt"
         try:
+            float(value)
+            if not text_numbers:
+                return "numeric_string"
             int(value)
             return "int"
         except ValueError:
@@ -98,9 +109,66 @@ def _line_length(coordinates: Any) -> float:
     return sum(_line_length(child) for child in coordinates)
 
 
+def _wkt(text: str) -> dict:
+    """WKT as a GeoJSON-like geometry: enough for types, bbox and line lengths."""
+    kind = GEOJSON_TYPES[WKT.match(text).group(1).upper()]
+    rings = [[[float(n) for n in pair.split()[:2]] for pair in group.split(",") if pair.strip()]
+             for group in re.findall(r"\(([^()]+)\)", text)]
+    if kind in ("Point", "LineString"):
+        return {"type": kind, "coordinates": (rings[0][0] if kind == "Point" else rings[0]) if rings else []}
+    return {"type": kind, "coordinates": rings}
+
+
+def _leaves(value: Any, path: str):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            yield from _leaves(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for item in value:
+            yield from _leaves(item, f"{path}[]")
+    else:
+        yield path, value
+
+
+def _money(text: str) -> list[float]:
+    if "₽" not in text and "руб" not in text.lower():
+        return []
+    return [float(number.replace(",", ".")) for number in re.findall(r"\d+(?:,\d+)?", text)]
+
+
+def _units(rows: list[dict]) -> dict[str, dict]:
+    """Units the numbers do not state: kopecks next to a ruble text, minutes of the day in time bounds."""
+    values: dict[str, list] = {}
+    for row in rows:
+        for key, value in row.items():
+            for path, leaf in _leaves(value, key):
+                values.setdefault(path, []).append(leaf)
+    hints: dict[str, dict] = {}
+    for path, leaves in values.items():
+        ints = [v for v in leaves if isinstance(v, int) and not isinstance(v, bool)]
+        name = path.rsplit(".", 1)[-1].removesuffix("[]")
+        if ints and len(ints) == len([v for v in leaves if v is not None]) and name.lower() in DAY_BOUNDS                 and 0 <= min(ints) and max(ints) <= 1440 and max(ints) > 24:
+            hints[path] = {"unit": "minutes_of_day", "evidence": f"{min(ints)}..{max(ints)} в пределах 0..1440"}
+    for key in {key for row in rows for key in row}:
+        checked = matched = 0
+        for row in rows[:500]:
+            amounts = [n for other, text in row.items() if other != key and isinstance(text, str) for n in _money(text)]
+            if isinstance(row.get(key), int) and not isinstance(row.get(key), bool) and amounts:
+                checked += 1
+                matched += any(round(n * 100) == row[key] for n in amounts)
+        if checked and matched / checked >= .8:
+            hints[key] = {"unit": "kopecks", "evidence": f"значение/100 совпадает с суммой в ₽ из текста в {matched} из {checked} строк"}
+            # Prices nested in the same record use the same currency unit.
+            for path in values:
+                if path.startswith(key + ".") or ("." in path and "price" in path.rsplit(".", 1)[-1].lower()):
+                    hints.setdefault(path, {"unit": "kopecks", "evidence": f"та же валюта, что у {key}"})
+    return dict(sorted(hints.items()))
+
+
 def profile(path: Path, logical_name: str) -> DataCard:
     text = path.read_text(encoding="utf-8-sig")
-    if path.suffix.lower() == ".csv":
+    is_csv = path.suffix.lower() == ".csv"
+    if is_csv:
         try:
             dialect = csv.Sniffer().sniff(text[:8192], delimiters=",;\t|")
         except csv.Error:
@@ -129,10 +197,10 @@ def profile(path: Path, logical_name: str) -> DataCard:
     anomalies: list[Any] = []
     for key, values in fields.items():
         counts = Counter(json.dumps(value, sort_keys=True, ensure_ascii=False) for value in values)
-        kinds = Counter(_kind(value) for value in values)
+        kinds = Counter(_kind(value, is_csv) for value in values)
         empty = sum(value is None or value == "" for value in values)
         def is_zero(value: Any) -> bool:
-            if isinstance(value, bool) or _kind(value) not in ("int", "decimal"):
+            if isinstance(value, bool) or _kind(value, is_csv) not in ("int", "decimal"):
                 return False
             return float(value) == 0
         zeros = sum(is_zero(value) for value in values)
@@ -142,7 +210,11 @@ def profile(path: Path, logical_name: str) -> DataCard:
             "empty": empty, "zeros": zeros,
             "frequent": [{"value": _short(json.loads(value)), "count": count} for value, count in counts.most_common(3)],
         }
-        dates = [str(value) for value in values if _kind(value) in ("date", "datetime")]
+        dates = [str(value) for value in values if _kind(value, is_csv) in ("date", "datetime")]
+        if kinds.get("wkt"):
+            info["examples"] = [_short(value)[:80] for value in values[:1]]
+            geometries.extend(_wkt(value) for value in values if _kind(value) == "wkt")
+            info["geometry"] = True
         if dates:
             try:
                 ordered = sorted(dates, key=lambda v: datetime.fromisoformat(v.replace("Z", "+00:00")).timestamp())
@@ -153,9 +225,13 @@ def profile(path: Path, logical_name: str) -> DataCard:
             anomalies.append({"field": key, "empty": empty, "zeros": zeros, "mixed_types": len(set(kinds) - {"null"}) > 1})
         details[key] = info
     schema: dict[str, Any] = {"records_path": location, "fields": details}
+    units = _units(rows)
+    if units:
+        schema["units"] = units
     if geometries:
         points = [p for geometry in geometries for p in _points(geometry.get("coordinates"))]
         lengths = [_line_length(g.get("coordinates")) for g in geometries if g.get("type") in ("LineString", "MultiLineString")]
+        lengths = [round(length, 1) for length in lengths if length]
         schema["geometry"] = {"types": dict(Counter(g.get("type", "unknown") for g in geometries)), "length_unit": "m", "length_method": "haversine_wgs84", "lengths": {"min": min(lengths), "max": max(lengths), "sum": sum(lengths)} if lengths else {}}
         if points:
             schema["geometry"]["bbox"] = [min(p[0] for p in points), min(p[1] for p in points), max(p[0] for p in points), max(p[1] for p in points)]

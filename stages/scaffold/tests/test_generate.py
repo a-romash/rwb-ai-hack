@@ -11,13 +11,19 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 EQUIPMENT_FILES = [
     "product/admin-web/e2e/pages/ItemList.ts",
+    "product/admin-web/src/app/generated/model.ts",
     "product/admin-web/src/app/generated/routes.ts",
+    "product/mobile-web/e2e/pages/PhoneItem.ts",
+    "product/mobile-web/src/app/generated/model.ts",
+    "product/mobile-web/src/app/generated/routes.ts",
+    "product/backend/src/App.Api/seed.json",
     "product/backend/src/App.Domain/Generated/IMaxLaptopsHook.cs",
     "product/backend/src/App.Domain/Generated/Model.cs",
     "product/backend/src/App.Domain/Generated/Params.cs",
     "product/backend/src/App.Domain/Hooks/MaxLaptopsHook.cs",
     "product/backend/src/App.Api/Features/Generated/Endpoints.cs",
     "product/backend/src/App.Infrastructure/Generated/AppDbContext.Model.cs",
+    "product/backend/src/App.Infrastructure/Generated/Timers.cs",
     "product/backend/tests/App.Generated.Tests/cases/api.json",
     "product/hooks.json",
     "product/infra/roles.json",
@@ -67,6 +73,11 @@ class GenerateTests(unittest.TestCase):
             self.assertEqual(spec["paths"]["/api/Ticket/commands/TakeTicket"]["post"]["x-roles"], ["engineer"])
             routes = (workspace / "product/admin-web/src/app/generated/routes.ts").read_text(encoding="utf-8")
             self.assertIn("TicketList", routes)
+            model = (workspace / "product/admin-web/src/app/generated/model.ts").read_text(encoding="utf-8")
+            self.assertIn('"TicketList"', model)
+            self.assertNotIn('"MobileQueue"', model)
+            seed = json.loads((workspace / "product/backend/src/App.Api/seed.json").read_text(encoding="utf-8"))
+            self.assertIn(seed["Ticket"][0]["id"], model)                      # walks and screens agree on ids
             page = (workspace / "product/admin-web/e2e/pages/TicketList.ts").read_text(encoding="utf-8")
             self.assertIn("ticket-list.due", page)
             self.assertIn("ticket-list.take", page)
@@ -79,7 +90,9 @@ class GenerateTests(unittest.TestCase):
             endpoints = (workspace / "product/backend/src/App.Api/Features/Generated/Endpoints.cs").read_text(encoding="utf-8")
             self.assertIn('"engineer|Ticket.read"', endpoints)
             self.assertIn("ResolutionRequiredHook().Validate(cmd)", endpoints)
-            blob = b"\n".join(_tree(workspace).values())
+            # Copy, labels and seed rows live only in the data files the renderer and the stand read.
+            data = ("src/app/generated/model.ts", "src/App.Api/seed.json")
+            blob = b"\n".join(v for k, v in _tree(workspace).items() if not k.endswith(data))
             self.assertNotIn("Не работает кондиционер".encode(), blob)
             self.assertNotIn("Взять заявку в работу?".encode(), blob)
             self.assertNotIn("Нет открытых заявок".encode(), blob)
@@ -132,6 +145,32 @@ class GenerateTests(unittest.TestCase):
                 execute(_input("spec/app.json", "spec/ui.json"), workspace, None, None)
             self.assertIn(caught.exception.__class__.__name__, {"ValueError", "ContractError"})
 
+    def test_admin_and_pwa_share_the_renderer(self):
+        # Two copies so each app builds alone (its own Docker context); they must not drift.
+        root = Path(__file__).resolve().parents[3] / "templates" / "product"
+        for folder in ("src/app/screens", "src/app/ui"):
+            admin = {p.name: p.read_bytes() for p in (root / "admin-web" / folder).iterdir()}
+            mobile = {p.name: p.read_bytes() for p in (root / "mobile-web" / folder).iterdir()}
+            admin.pop("menu.ts", None)                          # the PWA has a tab bar in app.ts instead
+            self.assertEqual(admin, mobile, folder)
+
+    def test_seed_refs_are_rows_of_the_referenced_entity(self):
+        from stages.scaffold.generate import _seed
+        app = {"entities": {"Ticket": {"fields": {"author": {"type": "ref", "ref": "Employee"}}}},
+               "seed": {"Employee": [{"name": "A"}, {"name": "B"}], "Ticket": [{"author": 1}]}}
+        seed = _seed(app)
+        self.assertEqual(seed["Ticket"][0]["author"], seed["Employee"][1]["id"])
+        self.assertEqual(_seed(app), seed)                                     # stable ids
+
+    def test_timer_transition_is_applied_by_the_worker(self):
+        from stages.scaffold.api import timers_cs
+        app = json.loads((FIXTURES / "app.json").read_text(encoding="utf-8"))
+        text = timers_cs(app)
+        self.assertIn("x.Status == TicketFlowState.InProgress) && x.DueAt != null && x.DueAt <= now", text)
+        self.assertIn("item.Status = TicketFlowState.Overdue;", text)
+        app["state_machines"]["TicketFlow"]["transitions"][1]["trigger"] = {"timer": "title"}
+        self.assertIn("wire it in custom", timers_cs(app))
+
     def test_equipment_file_list_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
@@ -140,6 +179,7 @@ class GenerateTests(unittest.TestCase):
             self.assertLessEqual(set(EQUIPMENT_FILES), files)
             self.assertLessEqual(files - set(EQUIPMENT_FILES), set(template_copy_paths()))
             self.assertNotIn("product/admin-web/e2e/pages/PhoneItem.ts", files)
+            self.assertNotIn("product/mobile-web/e2e/pages/ItemList.ts", files)
             hooks = json.loads((workspace / "product" / "hooks.json").read_text(encoding="utf-8"))
             self.assertEqual(hooks[0]["id"], "MaxLaptops")
             self.assertEqual(hooks[0]["kind"], "policy")

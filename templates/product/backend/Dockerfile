@@ -1,11 +1,12 @@
-# Built by infra/docker-compose.yml with `network: none`: the sandbox restore step (pack.json)
-# has already filled .nuget and obj/, at the same /work paths, so publishing needs no network.
+# Built by infra/docker-compose.yml with `network: none`: the sandbox or CI restore step has already
+# filled .nuget. Restoring again from that folder rewrites obj/ for /work, wherever the clone lived.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ENV NUGET_PACKAGES=/work/.nuget/packages DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1
 WORKDIR /work
 COPY .nuget/ .nuget/
 COPY backend/ backend/
-RUN dotnet publish backend/src/App.Api/App.Api.csproj -c Release --no-restore -o /out/api \
+RUN dotnet restore backend/App.sln --source /work/.nuget/packages \
+ && dotnet publish backend/src/App.Api/App.Api.csproj -c Release --no-restore -o /out/api \
  && dotnet publish backend/src/App.Worker/App.Worker.csproj -c Release --no-restore -o /out/worker
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api

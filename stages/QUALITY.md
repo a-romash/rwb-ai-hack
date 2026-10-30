@@ -21,7 +21,7 @@ PYTHONPATH=. backend/.venv/bin/python scripts/quality_smoke.py --live --mkdocs
 
 ## Условия интеграции
 
-- Иван предоставляет TestKit, сигнатуры хуков и команды backend/admin/pwa в pack.yaml.
+- Команды backend/admin/pwa/stack/scan — в `templates/product/pack.json`; TestKit — в шаблоне продукта.
 - JUnit должен содержать свойство `AC` или ID AC в имени класса/теста.
 - Отчёты сканеров передаются в SandboxResult.reports (sarif/json); Playwright — json.
 - UI-проходы требуют явных маршрутов screen.route и testid для проверок/ввода.
@@ -34,6 +34,7 @@ PYTHONPATH=. backend/.venv/bin/python scripts/quality_smoke.py --live --mkdocs
 
 ## Ограничения текущей интеграции
 
-Проверки Python и live-writer не заменяют настоящий прогон продукта. Требуются
-подготовленные образы .NET/Node/security, TestKit, PWA и машинные отчёты из ветки Ивана.
-Проверка роли в smoke зависит от отчёта реализации smoke; один HTTP 200 не доказывает RBAC.
+Цепочка проверена с настоящей песочницей на фикстуре `tickets` (`scripts/local_chain.py`). Работают сборка и тесты backend, сборка и jest админки и PWA, сканеры с отчётами (gitleaks JSON, trivy SARIF), подъём стенда, smoke по ролям, Playwright с JSON-отчётом и отчёт. Что ещё не закрыто:
+
+- проходы, которым нужно поведение, не выводимое из `app.json`: назначение исполнителя командой, таймеры переходов (`expire` → `overdue`), выборки по `current_user`. Такие E2E честно падают;
+- проверка роли в smoke зависит от отчёта smoke: один HTTP 200 не доказывает RBAC.

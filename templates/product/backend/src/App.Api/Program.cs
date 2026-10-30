@@ -2,9 +2,12 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using App.Api;
 using App.Api.Features.Generated;
 using App.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Json;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -83,7 +86,12 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     // Prototype stand: the schema follows the generated model; migrations come with the first release.
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (db.Database.EnsureCreated() && app.Configuration["Seed"] != "false")
+    {
+        SeedData.Load(db, Path.Combine(app.Environment.ContentRootPath, "seed.json"),
+            app.Services.GetRequiredService<IOptions<JsonOptions>>().Value.SerializerOptions, app.Logger);
+    }
 }
 
 app.UseExceptionHandler();

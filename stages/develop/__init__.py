@@ -68,7 +68,15 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
                 raw = str(raw)
             dispute = _dispute(raw)
             if dispute:
+                try:
+                    dispute.update(_arbitrate(dispute, hook, ac, workspace, llm, sandbox))
+                except Exception as exc:
+                    if not _is_budget(exc):
+                        raise
+                    disputes.append(dispute)
+                    return _row(hook, "stub", attempts, False, tests, disputes, "бюджет исчерпан"), True
                 disputes.append(dispute)
+                failures = f"Спор по тесту: {dispute['decision']} — {dispute['decision_reason']}"
                 previous = raw
                 continue
             ok, tests, failures = _apply(path, raw, sandbox, ac, workspace)
@@ -168,6 +176,22 @@ def _dispute(text: str) -> dict | None:
                 reason = rest
         return {"test": test.strip(), "reason": reason.strip()}
     return None
+
+
+def _arbitrate(dispute: dict, hook: dict, ac: str | None, workspace: Path, llm, sandbox) -> dict:
+    """QA judges the test against the AC without seeing the hook; a test that cannot be judged stays as is."""
+    from contracts.stage import ContractError
+    from contracts.verification import Dispute
+    from stages.tests.dispute import resolve
+
+    try:
+        if not ac:
+            raise ContractError("у хука нет критерия приёмки")
+        decision = resolve(Dispute(test=ac, ac=ac, reason=dispute["reason"], hook=str(hook.get("id", ""))),
+                           workspace, llm, sandbox)
+    except ContractError as exc:
+        return {"decision": "reject", "decision_reason": f"спор не рассмотрен: {exc}"}
+    return {"decision": decision.decision, "decision_reason": decision.reason}
 
 
 def _failure_text(build, test) -> str:
