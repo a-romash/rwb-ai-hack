@@ -54,11 +54,17 @@ def state_enum(machine: str) -> str:
     return f"{pascal(machine)}State"
 
 
+def enum_name(name: str, app: dict) -> str:
+    """C# name of an app.json type; a spec may give a type the name of an entity or command."""
+    taken = {pascal(n) for section in ("entities", "commands") for n in _section(app, section)}
+    return pascal(name) + ("Type" if pascal(name) in taken else "")
+
+
 def field_type(spec: dict, app: dict) -> str:
     """C# type of an app.json field, without nullability."""
     kind = spec.get("type")
     if kind == "enum" and isinstance(spec.get("ref"), str) and spec["ref"] in _section(app, "types"):
-        return pascal(spec["ref"])
+        return enum_name(spec["ref"], app)
     if kind == "ref":
         return "Guid"
     if kind == "state" and isinstance(spec.get("machine"), str):
@@ -150,7 +156,7 @@ def model_cs(app: dict) -> str:
     lines = ["namespace App.Domain;", ""]
     for name in sorted(_section(app, "types")):
         values = _section(app, "types")[name].get("values") or []
-        lines += [f"public enum {pascal(name)}", "{", *[f"    {member}," for member in _members(values)], "}", ""]
+        lines += [f"public enum {enum_name(name, app)}", "{", *[f"    {member}," for member in _members(values)], "}", ""]
     for name in sorted(_section(app, "state_machines")):
         states = _section(app, "state_machines")[name].get("states") or []
         lines += [f"public enum {state_enum(name)}", "{", *[f"    {member}," for member in _members(states)], "}", ""]
@@ -178,8 +184,10 @@ def hook_input(token: str, app: dict) -> tuple[str, str]:
     The contract allows entity and command names, `Entity.field` and scalar type names.
     """
     entities, commands, types = _section(app, "entities"), _section(app, "commands"), _section(app, "types")
-    if token in entities or token in commands or token in types:
+    if token in entities or token in commands:
         return pascal(token), camel(token)
+    if token in types:
+        return enum_name(token, app), camel(token)
     if "." in token:
         entity, field = token.split(".", 1)
         spec = (entities.get(entity) or {}).get("fields", {}).get(field)
@@ -188,6 +196,8 @@ def hook_input(token: str, app: dict) -> tuple[str, str]:
             return (cs_type + "?" if _nullable(cs_type, spec) else cs_type), camel(f"{entity}_{field}")
     if token in SCALARS:
         return SCALARS[token], camel(token + "_value")
-    if _IDENT.fullmatch(token):
-        return pascal(token), camel(token)
+    params = _section(app, "params")
+    if token in params:
+        return param_type(params[token]), camel(token)
+    # An unresolved name (G1 reports REF_UNRESOLVED) must not become a C# type that does not exist.
     return "string", camel(token)

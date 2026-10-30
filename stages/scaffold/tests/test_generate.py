@@ -183,6 +183,22 @@ class GenerateTests(unittest.TestCase):
         app["state_machines"]["TicketFlow"]["transitions"][1]["trigger"] = {"timer": "title"}
         self.assertIn("wire it in custom", timers_cs(app))
 
+    def test_weak_spec_still_compiles(self):
+        # A real model run produced explicit nulls and hook inputs that resolve to nothing.
+        from stages.scaffold.domain import hook_input
+        from stages.scaffold.generate import _model_ts
+        app = {"params": {"session_warning_threshold": {"type": "int", "value": 10, "traces": []}},
+               "entities": {"Session": {"label": None, "fields": {"end": {"type": "datetime", "label": None}}}}}
+        self.assertEqual(hook_input("session_warning_threshold", app), ("int", "sessionWarningThreshold"))
+        self.assertEqual(hook_input("current_time", app), ("string", "currentTime"))
+        self.assertNotIn("null", _model_ts(app, {}, [], False))
+        from stages.scaffold.domain import model_cs
+        app["types"] = {"Session": {"kind": "enum", "values": ["active"]}}
+        app["entities"]["Session"]["fields"]["state"] = {"type": "enum", "ref": "Session"}
+        model = model_cs(app)
+        self.assertIn("public enum SessionType", model)
+        self.assertIn("public SessionType? State", model)
+
     def test_equipment_file_list_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
