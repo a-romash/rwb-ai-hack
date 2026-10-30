@@ -1,0 +1,4 @@
+-r ../spec/requirements.txt
+PyMuPDF==1.26.7
+python-docx==1.2.0
+lxml==6.0.2

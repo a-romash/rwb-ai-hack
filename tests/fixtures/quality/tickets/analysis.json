@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "requirements": [
+    {
+      "id": "REQ-01",
+      "text": "Порог допуска включителен"
+    }
+  ],
+  "roles": [
+    {
+      "id": "manager",
+      "name": "Менеджер"
+    }
+  ],
+  "rules": [
+    {
+      "id": "BR-01",
+      "text": "Допуск разрешён начиная с порога",
+      "params": {
+        "MIN_VALUE": {
+          "type": "int",
+          "value": 5
+        }
+      }
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "rules": [
+        "BR-01"
+      ],
+      "stories": [
+        "US-01"
+      ],
+      "ui": true,
+      "gherkin": "Дано значение. Когда проверяется допуск. Тогда значения 4/5/6 дают false/true/true.",
+      "examples": [
+        {
+          "input": 4,
+          "expected": false
+        },
+        {
+          "input": 5,
+          "expected": true
+        },
+        {
+          "input": 6,
+          "expected": true
+        }
+      ]
+    }
+  ],
+  "user_stories": [
+    {
+      "id": "US-01",
+      "role": "manager",
+      "want": "Проверить допуск",
+      "req": [
+        "REQ-01"
+      ]
+    }
+  ],
+  "assumptions": []
+}

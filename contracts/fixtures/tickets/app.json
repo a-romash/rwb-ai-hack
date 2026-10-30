@@ -1,35 +1,93 @@
 {
   "schema_version": 1,
-  "name": "tickets",
+  "meta": {"name": "tickets", "title": "Заявки на ремонт", "lang": "ru-RU", "timezone": "Europe/Moscow", "modules": ["core", "workflow", "scheduler", "notify"]},
   "params": {
-    "MIN_VALUE": 5
+    "SLA_HIGH": {"type": "duration", "value": "PT4H", "traces": ["BR-02"]},
+    "SLA_NORMAL": {"type": "duration", "value": "PT9H", "traces": ["BR-02"]},
+    "SLA_LOW": {"type": "duration", "value": "PT27H", "traces": ["BR-02"]},
+    "WORK_DAYS": {"type": "json", "value": [1, 2, 3, 4, 5], "traces": ["BR-03"]},
+    "WORK_START": {"type": "string", "value": "09:00", "traces": ["BR-03"]},
+    "WORK_END": {"type": "string", "value": "18:00", "traces": ["BR-03"]}
+  },
+  "types": {
+    "Priority": {"kind": "enum", "values": ["low", "normal", "high"], "labels": {"low": "Низкий", "normal": "Обычный", "high": "Высокий"}}
   },
   "entities": {
+    "Employee": {
+      "label": "Сотрудник",
+      "fields": {"name": {"type": "string", "required": true, "label": "Имя", "max": 200}},
+      "traces": ["US-01", "US-02"]
+    },
     "Ticket": {
+      "label": "Заявка",
       "fields": {
-        "value": {
-          "type": "int"
-        }
-      }
+        "title": {"type": "string", "required": true, "label": "Тема", "max": 200},
+        "description": {"type": "text", "required": true, "label": "Описание"},
+        "priority": {"type": "enum", "ref": "Priority", "required": true, "label": "Приоритет"},
+        "author": {"type": "ref", "ref": "Employee", "required": true, "label": "Автор"},
+        "assignee": {"type": "ref", "ref": "Employee", "nullable": true, "label": "Исполнитель"},
+        "created_at": {"type": "datetime", "required": true, "label": "Создана"},
+        "due_at": {"type": "datetime", "computed_by": "SlaDeadline", "label": "Срок"},
+        "created_in_work_time": {"type": "bool", "computed_by": "WorkCalendar", "label": "Создана в рабочее время"},
+        "resolved_at": {"type": "datetime", "nullable": true, "label": "Решена"},
+        "resolution": {"type": "text", "nullable": true, "label": "Решение"},
+        "status": {"type": "state", "machine": "TicketFlow", "label": "Статус"}
+      },
+      "owner": "author",
+      "traces": ["US-01", "US-02", "US-03", "US-04", "US-05"]
     }
   },
   "roles": {
-    "manager": {
-      "name": "Менеджер"
-    }
+    "employee": {"name": "Сотрудник", "demo_users": ["emp1"]},
+    "engineer": {"name": "Инженер", "demo_users": ["eng1"]},
+    "dispatcher": {"name": "Диспетчер", "demo_users": ["disp1"]}
   },
   "permissions": [
-    {
-      "role": "manager",
-      "op": "Ticket.read"
-    }
+    {"role": "employee", "op": "Ticket.create", "scope": "own"},
+    {"role": "employee", "op": "Ticket.read", "scope": "own"},
+    {"role": "engineer", "op": "Ticket.read", "scope": "own"},
+    {"role": "engineer", "op": "TakeTicket", "scope": "all"},
+    {"role": "engineer", "op": "ResolveTicket", "scope": "own"},
+    {"role": "dispatcher", "op": "Ticket.read", "scope": "all"},
+    {"role": "dispatcher", "op": "Employee.read", "scope": "all"}
   ],
-  "state_machines": {},
-  "hooks": {
-    "Allowed": {
-      "traces": [
-        "AC-01"
+  "state_machines": {
+    "TicketFlow": {
+      "entity": "Ticket", "initial": "new", "final": ["resolved"],
+      "states": ["new", "in_progress", "overdue", "resolved"],
+      "transitions": [
+        {"name": "take", "from": ["new"], "to": "in_progress", "trigger": {"command": "TakeTicket"}, "roles": ["engineer"], "traces": ["US-02"]},
+        {"name": "take_overdue", "from": ["overdue"], "to": "overdue", "trigger": {"command": "TakeTicket"}, "roles": ["engineer"], "traces": ["US-02", "AC-07"]},
+        {"name": "expire", "from": ["new", "in_progress"], "to": "overdue", "trigger": {"timer": "due_at"}, "guard": "SlaExpired", "traces": ["BR-04"]},
+        {"name": "resolve", "from": ["in_progress", "overdue"], "to": "resolved", "trigger": {"command": "ResolveTicket"}, "guard": "ResolutionRequired", "roles": ["engineer"], "traces": ["US-03", "BR-01"]}
       ]
     }
-  }
+  },
+  "hooks": {
+    "SlaDeadline": {"kind": "calculator", "in": ["Ticket"], "out": "datetime", "params": ["SLA_HIGH", "SLA_NORMAL", "SLA_LOW", "WORK_DAYS", "WORK_START", "WORK_END"], "rule": "BR-02", "traces": ["AC-04", "AC-05"]},
+    "WorkCalendar": {"kind": "calculator", "in": ["Ticket.created_at"], "out": "bool", "params": ["WORK_DAYS", "WORK_START", "WORK_END"], "rule": "BR-03", "traces": ["AC-04", "AC-06"]},
+    "ResolutionRequired": {"kind": "validator", "in": ["ResolveTicket", "Ticket"], "rule": "BR-01", "traces": ["AC-03"]},
+    "SlaExpired": {"kind": "validator", "in": ["Ticket", "datetime"], "rule": "BR-04", "traces": ["AC-05", "AC-07"]}
+  },
+  "commands": {
+    "TakeTicket": {"entity": "Ticket", "roles": ["engineer"], "input": {}, "effects": ["transition:TicketFlow.take", "transition:TicketFlow.take_overdue"], "traces": ["US-02", "AC-02"]},
+    "ResolveTicket": {"entity": "Ticket", "roles": ["engineer"], "input": {"resolution": {"type": "text", "required": true}}, "effects": ["transition:TicketFlow.resolve"], "traces": ["US-03", "AC-03"]}
+  },
+  "queries": {
+    "OpenTickets": {"entity": "Ticket", "filter": "status == new and assignee == null", "roles": ["engineer", "dispatcher"], "order": "due_at"},
+    "MyTickets": {"entity": "Ticket", "filter": "assignee == current_user", "roles": ["engineer"], "order": "due_at"},
+    "AllTickets": {"entity": "Ticket", "roles": ["dispatcher"], "order": "-created_at"}
+  },
+  "events": {},
+  "integrations": {},
+  "schedules": {},
+  "notifications": {
+    "TicketOverdue": {"on": "TicketExpired", "to": "dispatcher", "channels": ["web"], "text": "Заявка «{title}» просрочена"}
+  },
+  "seed": {
+    "Employee": [{"name": "Сотрудник офиса"}, {"name": "Дежурный инженер"}],
+    "Ticket": [{"title": "Не работает кондиционер", "description": "Нет охлаждения", "priority": "high", "author": 1, "assignee": null, "created_at": "2026-11-06T17:00:00+03:00", "status": "new"}]
+  },
+  "scenarios": [],
+  "custom": []
 }
