@@ -19,7 +19,7 @@ x-backend: &backend
     PIPELINE_FAKE_STAGES: ${PIPELINE_FAKE_STAGES:-0}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   volumes:
-    - ${PWD}/workspaces:/app/workspaces
+    - ./workspaces:/app/workspaces
   restart: unless-stopped
 
 services:
@@ -61,7 +61,7 @@ services:
     <<: *backend
     user: root
     volumes:
-      - ${PWD}/workspaces:/app/workspaces
+      - ./workspaces:/app/workspaces
       - /var/run/docker.sock:/var/run/docker.sock
     command: ["celery", "-A", "app.tasks:celery_app", "worker", "-Q", "build", "--loglevel=info", "--concurrency=1", "--without-gossip", "--without-mingle"]
     depends_on:

@@ -22,11 +22,11 @@ class BindingTest(unittest.TestCase):
         run_id, stage_id = uuid4(), uuid4()
         with patch('app.llm_binding.SessionLocal', Session):
             gateway = make_llm(run_id, stage_id, transport=object())
-            Session.calls = [SimpleNamespace(id=1, status='started', tokens_in=None, tokens_out=None)]
-            self.assertIsNone(gateway.budget()[0])
-            Session.calls = [SimpleNamespace(id=1, status='ok', tokens_in=4, tokens_out=5)]
+            Session.calls = [SimpleNamespace(id=1, status='started', tokens_in=None, tokens_out=None, context_profile='XS', task_class='ui')]
+            self.assertGreater(gateway.budget()[0], 0)
+            Session.calls = [SimpleNamespace(id=1, status='ok', tokens_in=4, tokens_out=5, context_profile='XS', task_class='ui')]
             self.assertEqual(gateway.budget()[0], 9)
-            Session.calls = [SimpleNamespace(id=1, status='ok', tokens_in=4, tokens_out=None)]
-            self.assertIsNone(gateway.budget()[0])
+            Session.calls = [SimpleNamespace(id=1, status='ok', tokens_in=4, tokens_out=None, context_profile='XS', task_class='ui')]
+            self.assertGreater(gateway.budget()[0], 0)
             self.assertEqual(gateway.budget_excluding([1])[0], 0)
             Session.calls = []

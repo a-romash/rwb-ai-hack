@@ -7,10 +7,10 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.models import Event, LLMCall, Run
-from harness.llm import Gateway, HTTPTransport
+from harness.llm import Gateway, HTTPTransport, PROFILES, TASKS
 
 
-def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None) -> Gateway:
+def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None, attempt=1) -> Gateway:
     with SessionLocal() as session:
         run = session.get(Run, run_id)
         if run is None:
@@ -54,9 +54,17 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
             if run is None:
                 raise LookupError('Прогон не найден')
             calls = session.scalars(select(LLMCall).where(LLMCall.run_id == run_id, LLMCall.from_cache.is_(False))).all()
-            # An interrupted request or response without usage cannot be charged as zero.
-            unknown = any((call.status == 'started' or call.tokens_in is None or call.tokens_out is None) and call.id not in exclude_unknown for call in calls)
-            used = None if unknown else sum(call.tokens_in + call.tokens_out for call in calls if call.tokens_in is not None and call.tokens_out is not None)
+            # Reserve the maximum possible input/output for each unknown request;
+            # recorded usage stays NULL and reports remain honest.
+            used = 0
+            for call in calls:
+                if call.id in exclude_unknown and (call.tokens_in is None or call.tokens_out is None):
+                    continue
+                profile_limit = PROFILES.get(call.context_profile, PROFILES['M'])[0]
+                policy = TASKS.get(call.task_class)
+                output_limit = policy[1] + policy[3] if policy else 10000
+                used += (call.tokens_in if call.tokens_in is not None else profile_limit)
+                used += (call.tokens_out if call.tokens_out is not None else output_limit)
             elapsed = (datetime.now(timezone.utc) - (run.started_at or run.created_at)).total_seconds() / 60
             return used, run.tokens_limit, elapsed, run.minutes_limit
 
@@ -77,4 +85,4 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
 
     return Gateway(start=start, finish=finish, budget=budget, event=event, transport=client,
                    profile=config.get('context_profile', 'M'), cache_dir=cache_dir, tokenizer=tokenizer, budget_excluding=budget,
-                   structured=config.get('structured_output', True))
+                   structured=config.get('structured_output', True), cache_scope=f'{run_id}:{stage_run_id}' if attempt > 1 else '')

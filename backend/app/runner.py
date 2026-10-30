@@ -129,7 +129,7 @@ def _execute(stage_id):
                 if describe(root, path)[0] != digest:
                     raise ContractError(f'Тест изменён без одобренного спора: {path}')
         module = importlib.import_module(f'harness.fake_stages.{stage}' if fake else STAGES_BY_KEY[stage].module)
-        llm = FakeLLM({}) if fake else make_llm(run_id, UUID(str(stage_id)))
+        llm = FakeLLM({}) if fake else make_llm(run_id, UUID(str(stage_id)), attempt=attempt)
         if fake:
             sandbox = FakeSandbox({})
         else:
@@ -198,8 +198,11 @@ def _execute(stage_id):
                 for finding in result.findings:
                     if n == max(r for g, r, _ in gates if g == name) and finding.severity == 'error':
                         session.add(SpecFlag(run_id=run_id, spec_version=1, path=finding.path, status='questioned', reason=finding.message, gate=name))
-                        for dependent in _dependent_paths(root, {**inp.artifacts, **output.artifacts}, finding.path):
-                            session.add(SpecFlag(run_id=run_id, spec_version=1, path=dependent, status='blocked_by', reason=finding.message, gate=name))
+                        if name in ('G0', 'G1'):
+                            for dependent in _dependent_paths(root, {**inp.artifacts, **output.artifacts}, finding.path):
+                                session.add(SpecFlag(run_id=run_id, spec_version=1, path=dependent, status='blocked_by', reason=finding.message, gate=name))
+            for flag in output.flags:
+                session.add(SpecFlag(run_id=run_id, spec_version=run.spec_version, path=flag.path, status=flag.status, reason=flag.reason, gate=flag.gate))
             row.output_commit, row.summary = revision, output.summary
             run = session.get(Run, run_id)
             if run.status == 'cancelled':
