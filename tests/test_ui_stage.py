@@ -13,8 +13,8 @@ from stages.ui.appview import AppView, derived_event
 from stages.ui.base import derive_base
 
 ROOT = Path(__file__).resolve().parents[1]
-UI_FIXTURE = ROOT / "contracts" / "fixtures" / "tickets" / "ui.json"
-# Stand-ins for Sanya's fixtures until contracts/fixtures/tickets/{app,analysis}.json land.
+UI_FIXTURE = ROOT / "tests" / "fixtures" / "ui" / "tickets" / "ui.json"
+# A self-consistent app, analysis and ui of their own: the gate logic is tested apart from the canonical fixtures.
 APP = json.loads((ROOT / "tests" / "fixtures" / "ui" / "tickets" / "app.json").read_text(encoding="utf-8"))
 ANALYSIS = json.loads((ROOT / "tests" / "fixtures" / "ui" / "tickets" / "analysis.json").read_text(encoding="utf-8"))
 

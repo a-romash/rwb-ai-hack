@@ -9,7 +9,7 @@ from contracts.ui import (PATTERN_SOURCES, PATTERN_WIDGETS, REQUIRED_STATES, Exp
                           OpenStep, SeedRef, TapStep, UiSpec, load_ui, screen_kebab)
 
 ROOT = Path(__file__).resolve().parents[1]
-FIXTURE = ROOT / "contracts" / "fixtures" / "tickets" / "ui.json"
+FIXTURE = ROOT / "tests" / "fixtures" / "ui" / "tickets" / "ui.json"
 
 
 class UiContractTest(unittest.TestCase):

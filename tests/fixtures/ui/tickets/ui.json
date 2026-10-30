@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "screens": {
+    "TicketList": {
+      "platform": "web",
+      "roles": ["engineer", "dispatcher"],
+      "pattern": "list",
+      "title": "Заявки",
+      "source": {"query": "OpenTickets"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "ticket-list.title"},
+        {"kind": "field", "field": "Ticket.priority", "testid": "ticket-list.priority"},
+        {"kind": "status", "field": "Ticket.status", "testid": "ticket-list.status"},
+        {"kind": "countdown", "field": "Ticket.due_at", "testid": "ticket-list.due"}
+      ],
+      "filters": [
+        {"field": "Ticket.priority", "testid": "ticket-list.filter-priority"},
+        {"field": "Ticket.status", "testid": "ticket-list.filter-status"}
+      ],
+      "actions": [
+        {"command": "TakeTicket", "testid": "ticket-list.take", "confirm": true,
+         "copy": "ticket.take.confirm", "then": "TicketDetail"}
+      ],
+      "live": ["TicketTaken", "TicketExpired", "TicketResolved"],
+      "states": {
+        "loading": "Загружаем заявки…",
+        "empty": "Нет открытых заявок",
+        "error": "Не удалось загрузить заявки. Попробуйте ещё раз.",
+        "forbidden": "У вас нет доступа к очереди заявок"
+      },
+      "nav": ["TicketDetail"]
+    },
+    "MyTickets": {
+      "platform": "web",
+      "roles": ["employee", "engineer"],
+      "pattern": "list",
+      "title": "Мои заявки",
+      "source": {"query": "MyTickets"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "my-tickets.title"},
+        {"kind": "status", "field": "Ticket.status", "testid": "my-tickets.status"},
+        {"kind": "countdown", "field": "Ticket.due_at", "testid": "my-tickets.due"}
+      ],
+      "live": ["TicketTaken", "TicketExpired", "TicketResolved"],
+      "states": {
+        "loading": "Загружаем ваши заявки…",
+        "empty": "Вы ещё не создавали заявок",
+        "error": "Не удалось загрузить заявки. Попробуйте ещё раз.",
+        "forbidden": "Нет доступа"
+      },
+      "nav": ["TicketDetail", "TicketForm"]
+    },
+    "TicketDetail": {
+      "platform": "web",
+      "roles": ["employee", "engineer", "dispatcher"],
+      "pattern": "detail",
+      "title": "Заявка",
+      "source": {"entity": "Ticket"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "ticket-detail.title", "group": "ticket.group.main"},
+        {"kind": "field", "field": "Ticket.description", "testid": "ticket-detail.description", "group": "ticket.group.main"},
+        {"kind": "field", "field": "Ticket.priority", "testid": "ticket-detail.priority", "group": "ticket.group.main"},
+        {"kind": "status", "field": "Ticket.status", "testid": "ticket-detail.status", "group": "ticket.group.work"},
+        {"kind": "countdown", "field": "Ticket.due_at", "testid": "ticket-detail.due", "group": "ticket.group.work"},
+        {"kind": "field", "field": "Ticket.assignee", "testid": "ticket-detail.assignee", "group": "ticket.group.work"},
+        {"kind": "field", "field": "Ticket.resolution", "testid": "ticket-detail.resolution", "group": "ticket.group.work"},
+        {"kind": "action_button", "command": "TakeTicket", "testid": "ticket-detail.take"},
+        {"kind": "timeline", "field": "Ticket.status", "testid": "ticket-detail.history"}
+      ],
+      "live": ["TicketTaken", "TicketExpired", "TicketResolved"],
+      "states": {
+        "loading": "Загружаем заявку…",
+        "empty": "Заявка не найдена",
+        "error": "Не удалось загрузить заявку. Попробуйте ещё раз.",
+        "forbidden": "У вас нет доступа к этой заявке"
+      },
+      "nav": ["ResolveTicketForm"]
+    },
+    "TicketForm": {
+      "platform": "web",
+      "roles": ["employee"],
+      "pattern": "form",
+      "title": "Новая заявка",
+      "source": {"entity": "Ticket"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "ticket-form.title"},
+        {"kind": "field", "field": "Ticket.description", "testid": "ticket-form.description"},
+        {"kind": "field", "field": "Ticket.priority", "testid": "ticket-form.priority"}
+      ],
+      "actions": [
+        {"command": "Ticket.create", "testid": "ticket-form.submit", "then": "TicketDetail"}
+      ],
+      "states": {
+        "loading": "Готовим форму…",
+        "empty": "Нечего показать",
+        "error": "Не удалось сохранить заявку. Проверьте поля и попробуйте ещё раз.",
+        "forbidden": "Создавать заявки могут только сотрудники"
+      }
+    },
+    "ResolveTicketForm": {
+      "platform": "web",
+      "roles": ["engineer"],
+      "pattern": "form",
+      "title": "Закрыть заявку",
+      "source": {"command": "ResolveTicket"},
+      "widgets": [
+        {"kind": "field", "field": "ResolveTicket.resolution", "testid": "resolve-ticket-form.resolution"}
+      ],
+      "actions": [
+        {"command": "ResolveTicket", "testid": "resolve-ticket-form.submit", "confirm": true,
+         "copy": "ticket.resolve.confirm", "then": "TicketDetail"}
+      ],
+      "states": {
+        "loading": "Готовим форму…",
+        "empty": "Нечего показать",
+        "error": "Не удалось закрыть заявку. Попробуйте ещё раз.",
+        "forbidden": "Закрывать заявки могут только инженеры"
+      }
+    },
+    "Dashboard": {
+      "platform": "web",
+      "roles": ["dispatcher"],
+      "pattern": "dashboard",
+      "title": "Сводка",
+      "widgets": [
+        {"kind": "kpi", "query": "OpenTickets", "agg": "count", "label": "dashboard.kpi.open", "testid": "dashboard.open"},
+        {"kind": "kpi", "query": "OverdueTickets", "agg": "count", "label": "dashboard.kpi.overdue", "testid": "dashboard.overdue"},
+        {"kind": "kpi", "query": "ResolvedTickets", "agg": "avg", "field": "Ticket.resolution_time",
+         "label": "dashboard.kpi.avg-resolution", "testid": "dashboard.avg-resolution"}
+      ],
+      "live": ["TicketTaken", "TicketExpired", "TicketResolved"],
+      "states": {
+        "loading": "Считаем показатели…",
+        "empty": "Пока нет данных для сводки",
+        "error": "Не удалось загрузить сводку. Попробуйте ещё раз.",
+        "forbidden": "Сводку видят только диспетчеры"
+      },
+      "nav": ["TicketList", "Alerts"]
+    },
+    "Alerts": {
+      "platform": "web",
+      "roles": ["dispatcher"],
+      "pattern": "feed",
+      "title": "Просроченные заявки",
+      "source": {"query": "OverdueTickets"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "alerts.title"},
+        {"kind": "status", "field": "Ticket.status", "testid": "alerts.status"},
+        {"kind": "field", "field": "Ticket.assignee", "testid": "alerts.assignee"}
+      ],
+      "live": ["TicketExpired"],
+      "states": {
+        "loading": "Загружаем события…",
+        "empty": "Просроченных заявок нет",
+        "error": "Не удалось загрузить события. Попробуйте ещё раз.",
+        "forbidden": "Ленту видят только диспетчеры"
+      },
+      "nav": ["TicketDetail"]
+    },
+    "MobileQueue": {
+      "platform": "mobile",
+      "roles": ["engineer"],
+      "pattern": "list",
+      "title": "Очередь",
+      "source": {"query": "OpenTickets"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "mobile-queue.title"},
+        {"kind": "status", "field": "Ticket.status", "testid": "mobile-queue.status"},
+        {"kind": "countdown", "field": "Ticket.due_at", "testid": "mobile-queue.due"}
+      ],
+      "actions": [
+        {"command": "TakeTicket", "testid": "mobile-queue.take", "confirm": true,
+         "copy": "ticket.take.confirm", "then": "MobileTicket"}
+      ],
+      "live": ["TicketTaken", "TicketExpired"],
+      "states": {
+        "loading": "Загружаем очередь…",
+        "empty": "Очередь пуста",
+        "error": "Не удалось загрузить очередь",
+        "forbidden": "Нет доступа к очереди",
+        "offline": "Нет сети. Показана последняя загруженная очередь."
+      },
+      "nav": ["MobileTicket"]
+    },
+    "MobileTicket": {
+      "platform": "mobile",
+      "roles": ["engineer"],
+      "pattern": "detail",
+      "title": "Заявка",
+      "source": {"entity": "Ticket"},
+      "widgets": [
+        {"kind": "field", "field": "Ticket.title", "testid": "mobile-ticket.title"},
+        {"kind": "field", "field": "Ticket.description", "testid": "mobile-ticket.description"},
+        {"kind": "status", "field": "Ticket.status", "testid": "mobile-ticket.status"},
+        {"kind": "countdown", "field": "Ticket.due_at", "testid": "mobile-ticket.due"},
+        {"kind": "action_button", "command": "TakeTicket", "testid": "mobile-ticket.take"}
+      ],
+      "live": ["TicketTaken", "TicketExpired"],
+      "states": {
+        "loading": "Загружаем заявку…",
+        "empty": "Заявка не найдена",
+        "error": "Не удалось загрузить заявку",
+        "forbidden": "Нет доступа к заявке",
+        "offline": "Нет сети. Данные могут быть устаревшими."
+      }
+    }
+  },
+  "menus": {
+    "employee": {"web": ["MyTickets"]},
+    "engineer": {"web": ["TicketList", "MyTickets"], "mobile": ["MobileQueue"]},
+    "dispatcher": {"web": ["Dashboard", "TicketList", "Alerts"]}
+  },
+  "home": {
+    "employee": {"web": "MyTickets"},
+    "engineer": {"web": "TicketList", "mobile": "MobileQueue"},
+    "dispatcher": {"web": "Dashboard"}
+  },
+  "walks": {
+    "US-01": {
+      "role": "employee", "platform": "web",
+      "steps": [
+        {"open": "MyTickets"},
+        {"tap": "TicketForm"},
+        {"fill": "Ticket.title", "value": {"seed": "Ticket[0].title"}},
+        {"fill": "Ticket.description", "value": {"seed": "Ticket[0].description"}},
+        {"fill": "Ticket.priority", "value": {"seed": "Ticket[0].priority"}},
+        {"tap": "Ticket.create"},
+        {"expect": {"screen": "TicketDetail", "status": "new"}}
+      ],
+      "covers": ["AC-01"]
+    },
+    "US-02": {
+      "role": "engineer", "platform": "web",
+      "steps": [
+        {"open": "TicketList"},
+        {"tap": "TakeTicket", "row": {"seed": "Ticket[0]"}},
+        {"expect": {"screen": "TicketDetail", "status": "in_progress"}}
+      ],
+      "covers": ["AC-02"]
+    },
+    "US-03": {
+      "role": "engineer", "platform": "web",
+      "steps": [
+        {"open": "TicketList"},
+        {"tap": "TicketDetail", "row": {"seed": "Ticket[1]"}},
+        {"tap": "ResolveTicketForm"},
+        {"tap": "ResolveTicket"},
+        {"expect": {"error": "ResolutionRequired", "copy": "error.ResolutionRequired"}},
+        {"fill": "ResolveTicket.resolution", "value": {"gen": "valid"}},
+        {"tap": "ResolveTicket"},
+        {"expect": {"screen": "TicketDetail", "status": "resolved"}}
+      ],
+      "covers": ["AC-06", "AC-07"]
+    },
+    "US-04": {
+      "role": "dispatcher", "platform": "web",
+      "steps": [
+        {"open": "Dashboard"},
+        {"expect": {"visible": ["dashboard.open", "dashboard.overdue", "dashboard.avg-resolution"]}}
+      ],
+      "covers": ["AC-08"]
+    },
+    "US-05": {
+      "role": "dispatcher", "platform": "web",
+      "steps": [
+        {"open": "Alerts"},
+        {"expect": {"row": {"seed": "Ticket[2]"}, "status": "overdue"}}
+      ],
+      "covers": ["AC-09"]
+    },
+    "US-06": {
+      "role": "engineer", "platform": "mobile",
+      "steps": [
+        {"open": "MobileQueue"},
+        {"expect": {"row": {"seed": "Ticket[0]"}}},
+        {"tap": "MobileTicket", "row": {"seed": "Ticket[0]"}},
+        {"expect": {"screen": "MobileTicket", "visible": ["mobile-ticket.take"]}}
+      ],
+      "covers": ["AC-10"]
+    }
+  },
+  "copy": {
+    "ticket.take.confirm": "Взять заявку в работу?",
+    "ticket.resolve.confirm": "Закрыть заявку с этим решением?",
+    "ticket.group.main": "Заявка",
+    "ticket.group.work": "Работа",
+    "dashboard.kpi.open": "Открытые",
+    "dashboard.kpi.overdue": "Просроченные",
+    "dashboard.kpi.avg-resolution": "Среднее время решения",
+    "error.ResolutionRequired": "Укажите решение, чтобы закрыть заявку"
+  },
+  "device": {"web": [], "mobile": ["local_notification"]}
+}

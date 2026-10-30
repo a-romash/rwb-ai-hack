@@ -75,8 +75,10 @@
   },
   "queries": {
     "OpenTickets": {"entity": "Ticket", "filter": "status == new and assignee == null", "roles": ["engineer", "dispatcher"], "order": "due_at"},
-    "MyTickets": {"entity": "Ticket", "filter": "assignee == current_user", "roles": ["engineer"], "order": "due_at"},
-    "AllTickets": {"entity": "Ticket", "roles": ["dispatcher"], "order": "-created_at"}
+    "MyTickets": {"entity": "Ticket", "filter": "author == current_user or assignee == current_user", "roles": ["employee", "engineer"], "order": "due_at"},
+    "AllTickets": {"entity": "Ticket", "roles": ["dispatcher"], "order": "-created_at"},
+    "OverdueTickets": {"entity": "Ticket", "filter": "status == overdue", "roles": ["dispatcher"], "order": "due_at"},
+    "ResolvedTickets": {"entity": "Ticket", "filter": "status == resolved", "roles": ["dispatcher"], "order": "-resolved_at"}
   },
   "events": {},
   "integrations": {},
@@ -86,7 +88,11 @@
   },
   "seed": {
     "Employee": [{"name": "Сотрудник офиса"}, {"name": "Дежурный инженер"}],
-    "Ticket": [{"title": "Не работает кондиционер", "description": "Нет охлаждения", "priority": "high", "author": 1, "assignee": null, "created_at": "2026-11-06T17:00:00+03:00", "status": "new"}]
+    "Ticket": [
+      {"title": "Не работает кондиционер", "description": "Нет охлаждения", "priority": "high", "author": 1, "assignee": null, "created_at": "2026-11-06T17:00:00+03:00", "status": "new"},
+      {"title": "Сломался стул", "description": "Отвалилось колесо", "priority": "normal", "author": 1, "assignee": 2, "created_at": "2026-11-09T10:00:00+03:00", "status": "in_progress"},
+      {"title": "Принтер не печатает", "description": "Замятие бумаги", "priority": "low", "author": 1, "assignee": null, "created_at": "2026-11-02T10:00:00+03:00", "status": "overdue"}
+    ]
   },
   "scenarios": [],
   "custom": []

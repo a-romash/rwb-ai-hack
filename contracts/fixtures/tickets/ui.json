@@ -125,8 +125,7 @@
       "widgets": [
         {"kind": "kpi", "query": "OpenTickets", "agg": "count", "label": "dashboard.kpi.open", "testid": "dashboard.open"},
         {"kind": "kpi", "query": "OverdueTickets", "agg": "count", "label": "dashboard.kpi.overdue", "testid": "dashboard.overdue"},
-        {"kind": "kpi", "query": "ResolvedTickets", "agg": "avg", "field": "Ticket.resolution_time",
-         "label": "dashboard.kpi.avg-resolution", "testid": "dashboard.avg-resolution"}
+        {"kind": "kpi", "query": "ResolvedTickets", "agg": "count", "label": "dashboard.kpi.resolved", "testid": "dashboard.resolved"}
       ],
       "live": ["TicketTaken", "TicketExpired", "TicketResolved"],
       "states": {
@@ -233,15 +232,16 @@
       "role": "engineer", "platform": "web",
       "steps": [
         {"open": "TicketList"},
+        {"expect": {"row": {"seed": "Ticket[0]"}}},
         {"tap": "TakeTicket", "row": {"seed": "Ticket[0]"}},
         {"expect": {"screen": "TicketDetail", "status": "in_progress"}}
       ],
-      "covers": ["AC-02"]
+      "covers": ["AC-02", "AC-08"]
     },
     "US-03": {
       "role": "engineer", "platform": "web",
       "steps": [
-        {"open": "TicketList"},
+        {"open": "MyTickets"},
         {"tap": "TicketDetail", "row": {"seed": "Ticket[1]"}},
         {"tap": "ResolveTicketForm"},
         {"tap": "ResolveTicket"},
@@ -250,33 +250,23 @@
         {"tap": "ResolveTicket"},
         {"expect": {"screen": "TicketDetail", "status": "resolved"}}
       ],
-      "covers": ["AC-06", "AC-07"]
+      "covers": ["AC-03"]
     },
     "US-04": {
-      "role": "dispatcher", "platform": "web",
-      "steps": [
-        {"open": "Dashboard"},
-        {"expect": {"visible": ["dashboard.open", "dashboard.overdue", "dashboard.avg-resolution"]}}
-      ],
-      "covers": ["AC-08"]
-    },
-    "US-05": {
       "role": "dispatcher", "platform": "web",
       "steps": [
         {"open": "Alerts"},
         {"expect": {"row": {"seed": "Ticket[2]"}, "status": "overdue"}}
       ],
-      "covers": ["AC-09"]
+      "covers": []
     },
-    "US-06": {
-      "role": "engineer", "platform": "mobile",
+    "US-05": {
+      "role": "dispatcher", "platform": "web",
       "steps": [
-        {"open": "MobileQueue"},
-        {"expect": {"row": {"seed": "Ticket[0]"}}},
-        {"tap": "MobileTicket", "row": {"seed": "Ticket[0]"}},
-        {"expect": {"screen": "MobileTicket", "visible": ["mobile-ticket.take"]}}
+        {"open": "Dashboard"},
+        {"expect": {"visible": ["dashboard.open", "dashboard.overdue", "dashboard.resolved"]}}
       ],
-      "covers": ["AC-10"]
+      "covers": ["AC-07", "AC-09"]
     }
   },
   "copy": {
@@ -286,7 +276,7 @@
     "ticket.group.work": "Работа",
     "dashboard.kpi.open": "Открытые",
     "dashboard.kpi.overdue": "Просроченные",
-    "dashboard.kpi.avg-resolution": "Среднее время решения",
+    "dashboard.kpi.resolved": "Решённые",
     "error.ResolutionRequired": "Укажите решение, чтобы закрыть заявку"
   },
   "device": {"web": [], "mobile": ["local_notification"]}
