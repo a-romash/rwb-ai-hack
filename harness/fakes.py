@@ -40,11 +40,22 @@ class FakeLLM:
 
     budget_after=N allows N calls; later calls raise BudgetExceeded.
     Missing/exhausted scripts fail explicitly rather than inventing an answer.
+    FakeLLM.recorded() replays answers recorded by task_id (or task_class) instead of queues.
     """
-    def __init__(self, responses: dict[str | tuple[str, str], list], *, budget_after: int | None = None):
+    def __init__(self, responses: dict[str | tuple[str, str], list], *, budget_after: int | None = None,
+                 context_window: int = 32768):
         self.responses = {key: deque(values) for key, values in responses.items()}
+        self.recordings: dict[str, object] = {}
         self.budget_after = budget_after
+        self.context_window = context_window
         self.calls: list[dict] = []
+
+    @classmethod
+    def recorded(cls, answers: dict[str, object], *, context_window: int = 32768) -> "FakeLLM":
+        """One reusable answer per task_id (falling back to task_class); a callable gets the call."""
+        fake = cls({}, context_window=context_window)
+        fake.recordings = dict(answers)
+        return fake
 
     def __call__(self, *, task_class: str, system: str, user: str,
                  output: type[BaseModel] | Literal["code", "text"],
@@ -52,13 +63,22 @@ class FakeLLM:
         self.calls.append(dict(task_class=task_class, system=system, user=user, output=output, task_id=task_id))
         if self.budget_after is not None and len(self.calls) > self.budget_after:
             raise BudgetExceeded("Бюджет FakeLLM исчерпан")
-        key = (task_class, task_id) if (task_class, task_id) in self.responses else task_class
-        if not self.responses.get(key):
-            raise AssertionError(f"Нет ответа FakeLLM для {key!r}")
-        value = self.responses[key].popleft()
+        if self.recordings:
+            value = self.recordings.get(task_id, self.recordings.get(task_class))
+            if value is None:
+                raise ContractError(f"В FakeLLM нет записанного ответа для {task_id}")
+            if callable(value):
+                value = value(self.calls[-1])
+        else:
+            key = (task_class, task_id) if (task_class, task_id) in self.responses else task_class
+            if not self.responses.get(key):
+                raise AssertionError(f"Нет ответа FakeLLM для {key!r}")
+            value = self.responses[key].popleft()
         if isinstance(value, Exception):
             raise value
         if output in ("code", "text"):
+            if self.recordings and not isinstance(value, str):
+                value = str(value)
             if not isinstance(value, str):
                 raise ContractError("FakeLLM ожидает строковый ответ")
             return value

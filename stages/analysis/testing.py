@@ -1,46 +1,31 @@
-"""Локальные фейки по §3; не реализуют чужой harness и не вызывают сеть."""
+"""Recorded-answer doubles for analysis/spec: thin wrappers over harness.fakes."""
 from __future__ import annotations
 
-import copy
-import json
 from pathlib import Path
 from typing import Callable
+import json
 
-from pydantic import BaseModel
-
-from stages.analysis.compat import ContractError, StageInput, StageOutput
-
-
-class FakeLLM:
-    def __init__(self, responses: dict, *, context_window: int = 32768) -> None:
-        self.responses = copy.deepcopy(responses)
-        self.context_window = context_window
-        self.calls: list[dict] = []
-
-    @classmethod
-    def from_file(cls, path: Path) -> "FakeLLM":
-        return cls(json.loads(path.read_text(encoding="utf-8")))
-
-    def __call__(self, *, task_class: str, system: str, user: str,
-                 output: type[BaseModel] | str, task_id: str | None = None):
-        self.calls.append({"task_class": task_class, "system": system, "user": user, "output": output.__name__ if isinstance(output, type) else output, "task_id": task_id})
-        response = self.responses.get(task_id, self.responses.get(task_class))
-        if response is None:
-            raise ContractError(f"В FakeLLM нет записанного ответа для {task_id}")
-        if isinstance(response, Exception):
-            raise response
-        if callable(response):
-            response = response(self.calls[-1])
-        return output.model_validate(response) if isinstance(output, type) else str(response)
+from harness.fakes import FakeLLM as _PlatformFakeLLM
+from harness.fakes import FakeSandbox as _PlatformFakeSandbox
+from stages.analysis.compat import StageInput, StageOutput
 
 
-class FakeSandbox:
-    def run(self, *args, **kwargs):
-        raise AssertionError("Этапы analysis/spec не должны запускать песочницу")
+def FakeLLM(responses: dict, *, context_window: int = 32768) -> _PlatformFakeLLM:
+    """Answers recorded by task_id (stages/*/tests/fixtures/*-responses.json)."""
+    return _PlatformFakeLLM.recorded(responses, context_window=context_window)
+
+
+def FakeSandbox() -> _PlatformFakeSandbox:
+    """analysis/spec never run the sandbox: any call fails the test."""
+    return _PlatformFakeSandbox({})
+
+
+def load_responses(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def run_stage_locally(execute: Callable, *, stage: str, requirements: str,
-                      workspace: Path, llm: FakeLLM, artifacts: dict[str, str] | None = None,
+                      workspace: Path, llm, artifacts: dict[str, str] | None = None,
                       autonomy: str = "A2", answers: dict[str, str] | None = None) -> StageOutput:
     workspace.mkdir(parents=True, exist_ok=True)
     (workspace / "input").mkdir(exist_ok=True)

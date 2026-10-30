@@ -8,10 +8,9 @@ from unittest.mock import patch
 
 from contracts.analysis import Analysis
 from contracts.app import App
-from stages.analysis.compat import BudgetExceeded, StageFailed
+from stages.analysis.compat import BudgetExceeded
 from stages.analysis.models import Extraction
-from stages.spec.eval import continue_context_limited_repair, evaluate, prompt_hashes
-from stages.spec.eval_gateway import EvalGateway
+from stages.spec.eval import continue_context_limited_repair, evaluate, live_llm, prompt_hashes
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -43,8 +42,9 @@ class EvalTests(unittest.TestCase):
             result.update(mode="live", model="qwen/qwen3.8-27b", status="contract_error",
                           error_type="ContractError", reason="Контекст запроса превышает профиль окна", tokens=100,
                           calls=[{"task_id": "spec.repair.1.0", "total_tokens": 100}])
-            with patch("stages.spec.eval.EvalGateway") as factory:
+            with patch("stages.spec.eval.live_llm") as factory:
                 factory.return_value.side_effect = BudgetExceeded("Тестовый лимит")
+                factory.return_value.calls = []
                 continued = continue_context_limited_repair(result)
             self.assertEqual(continued["status"], "partial")
             self.assertEqual(continued["tokens"], 100)
@@ -84,45 +84,38 @@ class EvalTests(unittest.TestCase):
         self.assertEqual(results["prompt_hashes"], prompt_hashes())
         self.assertTrue(all(row["status"] == "passed" for row in results["results"] if row["case"] in ("tickets", "equipment")))
 
-    def test_gateway_is_stateless_and_records_actual_usage(self) -> None:
+    def test_live_llm_is_the_platform_gateway_and_records_actual_usage(self) -> None:
         sent: list[dict] = []
         def request(req, timeout):
             sent.append(json.loads(req.data))
-            return FakeHTTPResponse({"model": "qwen/qwen3.8-27b", "choices": [{"message": {"content": json.dumps({"result": {"requirements": [], "noise": []}})}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}})
-        with tempfile.TemporaryDirectory() as tmp, patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen", request):
-            gateway = EvalGateway(workspace=Path(tmp))
+            return FakeHTTPResponse({"model": "qwen/qwen3.8-27b", "choices": [{"message": {"content": json.dumps({"requirements": [], "noise": []})}, "finish_reason": "stop"}], "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}})
+        with patch.dict("os.environ", {"LLM_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen", request):
+            llm = live_llm("qwen/qwen3.8-27b", 32768, 100000, 10)
             for index in range(2):
-                result = gateway(task_class="req_extract", system="System", user=f"Input {index}", output=Extraction, task_id=str(index))
+                result = llm(task_class="req_extract", system="System", user=f"Input {index}", output=Extraction, task_id=str(index))
                 self.assertEqual(result.requirements, [])
-            self.assertEqual(gateway.tokens_used, 30)
-            self.assertEqual(len(sent[0]["messages"]), 2)
-            self.assertIn("OUTPUT_SCHEMA", sent[0]["messages"][0]["content"])
-            self.assertIn('"requirements"', sent[0]["messages"][0]["content"])
-            self.assertEqual(len(sent[1]["messages"]), 2)
-            self.assertNotIn("Input 0", str(sent[1]))
-            self.assertNotIn("test-only-secret", str(gateway.calls))
-            self.assertEqual(gateway.calls[0]["total_tokens"], 15)
+        self.assertEqual(llm.tokens_used, 30)
+        self.assertEqual(len(sent[1]["messages"]), 2)          # one-shot: no history between calls
+        self.assertNotIn("Input 0", str(sent[1]))
+        self.assertEqual(sent[0]["provider"]["order"], ["DeepInfra"])
+        self.assertNotIn("test-only-secret", str(llm.calls))
+        self.assertEqual(llm.calls[0]["total_tokens"], 15)
+        self.assertEqual(llm.context_window, 32000)              # profile M of the gateway
 
-    def test_gateway_enforces_budget_before_call(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            gateway = EvalGateway(workspace=Path(tmp), max_calls=0)
+    def test_live_llm_enforces_call_budget_before_sending(self) -> None:
+        with patch.dict("os.environ", {"LLM_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen") as network:
+            llm = live_llm("qwen/qwen3.8-27b", 32768, 100000, 0)
             with self.assertRaises(BudgetExceeded):
-                gateway(task_class="req_extract", system="", user="", output=Extraction)
-
-    def test_gateway_reserves_input_tokens_in_budget(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen") as network:
-            gateway = EvalGateway(workspace=Path(tmp), max_tokens=100)
-            with self.assertRaises(BudgetExceeded):
-                gateway(task_class="req_extract", system="System", user="Input", output=Extraction)
+                llm(task_class="req_extract", system="", user="", output=Extraction)
             network.assert_not_called()
-            self.assertEqual(gateway.calls, [])
 
-    def test_gateway_rejects_model_substitution(self) -> None:
+    def test_live_llm_rejects_model_substitution(self) -> None:
         response = {"model": "different/model", "choices": [], "usage": {}}
-        with tempfile.TemporaryDirectory() as tmp, patch.dict("os.environ", {"OPENROUTER_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen", return_value=FakeHTTPResponse(response)):
-            gateway = EvalGateway(workspace=Path(tmp))
-            with self.assertRaises(StageFailed):
-                gateway(task_class="req_extract", system="", user="", output=Extraction)
+        with patch.dict("os.environ", {"LLM_API_KEY": "test-only-secret"}), patch("urllib.request.urlopen", return_value=FakeHTTPResponse(response)):
+            llm = live_llm("qwen/qwen3.8-27b", 32768, 100000, 10)
+            with self.assertRaises(Exception) as caught:
+                llm(task_class="req_extract", system="", user="", output=Extraction)
+        self.assertIn("подменил", str(caught.exception))
 
 
 if __name__ == "__main__":

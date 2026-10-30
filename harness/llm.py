@@ -41,12 +41,12 @@ class TransportError(Exception):
 
 class HTTPTransport:
     """OpenAI-compatible endpoint; provider-specific parameters only for OpenRouter."""
-    def __init__(self, *, base_url=None, api_key=None, model=None, provider=None, timeout=120, opener=urllib.request.urlopen):
+    def __init__(self, *, base_url=None, api_key=None, model=None, provider=None, timeout=120, opener=None):
         self.base_url = (base_url or llm_config.base_url()).rstrip('/')
         self.api_key = api_key if api_key is not None else llm_config.api_key()
         self.model = model or llm_config.model()
         self.provider = provider if provider is not None else llm_config.provider(self.base_url)
-        self.timeout, self.opener = timeout, opener
+        self.timeout, self.opener = timeout, opener or urllib.request.urlopen
 
     def complete(self, messages, *, schema, effort, reasoning_tokens, temperature, max_tokens):
         if not self.api_key and llm_config.key_required(self.base_url):
@@ -61,11 +61,18 @@ class HTTPTransport:
                 payload.update(top_p=.95, top_k=20)
         if schema:
             payload['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'response', 'strict': True, 'schema': schema}}
+        headers = {'Content-Type': 'application/json'}
+        if self.api_key:
+            headers['Authorization'] = 'Bearer ' + self.api_key
         request = urllib.request.Request(self.base_url + '/chat/completions', data=json.dumps(payload).encode(),
-            headers={'Authorization': 'Bearer ' + self.api_key, 'Content-Type': 'application/json'}, method='POST')
+            headers=headers, method='POST')
         try:
             with self.opener(request, timeout=self.timeout) as response:
                 body = json.loads(response.read())
+            returned = str(body.get('model') or self.model)
+            if self.provider and returned.casefold() != self.model.casefold():
+                # A silently substituted model makes every number of the run meaningless.
+                raise TransportError('Провайдер подменил запрошенную модель', usage=_usage(body.get('usage')))
             choice = body['choices'][0]
             return {'content': choice['message'].get('content') or '', 'finish_reason': choice.get('finish_reason'), 'usage': body.get('usage') or {}}
         except urllib.error.HTTPError as exc:
@@ -101,6 +108,11 @@ class Gateway:
         self.tokenizer, self.event, self.sleep, self.structured = tokenizer, event or (lambda *a: None), sleep, structured
         self.budget_excluding = budget_excluding
         self.cache_scope = cache_scope
+
+    @property
+    def context_window(self) -> int:
+        """Window of the profile; stages size their packets by it."""
+        return PROFILES[self.profile][1]
 
     def __call__(self, *, task_class: str, system: str, user: str,
                  output: type[BaseModel] | Literal['code', 'text'], task_id: str | None = None) -> BaseModel | str:
@@ -209,3 +221,58 @@ class Gateway:
                 tmp.write_text(json.dumps(stored, ensure_ascii=False), encoding='utf-8')
                 tmp.replace(cached)
             return value
+
+
+def _usage(usage) -> dict | None:
+    return usage if isinstance(usage, dict) and usage else None
+
+
+class LocalLLM:
+    """The production Gateway with in-memory accounting, for eval and local runs without the database.
+
+    Same task classes, window profiles, structured output with fallback, JSON repair and budget
+    checks as a platform run; `calls` holds one record per HTTP request with the actual usage.
+    """
+    def __init__(self, *, max_tokens: int = 300_000, max_calls: int = 120, context_window: int = 32768,
+                 transport=None, cache_dir: Path | None = None, sleep=time.sleep, tokenizer=None):
+        self.calls: list[dict] = []
+        self.max_tokens, self.max_calls = max_tokens, max_calls
+        profile = max((name for name, (_, window) in PROFILES.items() if window <= context_window),
+                      key=lambda name: PROFILES[name][1], default='XS')
+        self.gateway = Gateway(start=self._start, finish=self._finish, budget=self._budget, transport=transport,
+                               profile=profile, cache_dir=cache_dir, sleep=sleep, tokenizer=tokenizer,
+                               budget_excluding=self._budget)
+
+    @property
+    def tokens_used(self) -> int:
+        return sum(call.get('total_tokens') or 0 for call in self.calls)
+
+    @property
+    def context_window(self) -> int:
+        return self.gateway.context_window
+
+    def __call__(self, **kwargs):
+        return self.gateway(**kwargs)
+
+    def _start(self, meta: dict) -> int:
+        self.calls.append({'task_id': meta.get('task_id'), 'task_class': meta['task_class'], 'model': meta['model'],
+                           'input_tokens': None, 'output_tokens': None, 'total_tokens': None, 'duration_ms': 0,
+                           'status': 'started', 'from_cache': meta.get('from_cache', False)})
+        return len(self.calls) - 1
+
+    def _finish(self, index: int, values: dict) -> None:
+        usage = values.get('usage') or {}
+        record = self.calls[index]
+        record.update(status=values['status'], duration_ms=values.get('latency_ms') or 0,
+                      input_tokens=usage.get('prompt_tokens'), output_tokens=usage.get('completion_tokens'))
+        if record['input_tokens'] is not None and record['output_tokens'] is not None:
+            record['total_tokens'] = usage.get('total_tokens') or record['input_tokens'] + record['output_tokens']
+        elif record['from_cache'] or record['status'] == 'provider_error':
+            record['total_tokens'] = 0
+
+    def _budget(self, exclude=()):
+        paid = [call for call in self.calls if not call['from_cache']]
+        # The call limit is a token limit reached: the gateway stops with BudgetExceeded before sending.
+        used = self.max_tokens if len(paid) >= self.max_calls else self.tokens_used
+        return used, self.max_tokens, 0, float('inf')
+

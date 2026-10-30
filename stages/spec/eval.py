@@ -17,7 +17,8 @@ from stages.analysis.compat import ContractError, ElementFlag, StageInput
 from stages.analysis.testing import FakeLLM, FakeSandbox
 from stages.analysis.storage import write_json
 from stages.spec import execute as specify, repair as repair_spec
-from stages.spec.eval_gateway import EvalGateway, load_env
+from harness.agent import load_dotenv
+from harness.llm import HTTPTransport, LocalLLM
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -38,6 +39,12 @@ def _errors(gate) -> list:
     return list(unique.values())
 
 
+def live_llm(model: str, context_window: int, max_tokens: int, max_calls: int) -> LocalLLM:
+    """The platform gateway (harness/llm.py) with in-memory accounting; endpoint and key from env."""
+    return LocalLLM(max_tokens=max_tokens, max_calls=max_calls, context_window=context_window,
+                    transport=HTTPTransport(model=model))
+
+
 def evaluate(name: str, requirements: Path | None, workspace: Path, *, mode: str,
              model: str, context_window: int, max_tokens: int, max_calls: int) -> dict:
     result = {"case": name, "mode": mode, "status": "started", "model": model if mode == "live" else None,
@@ -56,7 +63,7 @@ def evaluate(name: str, requirements: Path | None, workspace: Path, *, mode: str
     result["requirements_sha256"] = hashlib.sha256(text.encode()).hexdigest()
     (workspace / "input").mkdir(exist_ok=True)
     (workspace / "input/requirements.md").write_text(text, encoding="utf-8")
-    llm = EvalGateway(model=model, workspace=workspace, context_window=context_window, max_tokens=max_tokens, max_calls=max_calls) if mode == "live" else FakeLLM({**json.loads((ROOT / f"stages/analysis/tests/fixtures/{name}-responses.json").read_text()), **json.loads((ROOT / f"stages/spec/tests/fixtures/{name}-responses.json").read_text())}, context_window=context_window)
+    llm = live_llm(model, context_window, max_tokens, max_calls) if mode == "live" else FakeLLM({**json.loads((ROOT / f"stages/analysis/tests/fixtures/{name}-responses.json").read_text()), **json.loads((ROOT / f"stages/spec/tests/fixtures/{name}-responses.json").read_text())}, context_window=context_window)
     started = time.monotonic()
     artifacts: dict[str, str] = {}
     flags: list[ElementFlag] = []
@@ -217,10 +224,8 @@ def continue_context_limited_repair(result: dict, *, context_window: int = 32768
     artifacts = dict(result["artifacts"])
     analysis = Analysis.model_validate_json((workspace / artifacts["analysis"]).read_text())
     App.model_validate_json((workspace / artifacts["app"]).read_text())
-    gateway = EvalGateway(model=result["model"], workspace=workspace, context_window=context_window,
-                          max_tokens=max_tokens, max_calls=max_calls)
+    gateway = live_llm(result["model"], context_window, max_tokens, max_calls)
     gateway.calls = list(result["calls"])
-    gateway.tokens_used = result["tokens"]
     started = time.monotonic()
     gate = g1(workspace, artifacts)
     inp = StageInput(run_id=f"eval-{result['case']}", stage="spec", attempt=2,
@@ -255,7 +260,7 @@ def continue_context_limited_repair(result: dict, *, context_window: int = 32768
 def main() -> int:
     parser = argparse.ArgumentParser(description="Оценка двух этапов на эталонных доменах")
     parser.add_argument("--mode", choices=("recorded", "live"), default="recorded")
-    parser.add_argument("--model", default="qwen/qwen3.8-27b")
+    parser.add_argument("--model", default=None, help="по умолчанию LLM_MODEL из окружения")
     parser.add_argument("--case1", type=Path, default=ROOT / "stages/spec/eval/case1/requirements.md")
     parser.add_argument("--cases", nargs="+", choices=("tickets", "equipment", "case1"))
     parser.add_argument("--output", type=Path, default=ROOT / "stages/spec/EVAL.md")
@@ -264,7 +269,9 @@ def main() -> int:
     parser.add_argument("--max-tokens", type=int, default=300000)
     parser.add_argument("--max-calls", type=int, default=120)
     args = parser.parse_args()
-    load_env(ROOT / ".env")
+    load_dotenv(ROOT / ".env")
+    from harness import llm_config
+    args.model = args.model or llm_config.model()
     workspace = args.workspace or ROOT / "workspaces/eval" / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
     cases = {name: ROOT / f"contracts/fixtures/{name}/requirements.md" for name in ("tickets", "equipment")}
     cases["case1"] = args.case1
