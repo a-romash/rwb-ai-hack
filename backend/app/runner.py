@@ -223,7 +223,8 @@ def _execute(stage_id):
                 def run(self, *args, **kwargs):
                     if self._instance is None:
                         from harness.sandbox import DockerSandbox
-                        manifest_path = Path(__file__).resolve().parents[2] / 'templates/product/pack.json'
+                        from app.tasks import repo_root
+                        manifest_path = repo_root() / 'templates/product/pack.json'
                         if not manifest_path.is_file():
                             raise ContractError('Не найден доверенный templates/product/pack.json')
                         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
@@ -471,7 +472,9 @@ def input_hash(session, run, latest, key):
     ids = [row.id for row in latest.values() if row.status == 'succeeded']
     artifacts = session.scalars(select(Artifact).where(Artifact.stage_run_id.in_(ids))).all()
     files = []
-    repo = Path(__file__).resolve().parents[2]
+    # In the image the code is /app/app/runner.py, so a fixed parents[2] would be / and hash nothing.
+    from app.tasks import repo_root
+    repo = repo_root()
     for directory in ('agents', 'templates', 'contracts', 'stages', 'gates', 'harness'):
         for path in sorted((repo / directory).rglob('*')):
             if path.is_file() and '__pycache__' not in path.parts:
