@@ -94,16 +94,15 @@ class RunnerIntegration(unittest.TestCase):
     def test_dependents_contract(self):
         import sys
         from types import SimpleNamespace
-        from contracts.stage import ContractError
         root = Path(self.temp.name)
         (root / 'app.json').write_text('{"schema_version":1}', encoding='utf-8')
         module = SimpleNamespace(dependents=lambda app, path: ['hooks.Fix', path, 'hooks.Fix'])
         with patch.dict(sys.modules, {'contracts.app': module}):
             self.assertEqual(runner._dependent_paths(root, {'app': 'app.json'}, 'entities.E'), ['hooks.Fix'])
         self.assertEqual(runner._dependent_paths(root, {}, 'entities.E'), [])
+        # A wrong answer degrades to "no dependents known" instead of failing the stage.
         with patch.dict(sys.modules, {'contracts.app': SimpleNamespace(dependents=lambda *_: 'wrong')}):
-            with self.assertRaises(ContractError):
-                runner._dependent_paths(root, {'app': 'app.json'}, 'entities.E')
+            self.assertEqual(runner._dependent_paths(root, {'app': 'app.json'}, 'entities.E'), [])
     def test_report_snapshot_final_status_hash_and_project_projection(self):
         from app.models import Artifact
         from app.projects import project_view

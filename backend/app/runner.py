@@ -2,6 +2,7 @@
 import hashlib
 import importlib
 import json
+import logging
 import os
 from pathlib import Path
 from uuid import UUID
@@ -31,21 +32,43 @@ def _latest(session, run_id):
     return {row.stage: row for row in rows}
 
 
+APP_SECTIONS = frozenset({
+    'meta', 'params', 'types', 'entities', 'roles', 'permissions', 'state_machines', 'hooks', 'commands',
+    'queries', 'events', 'integrations', 'schedules', 'notifications', 'seed', 'scenarios', 'custom',
+})
+
+
+def _is_app_path(path):
+    """Gate findings also address tests, builds and ui.json; only app.json paths have dependents."""
+    head = path.removeprefix('app.').lstrip('/').replace('[', '.').split('.')[0].split('/')[0]
+    return head in APP_SECTIONS
+
+
 def _dependent_paths(root, artifacts, path):
-    """Ask the specification owner for transitive dependents, if app exists."""
+    """Ask the specification owner for transitive dependents of an app.json element.
+
+    A broken or missing specification must not turn a degraded result into a failed stage,
+    so errors here only mean "no dependents known".
+    """
     app_path = artifacts.get('app')
-    if not app_path:
+    if not app_path or not _is_app_path(path):
         return []
     from harness.fakes import workspace_path
     try:
         app_module = importlib.import_module('contracts.app')
         data = json.loads(workspace_path(root, app_path).read_text(encoding='utf-8'))
         paths = app_module.dependents(data, path)
-    except (ImportError, AttributeError, OSError, ValueError, TypeError) as exc:
-        raise ContractError('Не удалось вычислить зависимости спецификации') from exc
+    except Exception:
+        logging.exception('Не удалось вычислить зависимости спецификации для %s', path)
+        return []
     if not isinstance(paths, list) or any(not isinstance(item, str) for item in paths):
-        raise ContractError('Некорректный ответ dependents')
+        return []
     return sorted(set(paths) - {path})
+
+
+def stage_flag_gate(stage):
+    """Flags a stage reports itself carry no gate; tag them so a retry can drop them."""
+    return f'stage:{stage}'
 
 
 def advance(run_id):
@@ -149,11 +172,9 @@ def _execute(stage_id):
                         manifest = yaml.safe_load(manifest_path.read_text(encoding='utf-8'))
                         if not isinstance(manifest, dict):
                             raise ContractError('Некорректный pack.yaml')
-                        host_base = os.environ.get('HOST_WORKSPACES_DIR')
-                        if not host_base:
-                            raise ContractError('Не задан HOST_WORKSPACES_DIR для Docker')
+                        from harness.sandbox import host_workspaces_dir
                         base = Path(os.environ.get('WORKSPACES_DIR', '/app/workspaces')).resolve()
-                        host_root = Path(host_base).resolve() / root.resolve().relative_to(base)
+                        host_root = host_workspaces_dir(base) / root.resolve().relative_to(base)
                         def record(kind, target, result):
                             with SessionLocal.begin() as session:
                                 session.add(ToolRun(run_id=run_id, stage_run_id=UUID(str(stage_id)), kind=kind, target=target,
@@ -210,6 +231,10 @@ def _execute(stage_id):
                         session.add(SpecFlag(run_id=run_id, spec_version=1, path=finding.path, status='questioned', reason=finding.message, gate=name))
                         for dependent in _dependent_paths(root, {**inp.artifacts, **output.artifacts}, finding.path):
                             session.add(SpecFlag(run_id=run_id, spec_version=1, path=dependent, status='blocked_by', reason=finding.message, gate=name))
+            session.execute(delete(SpecFlag).where(SpecFlag.run_id == run_id, SpecFlag.gate == stage_flag_gate(stage)))
+            for flag in output.flags:
+                session.add(SpecFlag(run_id=run_id, spec_version=1, path=flag.path, status=flag.status, reason=flag.reason,
+                                     gate=flag.gate or stage_flag_gate(stage)))
             row.output_commit, row.summary = revision, output.summary
             run = session.get(Run, run_id)
             if run.status == 'cancelled':
@@ -286,7 +311,7 @@ def retry(run_id, key):
             revision = subprocess.check_output(['git', '-C', str(root), 'rev-list', '--max-parents=0', 'HEAD'], text=True).strip()
         restore(root, revision)
         # Earlier stages remain accepted, so only invalidate downstream gate flags.
-        invalid_gates = [gate for item in STAGES[index:] for gate in item.gates]
+        invalid_gates = [gate for item in STAGES[index:] for gate in (*item.gates, stage_flag_gate(item.key))]
         session.execute(delete(SpecFlag).where(SpecFlag.run_id == run_id, SpecFlag.gate.in_(invalid_gates)))
         if index <= next(i for i, item in enumerate(STAGES) if item.key == 'tests'):
             session.execute(delete(TestHash).where(TestHash.run_id == run_id))

@@ -19,6 +19,7 @@ from harness.fakes import workspace_path
 
 _FILTER = re.compile(r"^[A-Za-z0-9_.:-]{1,100}$")
 _RUN = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
+_ENV = re.compile(r"^[A-Z_][A-Z0-9_]{0,63}$")
 _ERROR = re.compile(r"(?:\berror\b|\berror\s+\w+\s*:|\bFAIL(?:ED)?\b)", re.I)
 
 
@@ -37,6 +38,7 @@ class DockerSandbox:
         if not _RUN.fullmatch(run_id):
             raise ContractError("Недопустимый идентификатор прогона")
         self.project = f"run-{run_id}"
+        self._restored: set[str] = set()
 
     def run(self, kind: SandboxKind, target: SandboxTarget, *,
             filter: str | None = None, timeout_s: int = 600) -> SandboxResult:
@@ -63,6 +65,14 @@ class DockerSandbox:
             return combined
         if kind in ("up", "smoke", "down") and target != "stack":
             raise ContractError("Команда стенда доступна только для stack")
+        if kind in ("build", "test", "e2e") and target not in self._restored and config.get("restore"):
+            # Dependencies are fetched once with network access; build and tests then run offline.
+            restored = self._execute("restore", target, config, config["restore"], None, timeout_s, network="bridge")
+            if self.record:
+                self.record("restore", target, restored)
+            if not restored.ok:
+                return restored
+            self._restored.add(target)
         command = config.get(kind)
         result = self._execute(kind, target, config, command, filter, timeout_s)
         if self.record:
@@ -70,7 +80,7 @@ class DockerSandbox:
         return result
 
     def _execute(self, kind: str, target: str, config: dict, command: object,
-                 filter: str | None, timeout_s: int) -> SandboxResult:
+                 filter: str | None, timeout_s: int, network: str | None = None) -> SandboxResult:
         if not isinstance(command, list) or not command or not all(isinstance(v, str) and v for v in command):
             raise ContractError(f"Нет допустимой команды {kind}/{target} в pack.yaml")
         args = list(command)
@@ -101,8 +111,10 @@ class DockerSandbox:
                 # Smoke also runs in an isolated container, using the stack network.
                 argv = self._docker(config, args, workdir, container_name, f"{self.project}_default")
         else:
-            network = f"{self.project}_default" if kind == "e2e" else "none"
+            network = network or (f"{self.project}_default" if kind == "e2e" else "none")
             argv = self._docker(config, args, workdir, container_name, network)
+        if kind in ("test", "e2e"):
+            self._clear_reports(config)
         start = time.monotonic()
         try:
             completed = subprocess.run(argv, cwd=self.workspace, env=env, capture_output=True, text=True, errors="replace", timeout=timeout_s, check=False)
@@ -127,7 +139,7 @@ class DockerSandbox:
         elapsed = int((time.monotonic() - start) * 1000)
         failed = [line.strip() for line in output.splitlines() if _ERROR.search(line)][:100]
         report_failures: list[str] = []
-        reports = self._reports(config, report_failures)
+        reports = self._reports(config, report_failures, target)
         failed.extend(report_failures)
         if report_failures and exit_code == 0:
             exit_code = 1
@@ -142,7 +154,8 @@ class DockerSandbox:
             import yaml
             content = path.read_text(encoding="utf-8")
             # Interpolation can change a checked volume or privilege after validation.
-            if "$" in content:
+            # "$$" is Compose's escaped literal dollar (e.g. in healthcheck commands).
+            if "$" in content.replace("$$", ""):
                 raise ContractError("Переменные в compose-файле не допускаются")
             data = yaml.safe_load(content)
         except (OSError, ImportError, ValueError) as exc:
@@ -199,13 +212,30 @@ class DockerSandbox:
         image = config.get("image")
         if not isinstance(image, str) or not image or image.startswith("-") or any(ch.isspace() for ch in image):
             raise ContractError("В манифесте не указан образ инструмента")
+        env = config.get("env", {})
+        if not isinstance(env, dict) or any(not isinstance(k, str) or not _ENV.fullmatch(k) or not isinstance(v, str) or "\n" in v
+                                            for k, v in env.items()):
+            raise ContractError("Некорректное окружение инструмента")
+        # Run as the workspace owner: files the tool writes stay writable for the pipeline workers.
+        owner = self.workspace.stat()
         return ["docker", "run", "--rm", "--name", name, "--network", network,
-                "--cpus", "2", "--memory", "4g", "--user", "1000:1000", "--cap-drop", "ALL",
+                "--cpus", "2", "--memory", "4g", "--user", f"{owner.st_uid}:{owner.st_gid}", "--cap-drop", "ALL",
                 "--security-opt", "no-new-privileges", "--mount", f"type=bind,src={self.host_workspace},dst=/work",
+                *[item for key, value in sorted(env.items()) for item in ("-e", f"{key}={value}")],
                 "--workdir", f"/work/{workdir}", image, *args]
 
-    def _reports(self, config: dict, failed: list[str]) -> dict[str, str]:
+    def _clear_reports(self, config: dict) -> None:
+        """Stale JUnit files from an earlier run must not count as evidence for this one."""
+        pattern = (config.get("reports") or {}).get("junit")
+        if isinstance(pattern, str):
+            workspace_path(self.workspace, pattern)
+            for file in self.workspace.glob(pattern):
+                if file.is_file():
+                    file.unlink()
+
+    def _reports(self, config: dict, failed: list[str], target: str = "") -> dict[str, str]:
         result = {}
+        junit_files: list[Path] = []
         reports = config.get("reports", {})
         if not isinstance(reports, dict):
             raise ContractError("Некорректные пути отчётов")
@@ -220,6 +250,7 @@ class DockerSandbox:
                     continue
                 result.setdefault(kind, str(Path(self.report_prefix) / relative))
                 if kind == "junit":
+                    junit_files.append(file)
                     try:
                         for case in ET.parse(file).iter("testcase"):
                             for issue in list(case):
@@ -227,4 +258,46 @@ class DockerSandbox:
                                     failed.append(f"{case.get('classname', '')}::{case.get('name', '')}: {issue.get('message', '')}")
                     except ET.ParseError:
                         failed.append(f"Некорректный JUnit: {relative}")
+        if len(junit_files) > 1:
+            # One test assembly per file; consumers read a single report path, so merge them.
+            merged = ET.Element("testsuites")
+            for file in junit_files:
+                try:
+                    root = ET.parse(file).getroot()
+                except ET.ParseError:
+                    continue
+                merged.extend(root if root.tag == "testsuites" else [root])
+            relative = f"reports/junit-merged/{target or 'all'}.xml"
+            path = workspace_path(self.workspace, relative)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            ET.ElementTree(merged).write(path, encoding="utf-8", xml_declaration=True)
+            result["junit"] = str(Path(self.report_prefix) / relative)
         return result
+
+
+def host_workspaces_dir(container_dir: Path) -> Path:
+    """Host path of the workspaces mount, needed for `docker run --mount` from inside a container.
+
+    HOST_WORKSPACES_DIR wins; otherwise the worker inspects its own container mounts.
+    """
+    configured = os.environ.get("HOST_WORKSPACES_DIR")
+    if configured:
+        return Path(configured)
+    container_dir = Path(container_dir).resolve()
+    try:
+        output = subprocess.run(["docker", "inspect", "--format", "{{json .Mounts}}", socket_hostname()],
+                                capture_output=True, text=True, timeout=15, check=True).stdout
+        import json
+        for mount in json.loads(output) or []:
+            if Path(mount.get("Destination", "")) == container_dir and mount.get("Source"):
+                return Path(mount["Source"])
+    except (OSError, subprocess.SubprocessError, ValueError):
+        pass
+    if not Path("/.dockerenv").exists():
+        return container_dir  # running directly on the host
+    raise ContractError("Не удалось определить путь workspaces на хосте: задайте HOST_WORKSPACES_DIR")
+
+
+def socket_hostname() -> str:
+    import socket
+    return socket.gethostname()

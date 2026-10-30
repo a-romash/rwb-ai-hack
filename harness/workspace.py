@@ -2,6 +2,7 @@
 import hashlib
 import os
 import subprocess
+import tempfile
 from pathlib import Path
 from uuid import UUID
 
@@ -15,6 +16,7 @@ def create_workspace(base: Path, project_id: UUID, run_id: UUID, requirements: s
     path.mkdir(parents=True, exist_ok=False)
     (path / 'input').mkdir()
     (path / 'input' / 'requirements.md').write_text(requirements, encoding='utf-8')
+    (path / '.gitignore').write_text(IGNORED, encoding='utf-8')
     _git(path, 'init', '-q')
     _git(path, 'config', 'user.name', 'Pipeline')
     _git(path, 'config', 'user.email', 'pipeline@localhost')
@@ -22,9 +24,34 @@ def create_workspace(base: Path, project_id: UUID, run_id: UUID, requirements: s
     return path
 
 
+# Build outputs and package caches of the generated product never belong to the run history.
+IGNORED = """node_modules/
+.nuget/
+.npm/
+bin/
+obj/
+dist/
+.angular/
+playwright-report/
+test-results/
+"""
+
+
+def _git_config() -> str:
+    """Isolated global config: API and build workers may run as different users on one workspace.
+
+    safe.directory is honoured only in protected (system/global) config, so it cannot be passed
+    through the repository; without it git refuses a repository owned by another user.
+    """
+    path = Path(tempfile.gettempdir()) / 'pipeline-gitconfig'
+    if not path.is_file():
+        path.write_text('[safe]\n\tdirectory = *\n', encoding='utf-8')
+    return str(path)
+
+
 def _git(path: Path, *args: str) -> str:
-    result = subprocess.run(['git', '-C', str(path), *args], check=True, capture_output=True, text=True, timeout=60,
-                            env={**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': os.devnull})
+    result = subprocess.run(['git', '-C', str(path), *args], check=True, capture_output=True, text=True, timeout=120,
+                            env={**os.environ, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': _git_config()})
     return result.stdout.strip()
 
 

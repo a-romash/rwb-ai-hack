@@ -1,13 +1,17 @@
 name: rwb-pipeline
 
+# All backend services share one image. Only `api` builds it: several services building the same
+# tag in parallel fail with "image already exists". Workers reuse the image built by `api`.
 x-backend: &backend
   image: rwb-pipeline-backend:local
-  build:
-    context: .
-    dockerfile: backend/Dockerfile
+  pull_policy: never
   env_file:
-    - path: ../.env
+    - path: .env
       required: false
+  # One owner for the run workspaces: API creates them, llm and build workers write into them,
+  # and git refuses repositories owned by another user. The build worker needs the Docker socket,
+  # which is root access to the host anyway, so the services run as root.
+  user: "0:0"
   environment: &backend-environment
     POSTGRES_USER: ${POSTGRES_USER:-pipeline}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pipeline}
@@ -15,11 +19,12 @@ x-backend: &backend
     POSTGRES_HOST: postgres
     POSTGRES_PORT: 5432
     WORKSPACES_DIR: /app/workspaces
-    HOST_WORKSPACES_DIR: ${PWD}/workspaces
+    # Host path of ./workspaces for Docker sandbox mounts; detected from the container mounts when empty.
+    HOST_WORKSPACES_DIR: ${HOST_WORKSPACES_DIR:-}
     PIPELINE_FAKE_STAGES: ${PIPELINE_FAKE_STAGES:-0}
     OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   volumes:
-    - ${PWD}/workspaces:/app/workspaces
+    - ./workspaces:/app/workspaces
   restart: unless-stopped
 
 services:
@@ -40,6 +45,10 @@ services:
 
   api:
     <<: *backend
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     command: ["sh", "-c", "alembic upgrade head && python -m app.init_broker && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     depends_on:
       postgres:
@@ -59,9 +68,8 @@ services:
 
   worker-build:
     <<: *backend
-    user: root
     volumes:
-      - ${PWD}/workspaces:/app/workspaces
+      - ./workspaces:/app/workspaces
       - /var/run/docker.sock:/var/run/docker.sock
     command: ["celery", "-A", "app.tasks:celery_app", "worker", "-Q", "build", "--loglevel=info", "--concurrency=1", "--without-gossip", "--without-mingle"]
     depends_on:

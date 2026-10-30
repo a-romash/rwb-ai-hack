@@ -20,7 +20,8 @@ class SandboxTest(unittest.TestCase):
             self.assertTrue(result.ok)
             self.assertIn("none", args)
             self.assertIn("AC=AC-01", args)
-            self.assertIn("1000:1000", args)
+            owner = Path(tmp).stat()
+            self.assertIn(f"{owner.st_uid}:{owner.st_gid}", args)
             self.assertNotIn("OPENROUTER_API_KEY", invoke.call_args.kwargs["env"])
             self.assertEqual(len(records), 1)
             with self.assertRaises(ContractError):
@@ -39,10 +40,13 @@ class SandboxTest(unittest.TestCase):
         for xml in ('<testsuite><testcase name="a"><failure message="bad"/></testcase></testsuite>', '<not-xml'):
             with self.subTest(xml=xml), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
-                (root / 'report.xml').write_text(xml)
                 manifest = {'targets': {'backend': {'image': 'tool', 'test': ['test'], 'reports': {'junit': 'report.xml'}}}}
                 sandbox = DockerSandbox(root, 'abc', manifest)
-                with patch('harness.sandbox.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='')):
+
+                def writes_report(*args, xml=xml, **kwargs):
+                    (root / 'report.xml').write_text(xml)
+                    return SimpleNamespace(returncode=0, stdout='', stderr='')
+                with patch('harness.sandbox.subprocess.run', side_effect=writes_report):
                     result = sandbox.run('test', 'backend')
                 self.assertFalse(result.ok)
                 self.assertTrue(result.failed)
@@ -80,9 +84,12 @@ class SandboxTest(unittest.TestCase):
     def test_report_prefix_relative_to_run_workspace(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / 'result.xml').write_text('<testsuite/>')
             sandbox = DockerSandbox(root, 'abc', {'targets': {'backend': {'image': 'tool', 'test': ['test'], 'reports': {'junit': 'result.xml'}}}}, report_prefix='product')
-            with patch('harness.sandbox.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout='', stderr='')):
+
+            def writes_report(*args, **kwargs):
+                (root / 'result.xml').write_text('<testsuite/>')
+                return SimpleNamespace(returncode=0, stdout='', stderr='')
+            with patch('harness.sandbox.subprocess.run', side_effect=writes_report):
                 self.assertEqual(sandbox.run('test', 'backend').reports['junit'], 'product/result.xml')
 
     def test_path_escape_and_missing_command_fail(self):
@@ -96,3 +103,62 @@ class SandboxTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_restore_runs_once_with_network_then_build_offline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = {"targets": {"backend": {"image": "tool:1", "restore": ["dotnet", "restore"], "build": ["dotnet", "build", "--no-restore"],
+                                              "env": {"NUGET_PACKAGES": "/work/.nuget/packages"}}}}
+            sandbox = DockerSandbox(Path(tmp), "abc", config)
+            ok = SimpleNamespace(returncode=0, stdout="", stderr="")
+            with patch("harness.sandbox.subprocess.run", return_value=ok) as invoke:
+                sandbox.run("build", "backend")
+                sandbox.run("build", "backend")
+            calls = [call.args[0] for call in invoke.call_args_list]
+            self.assertEqual(len(calls), 3)
+            self.assertEqual(calls[0][calls[0].index("--network") + 1], "bridge")
+            self.assertIn("restore", calls[0])
+            self.assertTrue(all(call[call.index("--network") + 1] == "none" for call in calls[1:]))
+            self.assertIn("NUGET_PACKAGES=/work/.nuget/packages", calls[1])
+
+    def test_failed_restore_is_the_build_result(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config = {"targets": {"admin": {"image": "tool:1", "restore": ["npm", "ci"], "build": ["npm", "run", "build"]}}}
+            sandbox = DockerSandbox(Path(tmp), "abc", config)
+            with patch("harness.sandbox.subprocess.run", return_value=SimpleNamespace(returncode=1, stdout="", stderr="npm ERR! network")) as invoke:
+                result = sandbox.run("build", "admin")
+            self.assertFalse(result.ok)
+            self.assertEqual(invoke.call_count, 1)
+
+    def test_several_junit_files_are_merged_and_stale_ones_removed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            folder = root / "reports/junit/backend"
+            folder.mkdir(parents=True)
+            (folder / "Stale.xml").write_text('<testsuite><testcase name="old"><failure message="old"/></testcase></testsuite>')
+            config = {"targets": {"backend": {"image": "tool:1", "test": ["dotnet", "test"], "reports": {"junit": "reports/junit/backend/*.xml"}}}}
+            sandbox = DockerSandbox(root, "abc", config, report_prefix="product")
+
+            def fake_run(argv, **kwargs):
+                (folder / "App.Acceptance.Tests.xml").write_text('<testsuite><testcase name="a"/></testsuite>')
+                (folder / "App.Generated.Tests.xml").write_text('<testsuites><testsuite><testcase name="b"/></testsuite></testsuites>')
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+            with patch("harness.sandbox.subprocess.run", side_effect=fake_run):
+                result = sandbox.run("test", "backend")
+            self.assertTrue(result.ok, result.failed)
+            self.assertEqual(result.reports["junit"], "product/reports/junit-merged/backend.xml")
+            import xml.etree.ElementTree as ET
+            names = [case.get("name") for case in ET.parse(root / "reports/junit-merged/backend.xml").iter("testcase")]
+            self.assertEqual(sorted(names), ["a", "b"])
+
+    def test_compose_escaped_dollar_is_allowed_but_interpolation_is_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sandbox = DockerSandbox(root, "abc", {})
+            ok = root / "ok.yml"
+            ok.write_text('services:\n  db:\n    image: postgis\n    healthcheck:\n      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]\n')
+            sandbox._validate_compose(ok)
+            bad = root / "bad.yml"
+            bad.write_text('services:\n  db:\n    image: ${IMAGE}\n')
+            with self.assertRaises(ContractError):
+                sandbox._validate_compose(bad)
+

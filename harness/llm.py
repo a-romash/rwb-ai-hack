@@ -91,13 +91,15 @@ class Gateway:
     def __init__(self, *, start: Callable, finish: Callable, budget: Callable,
                  transport=None, profile='M', cache_dir: Path | None = None,
                  tokenizer: Callable[[str], int] | None = None, event: Callable | None = None,
-                 sleep=time.sleep, structured=True, budget_excluding=None):
+                 sleep=time.sleep, structured=True, budget_excluding=None, cache_salt: str = ''):
         if profile not in PROFILES:
             raise ValueError('Неизвестный профиль контекста')
         self.start, self.finish, self.budget = start, finish, budget
         self.transport, self.profile, self.cache_dir = transport or HTTPTransport(), profile, cache_dir
         self.tokenizer, self.event, self.sleep, self.structured = tokenizer, event or (lambda *a: None), sleep, structured
         self.budget_excluding = budget_excluding
+        # Retrying a failed stage must not replay the cached answer that made it fail.
+        self.cache_salt = cache_salt
 
     def __call__(self, *, task_class: str, system: str, user: str,
                  output: type[BaseModel] | Literal['code', 'text'], task_id: str | None = None) -> BaseModel | str:
@@ -111,7 +113,7 @@ class Gateway:
         if output == 'code':
             system += '\nВерни ровно один блок кода между строками <<<CODE и CODE>>>.'
         messages = [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]
-        identity = [getattr(self.transport, 'base_url', ''), getattr(self.transport, 'provider', ''), getattr(self.transport, 'model', MODEL), task_class, TASKS[task_class], self.profile, messages, schema, self.structured]
+        identity = [getattr(self.transport, 'base_url', ''), getattr(self.transport, 'provider', ''), getattr(self.transport, 'model', MODEL), task_class, TASKS[task_class], self.profile, messages, schema, self.structured, self.cache_salt]
         key = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         prompt_sha = hashlib.sha256(json.dumps(messages, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         cached = self.cache_dir / (key + '.json') if self.cache_dir else None

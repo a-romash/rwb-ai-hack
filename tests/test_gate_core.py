@@ -11,7 +11,8 @@ from gates.core import check_gate, run_gate
 
 class GateTests(unittest.TestCase):
     def test_missing_gate_is_explicit_and_strict_by_default(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        # All real gates exist now; point G1 at a module that does not.
+        with tempfile.TemporaryDirectory() as tmp, patch.dict('gates.core.MODULES', {'G1': 'gates.g_absent'}):
             with self.assertRaises(ContractError):
                 check_gate('G1', Path(tmp), {})
             result = check_gate('G1', Path(tmp), {}, allow_missing=True)
