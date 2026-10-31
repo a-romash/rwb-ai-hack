@@ -31,8 +31,10 @@ def _existing(workspace: Path, relative: str) -> None:
         raise ContractError(f"Артефакт не существует: {relative}")
     # Directory artifacts must not hide symlinks pointing outside the workspace.
     if path.is_dir():
+        # Only a symlink can point outside; resolving every file took minutes over node_modules on a bind mount.
         for child in path.rglob("*"):
-            workspace_path(workspace, str(child.relative_to(workspace.resolve())))
+            if child.is_symlink():
+                workspace_path(workspace, str(child.relative_to(workspace.resolve())))
 
 
 class FakeLLM:
