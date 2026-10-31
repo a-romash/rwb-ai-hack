@@ -133,7 +133,7 @@ class LadderTest(unittest.TestCase):
         self.assertNotIn("FAIL-20", retried)
         self.assertEqual(llm.replies, [])
 
-    def test_prompt_carries_rule_criterion_and_input_shapes(self):
+    def test_prompt_carries_criterion_and_input_shapes(self):
         chosen = hooks("SlaDeadline")
         tmp, root = layout(chosen)
         ref = chosen[0]["refs"][0]
@@ -150,7 +150,7 @@ class LadderTest(unittest.TestCase):
         finally:
             tmp.cleanup()
         user = llm.calls[0]["user"]
-        for text in ("RULE_TEXT_UNIQUE", "GHERKIN_UNIQUE", "INPUT_UNIQUE"):
+        for text in ("GHERKIN_UNIQUE", "INPUT_UNIQUE"):
             self.assertIn(text, user)
         self.assertNotIn("EXPECTED_UNIQUE", user)
 

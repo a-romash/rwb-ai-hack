@@ -33,6 +33,18 @@ EQUIPMENT_FILES = [
 
 
 class GenerateTests(unittest.TestCase):
+    def test_hook_spec_carries_rule_text_and_gherkin_rows(self):
+        from stages.scaffold.generate import _hooks
+        app = {"hooks": {"Allowed": {"kind": "validator", "in": [], "rule": "BR-01", "traces": ["AC-01"]}}}
+        gherkin = ("# language: ru\nФункция: Порог\n  Структура сценария: Проверка\n    Когда проверяют <value>\n"
+                   "    Тогда результат <expected>\n    Примеры:\n      | value | expected |\n      | 4 | нет |\n")
+        analysis = {"rules": [{"id": "BR-01", "text": "Не меньше пяти."}],
+                    "acceptance": [{"id": "AC-01", "rules": ["BR-01"], "gherkin": gherkin}]}
+        spec = _hooks(app, analysis)[0]["spec"]
+        self.assertEqual(spec["contract"]["summary"], "BR-01: Не меньше пяти.")
+        self.assertEqual(spec["examples"], [{"input": {"value": "4"}, "expected": "нет", "ac": "AC-01"}])
+        self.assertEqual(_hooks(app)[0]["spec"]["contract"]["summary"], "BR-01")
+
     def test_hooks_json_contains_sla_and_resolution(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)

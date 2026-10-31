@@ -46,11 +46,12 @@ def execute(inp, workspace: Path, llm, sandbox) -> StageOutput:
     artifacts = _mapping(_field(inp, "artifacts"), "artifacts")
     app = _load(workspace, _rel(artifacts, "app", "app.json"), "app.json")
     ui = _load(workspace, _rel(artifacts, "ui", "ui.json"), "ui.json")
+    analysis = _load(workspace, artifacts["analysis"], "analysis.json") if artifacts.get("analysis") else {}
     _copy_template(workspace)
     _write(workspace, "product/backend/src/App.Domain/Generated/Model.cs", model_cs(app))
     _write(workspace, "product/backend/src/App.Domain/Generated/Params.cs", params_cs(app))
     _write(workspace, "product/infra/roles.json", _dump(sorted((app.get("roles") or {}).keys())))
-    built = _hooks(app)
+    built = _hooks(app, analysis)
     for hook in built:
         _write(workspace, f"product/backend/src/App.Domain/Generated/I{hook['name']}Hook.cs", hook["interface"])
         _write(
@@ -312,7 +313,23 @@ def _body(kind: str, ret: str) -> str:
     return "return;"
 
 
-def _hooks(app: dict) -> list[dict]:
+def _examples(refs: list[str], analysis: dict) -> list[dict]:
+    """Rows of the Gherkin Examples tables of the hook's criteria (architecture §10.2)."""
+    from stages.tests.cases import EXPECTED_HEADERS, _norm, examples, related
+    headers = {_norm(name) for name in EXPECTED_HEADERS}
+    found = []
+    for criterion in related({"refs": refs}, analysis):
+        for row in examples(criterion.get("gherkin", "")):
+            expected = next((name for name in row if _norm(name) in headers), None)
+            if expected is not None:
+                found.append({"input": {k: v for k, v in row.items() if k != expected},
+                              "expected": row[expected], "ac": criterion["id"]})
+    return found
+
+
+def _hooks(app: dict, analysis: dict | None = None) -> list[dict]:
+    analysis = analysis or {}
+    rules = {rule.get("id"): rule.get("text", "") for rule in analysis.get("rules", []) if isinstance(rule, dict)}
     hooks = app.get("hooks") or {}
     if not isinstance(hooks, dict):
         _contract_error("hooks must be an object")
@@ -334,8 +351,8 @@ def _hooks(app: dict) -> list[dict]:
         refs = sorted(set(_strs(hook.get("traces"))) | ({rule} if rule else set()))
         spec = {
             "allowed_api": sorted(set(_strs(hook.get("in"))) | set(_strs(hook.get("params")))),
-            "contract": {"post": [], "pre": [], "summary": rule},
-            "examples": [],
+            "contract": {"post": [], "pre": [], "summary": f"{rule}: {rules[rule]}" if rules.get(rule) else rule},
+            "examples": _examples(refs, analysis),
             "file": f"backend/src/App.Domain/Hooks/{name}Hook.cs",
             "id": name,
             "kind": kind,

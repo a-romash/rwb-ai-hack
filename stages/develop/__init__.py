@@ -152,9 +152,8 @@ CASES = "product/backend/tests/App.Acceptance.Tests/cases/hooks"
 
 
 def _context(workspace: Path, hook: dict) -> str:
-    """What the hook means and what its inputs look like: hooks.json carries only rule ids.
-
-    Inputs of a few test cases show the data format; expected values stay hidden."""
+    """Criterion scenarios and input shapes: hooks.json has the rule text and table rows, not the
+    scenario text, and test cases come after scaffold. Expected values of the cases stay hidden."""
     def load(relative):
         path = workspace / relative
         try:
@@ -163,9 +162,8 @@ def _context(workspace: Path, hook: dict) -> str:
             return {}
     analysis = load("spec/analysis.json")
     refs = {str(ref) for ref in hook.get("refs") or []}
-    parts = [f"{rule['id']}: {rule.get('text', '')}" for rule in analysis.get("rules", []) if rule.get("id") in refs]
-    parts += [criterion.get("gherkin", "") for criterion in analysis.get("acceptance", [])
-              if criterion.get("id") in refs or refs & set(criterion.get("rules", []))]
+    parts = [criterion.get("gherkin", "") for criterion in analysis.get("acceptance", [])
+             if criterion.get("id") in refs or refs & set(criterion.get("rules", []))]
     inputs = [case.get("inputs") for case in load(f"{CASES}/{hook.get('id')}.json").get("cases", [])[:3]]
     if inputs:
         parts.append("input examples (the C# test runner deserializes these):\n" + json.dumps(inputs, ensure_ascii=False))
@@ -176,7 +174,7 @@ def _user(hook: dict, task_class: str, previous: str, failures: str, context: st
     allowed = "\n".join(str(item) for item in (hook.get("allowed_api") or []))
     parts = [json.dumps(hook, ensure_ascii=False, indent=2), "allowed_api:\n" + allowed]
     if context:
-        parts.append("rules and acceptance:\n" + context)
+        parts.append("acceptance:\n" + context)
     if task_class != "hook_1":
         parts.append("previous body:\n" + previous)
         parts.append("failures:\n" + failures)
