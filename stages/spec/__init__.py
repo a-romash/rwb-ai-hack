@@ -53,10 +53,13 @@ def bind_entities(value: dict, data: dict) -> dict:
     return value
 
 
-def bind_hook_inputs(value: dict) -> dict:
+def bind_hooks(value: dict) -> dict:
     """The model sometimes writes hook inputs as "name: ref"; the contract wants the ref alone, and `now`
-    stays `now` (the current moment, hooks never read the clock)."""
+    stays `now` (the current moment, hooks never read the clock). A "decider" that returns a bool is a
+    validator: a decider picks the next state."""
     for hook in value.values():
+        if hook.get("kind") == "decider" and hook.get("out") in ("bool", "boolean"):
+            hook["kind"] = "validator"
         items = [item.split(":", 1) if isinstance(item, str) and ":" in item else None for item in hook.get("in", [])]
         hook["in"] = [item if pair is None else "now" if "now" in (pair[0].strip(), pair[1].strip()) else pair[1].strip()
                       for item, pair in zip(hook.get("in", []), items)]
@@ -191,7 +194,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                     if section == "entities":
                         value = bind_entities(value, data)
                     if section == "hooks":
-                        value = bind_hook_inputs(value)
+                        value = bind_hooks(value)
                     if section == "meta":
                         if not part:
                             data[section] = value

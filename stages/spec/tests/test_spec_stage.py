@@ -132,11 +132,13 @@ class SpecStageTests(unittest.TestCase):
         self.assertNotIn("owner", bound["Vehicle"])
         self.assertEqual(bound["ParkingSession"]["owner"], "vehicleId")
 
-    def test_hook_inputs_written_as_name_and_ref_keep_the_ref(self) -> None:
-        from stages.spec import bind_hook_inputs
+    def test_hooks_keep_the_ref_of_named_inputs_and_bool_deciders_validate(self) -> None:
+        from stages.spec import bind_hooks
         # Shape of the case 1 answer after the `now` prompt.
-        value = {"session_warning_due": {"in": ["session_ends_at: ParkingSession.endsAt", "now: datetime", "Session.state"]}}
-        self.assertEqual(bind_hook_inputs(value)["session_warning_due"]["in"], ["ParkingSession.endsAt", "now", "Session.state"])
+        value = {"session_warning_due": {"kind": "decider", "out": "boolean",
+                                         "in": ["session_ends_at: ParkingSession.endsAt", "now: datetime", "Session.state"]}}
+        hook = bind_hooks(value)["session_warning_due"]
+        self.assertEqual((hook["kind"], hook["in"]), ("validator", ["ParkingSession.endsAt", "now", "Session.state"]))
 
     def test_bad_contract_cannot_be_repaired_silently(self) -> None:
         self.responses["spec.entities.0"] = {"Bad": {"extra": "unsupported"}}

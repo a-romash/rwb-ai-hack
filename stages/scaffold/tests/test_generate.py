@@ -220,6 +220,9 @@ class GenerateTests(unittest.TestCase):
         self.assertEqual(hook_input("session_warning_threshold", app), ("int", "sessionWarningThreshold"))
         self.assertEqual(hook_input("current_time", app), ("string", "currentTime"))
         self.assertEqual(hook_input("now", app), ("DateTimeOffset", "now"))
+        from stages.scaffold.generate import _parameters
+        hook = {"in": ["now", "session_warning_threshold"], "params": ["session_warning_threshold"]}
+        self.assertEqual(_parameters("validator", hook, app), [("DateTimeOffset", "now"), ("int", "session_warning_threshold")])
         self.assertNotIn("null", _model_ts(app, {}, [], False))
         from stages.scaffold.domain import model_cs
         app["types"] = {"Session": {"kind": "enum", "values": ["active"]}}

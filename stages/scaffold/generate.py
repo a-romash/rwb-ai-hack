@@ -293,7 +293,8 @@ def _parameters(kind: str, hook: dict, app: dict) -> list[tuple[str, str]]:
 
     if kind == "decider":
         add("string", "initialState", camel=False)
-    for token in sorted(set(_strs(hook.get("in")))):
+    # A param listed among the inputs as well comes once, as the param.
+    for token in sorted(set(_strs(hook.get("in"))) - set(_strs(hook.get("params")))):
         cs_type, name = hook_input(token, app)
         add(cs_type, name, camel=False)
     params = app.get("params") if isinstance(app.get("params"), dict) else {}
