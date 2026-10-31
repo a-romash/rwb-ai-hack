@@ -55,6 +55,30 @@ class SpecStageTests(unittest.TestCase):
         ids = [call["task_id"] for call in llm.calls]
         self.assertLess(ids.index("spec.foundation.entities.0"), ids.index("spec.state_machines.0"))
 
+    def test_foundation_feedback_is_included_when_splitting_context(self) -> None:
+        from types import SimpleNamespace
+        from contracts.analysis import Analysis
+        from contracts.app import EntitiesSection
+        from stages.analysis.runtime import size
+        from stages.spec import _requests
+        from stages.spec.context import empty_app
+        analysis = Analysis.model_validate_json((self.workspace / "spec/analysis.json").read_text())
+        errors = [{"path": f"permissions[{i}].op", "message": "x" * 400} for i in range(50)]
+        requests = _requests(analysis, empty_app(analysis), "entities", EntitiesSection, SimpleNamespace(context_window=16000), validation_errors=errors)
+        self.assertGreater(len(requests), 1)
+        self.assertTrue(all(size("system-analyst-domain", payload, EntitiesSection) <= 16000 for payload in requests))
+        self.assertEqual({error["path"] for payload in requests for error in payload["validation_errors"]}, {error["path"] for error in errors})
+
+    def test_one_oversized_foundation_error_reports_context_limit(self) -> None:
+        from types import SimpleNamespace
+        from contracts.analysis import Analysis
+        from contracts.app import EntitiesSection
+        from stages.spec import _requests
+        from stages.spec.context import empty_app
+        analysis = Analysis.model_validate_json((self.workspace / "spec/analysis.json").read_text())
+        with self.assertRaisesRegex(ContractError, "контекст"):
+            _requests(analysis, empty_app(analysis), "entities", EntitiesSection, SimpleNamespace(context_window=16000), validation_errors=[{"message": "x" * 40000}])
+
     def test_invalid_foundation_after_retry_is_not_accepted(self) -> None:
         original = self.responses["spec.entities.0"]
         self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}

@@ -120,18 +120,23 @@ def _context(analysis: Analysis, data: dict, section: str, req_ids: set[str]) ->
     return {"section": section, "output_shape": shape, "analysis": context, "app": {key: snapshot[key] for key in needed}}
 
 
-def _requests(analysis: Analysis, data: dict, section: str, model: type[BaseModel], llm: LLM) -> list[dict]:
+def _requests(analysis: Analysis, data: dict, section: str, model: type[BaseModel], llm: LLM, *, validation_errors: list[dict] | None = None) -> list[dict]:
     req_ids = [req.id for req in analysis.requirements]
-    groups: list[list[str]] = [req_ids]
+    groups = [(req_ids, validation_errors)]
     result: list[dict] = []
     while groups:
-        group = groups.pop(0)
+        group, errors = groups.pop(0)
         payload = _context(analysis, data, section, set(group))
+        if errors is not None:
+            payload["validation_errors"] = errors
         if size("system-analyst-" + next(step for step, sections in STEPS if any(name == section for name, _ in sections)), payload, model) <= window(llm):
             result.append(payload)
         elif len(group) > 1:
             middle = len(group) // 2
-            groups[0:0] = [group[:middle], group[middle:]]
+            groups[0:0] = [(group[:middle], errors), (group[middle:], errors)]
+        elif errors is not None and len(errors) > 1:
+            middle = len(errors) // 2
+            groups[0:0] = [(group, errors[:middle]), (group, errors[middle:])]
         else:
             # Сохраняем полные определения только затронутых сущностей.
             selected = {story.id for story in analysis.user_stories if set(story.req) & set(group)}
@@ -141,6 +146,8 @@ def _requests(analysis: Analysis, data: dict, section: str, model: type[BaseMode
                     entities[name] = {"fields": list(entity["fields"])}
             agent = "system-analyst-" + next(step for step, sections in STEPS if any(name == section for name, _ in sections))
             if size(agent, payload, model) > window(llm):
+                if errors is not None:
+                    raise ContractError("Даже минимальный контекст исправления связей не помещается в окно модели")
                 raise BudgetExceeded("Даже контекст одной фичи не помещается в профиль окна")
             result.append(payload)
     return result
@@ -210,10 +217,10 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                     targets.append(("roles", RolesSection))
                 for section, model in targets:
                     data[section] = {}
-                    for part, payload in enumerate(_requests(analysis, data, section, model, llm)):
-                        relevant = [f for f in findings if f.path.endswith(".op" if section == "entities" else ".role")]
-                        payload["validation_errors"] = [{"path": f.path, "message": f.message,
-                                                         "permission": data["permissions"][int(re.search(r"\[(\d+)\]", f.path)[1])]} for f in relevant]
+                    relevant = [f for f in findings if f.path.endswith(".op" if section == "entities" else ".role")]
+                    errors = [{"path": f.path, "message": f.message,
+                               "permission": data["permissions"][int(re.search(r"\[(\d+)\]", f.path)[1])]} for f in relevant]
+                    for part, payload in enumerate(_requests(analysis, data, section, model, llm, validation_errors=errors)):
                         response = ask(llm, task_class="spec_step", agent=f"system-analyst-{'domain' if section == 'entities' else 'access'}", payload=payload, output=model, task_id=f"spec.foundation.{section}.{part}")
                         value = normalize_section_roles(section, response.model_dump(mode="json", by_alias=True, exclude_none=True), analysis.roles)
                         if section == "entities":
