@@ -36,9 +36,10 @@ def kebab(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", screen_kebab(name)).strip("-")
 
 
-def _widget(app: AppView, entity: str, name: str, field: dict, prefix: str) -> Widget:
+def _widget(app: AppView, entity: str, name: str, field: dict, prefix: str, entry: bool = False) -> Widget:
     kind = {"state": "status", "file": "file"}.get(field.get("type"), "field")
-    if field.get("type") == "datetime" and name in app.timer_fields(entity):
+    # A form enters the deadline itself; the countdown belongs to screens that show it.
+    if field.get("type") == "datetime" and name in app.timer_fields(entity) and not entry:
         kind = "countdown"
     return Widget(kind=kind, field=f"{entity}.{name}", testid=f"{prefix}.{kebab(name)}")
 
@@ -115,7 +116,7 @@ def derive_base(raw_app: dict) -> UiSpec:
             ops = [op for op in ("create", "update") if app.roles_for(f"{entity}.{op}")]
             screens[form_name] = Screen(
                 platform="web", roles=writers, pattern="form", title=label, source=Source(entity=entity),
-                widgets=[_widget(app, entity, n, f, prefix) for n, f in editable],
+                widgets=[_widget(app, entity, n, f, prefix, entry=True) for n, f in editable],
                 actions=[Action(command=f"{entity}.{op}", testid=f"{prefix}.{op}", then=detail_name if readers else None)
                          for op in ops],
                 states=state_texts(lang, "web"))

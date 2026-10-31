@@ -75,6 +75,12 @@ class BaseTest(unittest.TestCase):
         self.assertNotIn("Ticket.resolution", form_fields)               # set by a command
         self.assertEqual(self.ui.screens["TicketForm"].actions[0].command, "Ticket.create")
 
+    def test_entered_timer_deadline_is_a_form_field(self):
+        app = copy.deepcopy(APP)
+        del app["entities"]["Ticket"]["fields"]["due_at"]["computed_by"]   # case 1: the user sets the deadline
+        widgets = {w.field: w.kind for w in derive_base(app).screens["TicketForm"].widgets}
+        self.assertEqual(widgets["Ticket.due_at"], "field")
+
     def test_menus_states_and_round_trip(self):
         self.assertEqual(self.ui.home["employee"], {"web": "TicketList"})
         for screen in self.ui.screens.values():
