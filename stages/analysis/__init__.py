@@ -13,7 +13,7 @@ from stages.analysis.compat import (
 from stages.analysis.inputs import InputManifest, ingest
 from stages.analysis.models import Acceptance, Constraints, Extraction, Lint, Rules, Skeleton, Stories, stories_schema
 from stages.analysis.patching import PatchRejected, PatchResponse, apply_patch, pointer
-from stages.analysis.runtime import ask, batches, encoded
+from stages.analysis.runtime import ask, batches, encoded, size, window
 from stages.analysis.storage import file_fingerprint, fingerprint, inside, read_json, write_json
 from stages.analysis.symbols import role_id
 
@@ -251,15 +251,39 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
             result = ask(llm, task_class="req_extract", agent="analyst-acceptance", payload=payload, output=Acceptance, task_id=f"analysis.acceptance.{index}")
             _append(data, "acceptance", [item.model_dump() for item in result.acceptance], "AC")
             write_json(workspace, ARTIFACT, Analysis.model_validate(data))
+        covered = {rule for item in data["acceptance"] for rule in item["rules"]}
+        missing = [rule for rule in data["rules"] if rule["id"] not in covered]
+        # A large valid JSON response may still omit rules; regenerate only missing rules in small groups.
+        for index, payload in enumerate(batches(llm, "analyst-acceptance", Acceptance, missing, "elements", {"roles": data["roles"]}, item_limit=3) if missing else []):
+            requirements = {req for rule in payload["elements"] for req in rule["req"]}
+            for story in data["user_stories"]:
+                if requirements.intersection(story["req"]):
+                    candidate = {**payload, "elements": [*payload["elements"], story]}
+                    if size("analyst-acceptance", candidate, Acceptance) <= window(llm):
+                        payload = candidate
+            result = ask(llm, task_class="req_extract", agent="analyst-acceptance", payload=payload, output=Acceptance, task_id=f"analysis.acceptance.missing.{index}")
+            _append(data, "acceptance", [item.model_dump() for item in result.acceptance], "AC")
+            write_json(workspace, ARTIFACT, Analysis.model_validate(data))
+        covered = {rule for item in data["acceptance"] for rule in item["rules"]}
+        missing_ids = [rule["id"] for rule in data["rules"] if rule["id"] not in covered]
+        if missing_ids:
+            raise ContractError(f"Не созданы критерии приёмки для правил: {', '.join(missing_ids)}")
         for attempt in range(2):
             issues = _findings(Analysis.model_validate(data))
             if not issues:
                 break
+            before = encoded(data)
             data = _revise(data, llm, issues, f"analysis.revise.{attempt}")
+            if encoded(data) == before:
+                break
     except BudgetExceeded as exc:
         flags.append(ElementFlag(path="analysis", status="questioned", reason=f"Лимит модели: {exc}; сохранён частичный анализ."))
     except (ValueError, TypeError) as exc:
         raise ContractError("Промежуточный анализ нарушает контракт") from exc
+    covered = {rule for item in data["acceptance"] for rule in item["rules"]}
+    missing_ids = [rule["id"] for rule in data["rules"] if rule["id"] not in covered]
+    if missing_ids:
+        raise ContractError(f"Не созданы критерии приёмки для правил: {', '.join(missing_ids)}")
     analysis = Analysis.model_validate(data)
     for issue in _findings(analysis):
         flags.append(ElementFlag(path=issue.path, status="questioned", reason=issue.message, gate="G0" if issue.code == "REQ_NO_QUOTE" else "G1"))

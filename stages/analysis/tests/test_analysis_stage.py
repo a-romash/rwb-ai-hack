@@ -96,8 +96,30 @@ class AnalysisStageTests(unittest.TestCase):
         llm = FakeLLM(self.responses)
         out = self.run_stage(llm)
         self.assertTrue(out.flags)
-        self.assertEqual(sum(call["task_class"] == "patch" for call in llm.calls), 2)
+        self.assertEqual(sum(call["task_class"] == "patch" for call in llm.calls), 1)
         self.assertFalse(g0(self.workspace, out.artifacts).passed)
+
+    def test_missing_rule_coverage_is_regenerated(self) -> None:
+        original = self.responses["analysis.acceptance.0"]["acceptance"]
+        self.responses["analysis.acceptance.0"] = {"acceptance": [ac for ac in original if not set(ac["rules"]) & {"BR-02", "BR-03", "BR-04"}]}
+        self.responses["analysis.acceptance.missing.0"] = {"acceptance": [ac for ac in original if set(ac["rules"]) & {"BR-02", "BR-03", "BR-04"}]}
+        out = self.run_stage(FakeLLM(self.responses))
+        analysis = Analysis.model_validate_json((self.workspace / "spec/analysis.json").read_text())
+        self.assertEqual({rule.id for rule in analysis.rules} - {rule for ac in analysis.acceptance for rule in ac.rules}, set())
+        self.assertFalse(any("отсутствует критерий" in flag.reason for flag in out.flags))
+
+    def test_missing_rule_coverage_after_retry_stops_analysis(self) -> None:
+        self.responses["analysis.acceptance.0"] = {"acceptance": []}
+        self.responses["analysis.acceptance.missing.0"] = {"acceptance": []}
+        self.responses["analysis.acceptance.missing.1"] = {"acceptance": []}
+        with self.assertRaisesRegex(ContractError, "критери"):
+            self.run_stage(FakeLLM(self.responses))
+
+    def test_budget_exhausted_during_acceptance_does_not_pass_partial_analysis(self) -> None:
+        self.responses["analysis.acceptance.0"] = {"acceptance": []}
+        self.responses["analysis.acceptance.missing.0"] = BudgetExceeded()
+        with self.assertRaisesRegex(ContractError, "критери"):
+            self.run_stage(FakeLLM(self.responses))
 
     def test_common_gherkin_keyword_formatting_is_normalized(self) -> None:
         for ac in self.responses["analysis.acceptance.0"]["acceptance"]:
