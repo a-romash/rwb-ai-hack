@@ -23,6 +23,7 @@ from stages.analysis.symbols import normalize_section_roles
 from stages.spec.context import analysis_slice, empty_app, index
 
 ARTIFACT = "spec/app.json"
+FOUNDATION_REPAIR_ATTEMPTS = 3
 
 
 def bind_entities(value: dict, data: dict) -> dict:
@@ -209,28 +210,52 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                     write_json(workspace, ARTIFACT, App.model_validate(data))
                 completed.append(section)
             if step == "access":
-                findings = _foundation_findings(analysis, data)
-                targets = []
-                if any(f.path.endswith(".op") for f in findings):
-                    targets.append(("entities", EntitiesSection))
-                if any(f.path.endswith(".role") for f in findings):
-                    targets.append(("roles", RolesSection))
-                for section, model in targets:
-                    data[section] = {}
-                    relevant = [f for f in findings if f.path.endswith(".op" if section == "entities" else ".role")]
-                    errors = [{"path": f.path, "message": f.message,
-                               "permission": data["permissions"][int(re.search(r"\[(\d+)\]", f.path)[1])]} for f in relevant]
-                    for part, payload in enumerate(_requests(analysis, data, section, model, llm, validation_errors=errors)):
-                        response = ask(llm, task_class="spec_step", agent=f"system-analyst-{'domain' if section == 'entities' else 'access'}", payload=payload, output=model, task_id=f"spec.foundation.{section}.{part}")
-                        value = normalize_section_roles(section, response.model_dump(mode="json", by_alias=True, exclude_none=True), analysis.roles)
-                        if section == "entities":
-                            value = bind_entities(value, data)
-                        data[section] = _merge(data[section], value, section, conflicts)
-                        model.model_validate(data[section])
+                repair_issue = None
+                for attempt in range(FOUNDATION_REPAIR_ATTEMPTS):
+                    findings = _foundation_findings(analysis, data)
+                    if not findings:
+                        break
+                    targets = []
+                    if any(f.path.endswith(".op") for f in findings):
+                        targets.append(("entities", EntitiesSection))
+                    if any(f.path.endswith(".role") for f in findings):
+                        targets.append(("roles", RolesSection))
+                    for section, model in targets:
+                        relevant = [f for f in findings if f.path.endswith(".op" if section == "entities" else ".role")]
+                        errors = [{"path": f.path, "message": f.message,
+                                   "permission": data["permissions"][int(re.search(r"\[(\d+)\]", f.path)[1])]} for f in relevant]
+                        try:
+                            requests = _requests(analysis, data, section, model, llm, validation_errors=errors)
+                        except ContractError as exc:
+                            repair_issue = f"Не удалось подготовить контекст исправления: {exc}"
+                            break
+                        replacement = {}
+                        try:
+                            for part, payload in enumerate(requests):
+                                payload["repair_attempt"] = attempt + 1
+                                response = ask(llm, task_class="spec_step", agent=f"system-analyst-{'domain' if section == 'entities' else 'access'}", payload=payload, output=model, task_id=f"spec.foundation.{section}.{attempt}.{part}")
+                                value = normalize_section_roles(section, response.model_dump(mode="json", by_alias=True, exclude_none=True), analysis.roles)
+                                if section == "entities":
+                                    value = bind_entities(value, data)
+                                replacement = _merge(replacement, value, section, conflicts)
+                            model.model_validate(replacement)
+                        except BudgetExceeded as exc:
+                            repair_issue = f"Лимит модели: {exc}"
+                            break
+                        except ContractError:
+                            continue
+                        data[section] = replacement
                         write_json(workspace, ARTIFACT, App.model_validate(data))
+                    if repair_issue:
+                        break
                 remaining = _foundation_findings(analysis, data)
                 if remaining:
-                    raise ContractError("Не удалось исправить связи сущностей, ролей и прав: " + "; ".join(f"{f.path}: {f.message}" for f in remaining[:5]))
+                    reason = f"Не исправлено после {FOUNDATION_REPAIR_ATTEMPTS} попыток: " if not repair_issue else f"Исправление остановлено ({repair_issue}); "
+                    for finding in remaining:
+                        flags.append(ElementFlag(path=finding.path, status="questioned", reason=reason + finding.message, gate="G1"))
+                    notes.append({"stage": "spec", "text": "Связи ролей и операций остались неразрешёнными; спецификация проходит структурную схему и передана дальше.",
+                                  "findings": [f.model_dump() for f in remaining]})
+                    App.model_validate(data)
     except BudgetExceeded as exc:
         if not {"entities", "roles", "permissions"}.issubset(completed) or _foundation_findings(analysis, data):
             raise ContractError(f"Не удалось проверить связи сущностей, ролей и прав: лимит модели: {exc}") from exc
