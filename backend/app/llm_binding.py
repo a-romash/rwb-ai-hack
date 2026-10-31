@@ -72,7 +72,9 @@ def make_llm(run_id: UUID, stage_run_id: UUID, *, transport=None, tokenizer=None
 
     def event(kind, payload):
         with SessionLocal.begin() as session:
-            session.add(Event(run_id=run_id, type=kind, payload=payload))
+            session.add(Event(run_id=run_id, type=kind, payload={**payload, 'stage_run_id': str(stage_run_id)}))
+        if kind in ('llm.normalized', 'artifact.normalized'):
+            tracing.normalization(run_id, stage_run_id, payload)
 
     if tokenizer is None:
         import os

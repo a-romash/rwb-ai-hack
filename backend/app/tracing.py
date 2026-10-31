@@ -94,6 +94,8 @@ def generation(call, values):
         'langfuse.observation.model.name': call.model,
         'langfuse.observation.input': values.get('messages'),
         'langfuse.observation.output': values.get('output'),
+        'langfuse.observation.metadata.normalized_output': values.get('normalized_output'),
+        'langfuse.observation.metadata.normalization': values.get('normalization'),
         'langfuse.observation.usage_details': usage or None,
         'langfuse.observation.model.parameters': {'max_tokens': values['max_tokens']} if values.get('max_tokens') else None,
         'langfuse.observation.level': LEVELS.get(status, 'DEFAULT'),
@@ -134,3 +136,16 @@ def run(row):
         'langfuse.session.id': str(row.project_id),
         'langfuse.observation.metadata.status': row.status,
     }, error=row.status == 'failed')
+
+
+def normalization(run_id, stage_run_id, payload):
+    from datetime import datetime, timezone
+    from uuid import uuid4
+    now = datetime.now(timezone.utc)
+    _span(run_id, uuid4().hex[:16], stage_run_id.hex[:16], "normalization:" + (payload.get('task_id') or payload.get('source', 'response')), now, now, {
+        'langfuse.observation.type': 'event',
+        'langfuse.observation.input': payload.get('raw'),
+        'langfuse.observation.output': payload.get('normalized'),
+        'langfuse.observation.metadata.changes': payload.get('changes'),
+        'langfuse.observation.metadata.normalization_version': payload.get('version'),
+    })

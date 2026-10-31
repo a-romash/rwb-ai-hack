@@ -296,6 +296,13 @@ def _execute(stage_id):
                 if not fake and stage == 'verify' and prototype.enabled():
                     prototype.stop(str(run_id))
                 return
+            normalization_events = session.scalars(select(Event).where(Event.run_id == run_id, Event.type.in_(['llm.normalized', 'artifact.normalized']))).all()
+            records = [e.payload for e in normalization_events if e.payload.get('stage_run_id') == str(stage_id)]
+            if records:
+                report_path = f'reports/normalization-{stage}-{attempt}.json'
+                from stages.analysis.storage import write_json
+                write_json(root, report_path, {'stage': stage, 'records': records})
+                output.artifacts[f'normalization_{stage}'] = report_path
             metadata = [(name, path, *describe(root, path)) for name, path in output.artifacts.items()]
             # Re-entry after a question replaces this attempt's accepted output atomically.
             session.execute(delete(Artifact).where(Artifact.stage_run_id == row.id))

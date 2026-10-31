@@ -130,6 +130,14 @@ def ask(llm, hook: dict, app: dict, analysis: dict, criteria: list[dict], rows: 
     }
     answer = llm(task_class="qa", system=SYSTEM, user=json.dumps(packet, ensure_ascii=False),
                  output=ModelCases, task_id=hook["id"])
+    from harness.normalization import match_name
+    names = {p['name'] for p in hook.get('parameters', []) if p['source'] == 'input'}
+    for case in answer.cases:
+        mapped = {match_name(k, names): v for k, v in case.inputs.items()}
+        if len(mapped) == len(case.inputs) and mapped != case.inputs:
+            if hasattr(llm, 'event'):
+                llm.event('artifact.normalized', {'source': 'test_cases', 'changes': [{'path': '/cases/' + case.id + '/inputs', 'before': case.inputs, 'after': mapped, 'reason': 'input_alias'}]})
+            case.inputs = mapped
     return answer.cases
 
 

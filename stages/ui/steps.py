@@ -22,6 +22,7 @@ from stages.ui.base import state_texts
 from stages.ui.context import app_brief, dumps, screens_brief, story, walk_screens
 from stages.ui.llm_io import Devices, Patch, PlatformPlan, StoryPlatform, Texts
 from stages.ui.patch import PatchError, apply_patch
+from harness.normalization import normalize_ui, normalize_patch, within
 
 AGENTS = Path(__file__).resolve().parents[2] / "agents"
 STRUCTURAL = {"UI_REF_UNRESOLVED", "TESTID_DUP", "STATE_MISSING"}
@@ -69,6 +70,7 @@ class Builder:
     plan: dict[str, StoryPlatform] = field(default_factory=dict)
     flags: list[ElementFlag] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    normalizations: list[dict] = field(default_factory=list)
 
     @property
     def app(self) -> AppView:
@@ -196,11 +198,18 @@ class Builder:
                 if f.severity == "error" and f.code in STRUCTURAL and not f.path.startswith("walks")}
 
     def try_patch(self, patch: Patch, allowed: Callable[[str], bool]) -> tuple[UiSpec | None, list[str]]:
+        mapped, changes = normalize_patch(patch.model_dump(mode="json"), self.doc())
+        patch = Patch.model_validate(mapped)
+        self.normalizations.extend(changes)
         bad = [op.path for op in patch.ops if not allowed(op.path)]
         if bad:
             return None, [f"Путь вне зоны шага: {p}" for p in bad]
         try:
-            candidate = UiSpec.model_validate(apply_patch(self.doc(), patch.ops))
+            doc, changes = normalize_ui(apply_patch(self.doc(), patch.ops), self.app_raw)
+            if not within(changes, allowed):
+                return None, ["Нормализация патча меняет ссылки вне разрешённой области"]
+            candidate = UiSpec.model_validate(doc)
+            self.normalizations.extend(changes)
         except PatchError as exc:
             return None, [f"Патч не применяется: {exc}"]
         except ValidationError as exc:
@@ -279,6 +288,8 @@ class Builder:
             doc["walks"][us] = walk.model_dump(mode="json", by_alias=True, exclude_none=True)
             for key in _copy_refs(walk):          # texts come in step 4
                 doc["copy"].setdefault(key, "")
+            doc, changes = normalize_ui(doc, self.app_raw)
+            self.normalizations.extend(changes)
             candidate = UiSpec.model_validate(doc)
             result["ui"] = candidate
             errors = [f"{f.code} {f.path}: {f.message}" for f in self.findings(candidate)

@@ -22,6 +22,8 @@ from stages.analysis.storage import read_json, write_json
 from stages.analysis.symbols import normalize_section_roles
 from stages.spec.context import analysis_slice, empty_app, index
 
+from harness.normalization import normalize_app, normalize_patch, record, within
+
 ARTIFACT = "spec/app.json"
 FOUNDATION_REPAIR_ATTEMPTS = 3
 
@@ -189,6 +191,15 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
     flags: list[ElementFlag] = []
     completed: list[str] = []
     notes: list[dict] = []
+    aliases = {}
+
+    def persist():
+        nonlocal data
+        data, changes = normalize_app(data, aliases)
+        record(workspace, changes, "spec", llm)
+        write_json(workspace, "spec/name-map.json", aliases)
+        write_json(workspace, ARTIFACT, App.model_validate(data))
+
     write_json(workspace, ARTIFACT, App.model_validate(data))
     try:
         for step, sections in STEPS:
@@ -207,7 +218,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                         data[section] = _merge(data[section], value, section, conflicts)
                     # Валидация объединённого раздела на каждом узком шаге.
                     model.model_validate(data[section])
-                    write_json(workspace, ARTIFACT, App.model_validate(data))
+                    persist()
                 completed.append(section)
             if step == "access":
                 repair_issue = None
@@ -245,7 +256,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                         except ContractError:
                             continue
                         data[section] = replacement
-                        write_json(workspace, ARTIFACT, App.model_validate(data))
+                        persist()
                     if repair_issue:
                         break
                 remaining = _foundation_findings(analysis, data)
@@ -263,6 +274,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
         notes.append({"stage": "spec", "text": "Незавершённые разделы сохранены пустыми и требуют реализации.", "completed": completed})
     except (ValueError, TypeError) as exc:
         raise ContractError("Раздел спецификации не соответствует контракту") from exc
+    persist()
     app = App.model_validate(data)
     for item in app.custom.root:
         if item.get("requires_confirmation") or item.get("kind") == "assumption":
@@ -275,7 +287,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
             flags.append(ElementFlag(path=dependent, status="blocked_by", reason=f"Зависит от спорного элемента {path}.", gate="G1"))
     write_json(workspace, ARTIFACT, app)
     write_json(workspace, "spec/spec-notes.json", {"schema_version": 1, "stage": "spec", "notes": notes})
-    return StageOutput(artifacts={"app": ARTIFACT, "spec_notes": "spec/spec-notes.json"}, summary=f"Спецификация содержит сущностей: {len(app.entities.root)}; правил в хуках: {len(app.hooks.root)}; команд: {len(app.commands.root)}.", flags=flags)
+    return StageOutput(artifacts={"app": ARTIFACT, "spec_notes": "spec/spec-notes.json", "name_map": "spec/name-map.json"}, summary=f"Спецификация содержит сущностей: {len(app.entities.root)}; правил в хуках: {len(app.hooks.root)}; команд: {len(app.commands.root)}.", flags=flags)
 
 
 REPAIR_PARALLEL = 8
@@ -392,7 +404,16 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding], 
                 flags.append(ElementFlag(path=finding.path, status="questioned", reason=f"Ответ модели на ремонт не соответствует контракту: {str(exc)[:500]}", gate="G1"))
                 continue
             try:
-                updated = apply_patch(analysis_data if is_analysis else app_data, response, [normalized])
+                document = analysis_data if is_analysis else app_data
+                patch_data, changes = normalize_patch(response.model_dump(mode="json", by_alias=True), document)
+                record(workspace, changes, "spec.patch", llm)
+                updated = apply_patch(document, PatchResponse.model_validate(patch_data), [normalized])
+                if not is_analysis:
+                    updated, changes = normalize_app(updated)
+                    root = pointer(document, normalized.path)
+                    if not within(changes, lambda p: p == root or p.startswith(root + "/")):
+                        raise PatchRejected("Нормализация патча меняет ссылки вне разрешённого адреса")
+                    record(workspace, changes, "spec.patch.result", llm)
                 if updated == (analysis_data if is_analysis else app_data):
                     flags.append(ElementFlag(path=finding.path, status="questioned", reason="Предложенный патч отклонён: патч не изменил документ; исправление не выполнено.", gate="G1"))
                     continue

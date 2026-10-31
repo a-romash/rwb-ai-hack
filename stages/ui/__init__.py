@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from contracts.gates import Finding
 from contracts.stage import BudgetExceeded, ContractError, ElementFlag, LLM, Sandbox, StageInput, StageOutput
 from contracts.ui import UiSpec
+from harness.normalization import normalize_ui, record
 from harness.fakes import workspace_path
 
 # Model steps import gate G1.5, which imports stages.ui.appview; keep this package import-light.
@@ -28,7 +29,11 @@ def _read(workspace: Path, inp: StageInput, name: str) -> dict:
         raise ContractError(f"Не удалось прочитать {name}: {exc}") from exc
 
 
-def _write(workspace: Path, builder: "Builder") -> None:
+def _write(workspace: Path, builder: "Builder", llm=None) -> None:
+    doc, changes = normalize_ui(builder.doc(), builder.app_raw)
+    builder.ui = UiSpec.model_validate(doc)
+    record(workspace, builder.normalizations + changes, "ui", llm)
+    builder.normalizations.clear()
     path = workspace_path(workspace, OUTPUT)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(builder.ui.model_dump_json(indent=2, by_alias=True, exclude_defaults=True) + "\n",
@@ -64,7 +69,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
     except BudgetExceeded:
         builder.notes.insert(0, "бюджет модели исчерпан, часть шагов пропущена")
         done = "Интерфейс спроектирован частично"
-    _write(workspace, builder)
+    _write(workspace, builder, llm)
     return _output(builder, done)
 
 
@@ -84,5 +89,5 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
     except BudgetExceeded:
         builder.notes.insert(0, "бюджет модели исчерпан во время исправления")
         done = "Интерфейс исправлен частично"
-    _write(workspace, builder)
+    _write(workspace, builder, llm)
     return _output(builder, done)

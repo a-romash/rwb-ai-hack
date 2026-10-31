@@ -47,13 +47,13 @@ class SpecStageTests(unittest.TestCase):
     def test_invalid_foundation_is_regenerated_before_behavior(self) -> None:
         original = copy.deepcopy(self.responses["spec.entities.0"])
         self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}
-        self.responses["spec.foundation.entities.0"] = original
+        self.responses["spec.foundation.entities.0.0"] = original
         llm = FakeLLM(self.responses)
         execute(self.inp, self.workspace, llm, FakeSandbox())
         model = App.model_validate_json((self.workspace / "spec/app.json").read_text())
         self.assertIn("Ticket", model.entities.root)
         ids = [call["task_id"] for call in llm.calls]
-        self.assertLess(ids.index("spec.foundation.entities.0"), ids.index("spec.state_machines.0"))
+        self.assertLess(ids.index("spec.foundation.entities.0.0"), ids.index("spec.state_machines.0"))
 
     def test_foundation_feedback_is_included_when_splitting_context(self) -> None:
         from types import SimpleNamespace
@@ -79,19 +79,27 @@ class SpecStageTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "контекст"):
             _requests(analysis, empty_app(analysis), "entities", EntitiesSection, SimpleNamespace(context_window=16000), validation_errors=[{"message": "x" * 40000}])
 
-    def test_invalid_foundation_after_retry_is_not_accepted(self) -> None:
+    def test_invalid_foundation_after_three_attempts_continues_with_flags(self) -> None:
         original = self.responses["spec.entities.0"]
-        self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}
-        self.responses["spec.foundation.entities.0"] = self.responses["spec.entities.0"]
-        with self.assertRaisesRegex(ContractError, "связ"):
-            execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        broken = {"section": next(iter(original.values()))}
+        self.responses["spec.entities.0"] = broken
+        for attempt in range(3):
+            self.responses[f"spec.foundation.entities.{attempt}.0"] = broken
+        llm = FakeLLM(self.responses)
+        out = execute(self.inp, self.workspace, llm, FakeSandbox())
+        self.assertTrue(out.flags)
+        App.model_validate_json((self.workspace / "spec/app.json").read_text())
+        repairs = [c for c in llm.calls if c["task_id"].startswith("spec.foundation.entities.")]
+        self.assertEqual(len(repairs), 3)
+        self.assertEqual(len({c["user"] for c in repairs}), 3)
 
-    def test_budget_exhaustion_during_foundation_repair_stops_stage(self) -> None:
+    def test_budget_exhaustion_keeps_schema_valid_foundation(self) -> None:
         original = self.responses["spec.entities.0"]
         self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}
-        self.responses["spec.foundation.entities.0"] = BudgetExceeded()
-        with self.assertRaisesRegex(ContractError, "связ"):
-            execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        self.responses["spec.foundation.entities.0.0"] = BudgetExceeded()
+        out = execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        self.assertTrue(out.flags)
+        App.model_validate_json((self.workspace / "spec/app.json").read_text())
 
     def test_future_command_permissions_are_not_checked_early(self) -> None:
         from stages.spec import _foundation_findings

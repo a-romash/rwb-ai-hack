@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import itertools
+import json
 import re
 from decimal import Decimal
 from pathlib import Path
@@ -397,6 +398,39 @@ def validate(analysis: Analysis, app: App) -> list[Finding]:
     return [item for validator in VALIDATORS.values() for item in validator(analysis, app)]
 
 
+def normalization_findings(workspace, app):
+    from harness.normalization import IDENT
+    data=app.model_dump(mode="json",by_alias=True)
+    result=[]
+    for section in ('entities','types','params','hooks','commands','queries','state_machines','events','schedules','integrations','notifications'):
+        for name in data[section]:
+            if not IDENT.fullmatch(name): result.append(finding('NAME_FORMAT', '/' + section + '/' + name, 'Имя должно быть идентификатором без пробелов.'))
+    log=workspace/'reports/normalization-log.jsonl'
+    if not log.exists(): return result
+    seen=set()
+    def at(path):
+        current=data
+        for token in path.lstrip('/').split('/'):
+            current=current[token.replace('~1','/').replace('~0','~')]
+        return current
+    for line in log.read_text(encoding='utf-8').splitlines():
+        try: changes=json.loads(line).get('changes',[])
+        except ValueError: continue
+        for c in changes:
+            if c.get('reason') not in ('name_collision','expression_needs_repair'): continue
+            path=c.get('target_path',c['path'])
+            if path in seen: continue
+            try:
+                value=at(path)
+                if c['reason']=='name_collision' and value==at(c['conflict_path']): continue
+                if c['reason']=='expression_needs_repair' and value!=c['before']: continue
+            except (KeyError,TypeError): continue
+            seen.add(path)
+            message='Нормализация не разрешила конфликт; исправьте этот элемент, учитывая оба варианта: '+json.dumps(c,ensure_ascii=False)
+            result.append(finding('NORMALIZATION_CONFLICT',path,message))
+    return result
+
+
 def check(workspace: Path, artifacts: dict[str, str]) -> GateResult:
     try:
         app = App.model_validate(read_json(workspace, artifacts.get("app", "spec/app.json")))
@@ -406,5 +440,5 @@ def check(workspace: Path, artifacts: dict[str, str]) -> GateResult:
         analysis = Analysis.model_validate(read_json(workspace, artifacts.get("analysis", "spec/analysis.json")))
     except (ContractError, ValueError, TypeError):
         return GateResult(gate="G1", passed=False, findings=[finding("REF_UNRESOLVED", "analysis", "Принятый анализ отсутствует или не соответствует схеме.")])
-    findings = validate(analysis, app)
+    findings = validate(analysis, app) + normalization_findings(workspace, app)
     return GateResult(gate="G1", passed=not any(f.severity == "error" for f in findings), findings=findings)

@@ -18,6 +18,7 @@ from pydantic import BaseModel, ValidationError
 
 from contracts.stage import BudgetExceeded, ContractError
 from harness import llm_config
+from harness.normalization import VERSION as NORMALIZATION_VERSION, normalize_response
 from harness.agent import MODEL
 from harness.http_retry import RateLimitExceeded, open_with_rate_limit_retry
 from harness.llm_throttle import AdmissionLimitExceeded
@@ -133,16 +134,24 @@ class Gateway:
         if output == 'code':
             system += '\nВерни ровно один блок кода между строками <<<CODE и CODE>>>.'
         messages = [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}]
-        identity = [self.cache_scope, getattr(self.transport, 'base_url', ''), getattr(self.transport, 'provider', ''), getattr(self.transport, 'model', MODEL), task_class, TASKS[task_class], self.profile, messages, schema, self.structured]
+        identity = [NORMALIZATION_VERSION, self.cache_scope, getattr(self.transport, 'base_url', ''), getattr(self.transport, 'provider', ''), getattr(self.transport, 'model', MODEL), task_class, TASKS[task_class], self.profile, messages, schema, self.structured]
         key = hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         prompt_sha = hashlib.sha256(json.dumps(messages, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         cached = self.cache_dir / (key + '.json') if self.cache_dir else None
         if cached and cached.is_file():
-            value = json.loads(cached.read_text(encoding='utf-8'))
-            record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started', 'from_cache': True, 'prompt_sha': prompt_sha})
-            self.finish(record, {'status': 'ok', 'from_cache': True, 'latency_ms': 0})
-            self.event('llm.cache_hit', {'task_class': task_class, 'task_id': task_id})
-            return output.model_validate(value) if schema else value
+            try:
+                raw_cached = json.loads(cached.read_text(encoding='utf-8'))
+                value, changes = normalize_response(raw_cached, output) if schema else (raw_cached, [])
+                validated = output.model_validate(value) if schema else value
+            except (ValueError, OSError):
+                self.event('llm.cache_invalid', {'task_class': task_class, 'task_id': task_id})
+            else:
+                record = self.start({'task_class': task_class, 'task_id': task_id, 'model': getattr(self.transport, 'model', MODEL), 'context_profile': self.profile, 'status': 'started', 'from_cache': True, 'prompt_sha': prompt_sha})
+                self.finish(record, {'status': 'ok', 'from_cache': True, 'latency_ms': 0, 'output': raw_cached, 'normalized_output': value, 'normalization': changes})
+                if changes:
+                    self.event('llm.normalized', {'task_id': task_id, 'version': NORMALIZATION_VERSION, 'raw': raw_cached, 'normalized': value, 'changes': changes})
+                self.event('llm.cache_hit', {'task_class': task_class, 'task_id': task_id})
+                return validated
         structured = self.structured
         if schema and not structured:
             messages[0]['content'] += '\nВерни только JSON по схеме: ' + json.dumps(schema, ensure_ascii=False)
@@ -210,9 +219,18 @@ class Gateway:
                 continue
             try:
                 if schema:
-                    value = output.model_validate_json(content)
-                    stored = value.model_dump(mode='json')
+                    normalized, changes = normalize_response(content, output)
+                    fields.update(normalized_output=normalized, normalization=changes)
+                    if changes:
+                        self.event('llm.normalized', {'task_id': task_id, 'version': NORMALIZATION_VERSION, 'raw': content, 'normalized': normalized, 'changes': changes})
+                    value = output.model_validate(normalized)
+                    stored = value.model_dump(mode='json', by_alias=True)
                 elif output == 'code':
+                    if '<<<CODE' not in content:
+                        fence = re.fullmatch(r'\s*```[^\n]*\n(.*?)\n```\s*', content, re.S)
+                        if fence:
+                            self.event('llm.normalized', {'task_id': task_id, 'version': NORMALIZATION_VERSION, 'raw': content, 'normalized': fence[1], 'changes': [{'path': '', 'reason': 'code_fence'}]})
+                            content = '<<<CODE\n' + fence[1] + '\nCODE>>>'
                     matches = re.findall(r'(?ms)^<<<CODE[ \t]*\n(.*?)\nCODE>>>[ \t]*(?=\n|$)', content)
                     if len(matches) != 1 or content.count('<<<CODE') != 1 or content.count('CODE>>>') != 1:
                         raise ValueError('Нужен ровно один блок кода')
