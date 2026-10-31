@@ -255,15 +255,21 @@ def _camel(name: str) -> str:
     return name[:1].lower() + name[1:]
 
 
-def _return_type(kind: str, hook: dict) -> str:
+# JSON words the model uses for scalar results.
+_SCALAR_ALIASES = {"number": "decimal", "float": "decimal", "double": "decimal", "integer": "int", "boolean": "bool"}
+
+
+def _return_type(kind: str, hook: dict, app: dict) -> str:
     if kind != "calculator":
         return {"validator": "bool", "policy": "bool", "decider": "string", "reaction": "void"}[kind]
     out = hook.get("out")
     if not isinstance(out, str) or out == "":
         return "DateTimeOffset"
+    out = _SCALAR_ALIASES.get(out, out)
     if out in SCALARS:
         return SCALARS[out]
-    if _ID.fullmatch(out):
+    # Only a name the domain declares is a C# type; anything else would not compile.
+    if _ID.fullmatch(out) and (out in (app.get("entities") or {}) or out in (app.get("types") or {})):
         return out
     return "DateTimeOffset"
 
@@ -319,7 +325,7 @@ def _hooks(app: dict) -> list[dict]:
         kind = hook.get("kind")
         if kind not in _METHODS:
             _contract_error(f"unknown hook kind: {kind}")
-        ret = _return_type(kind, hook)
+        ret = _return_type(kind, hook, app)
         method = _METHODS[kind]
         params = _parameters(kind, hook, app)
         rendered = ", ".join(f"{cs_type} {param}" for cs_type, param in params)

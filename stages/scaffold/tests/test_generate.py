@@ -198,6 +198,11 @@ class GenerateTests(unittest.TestCase):
         model = model_cs(app)
         self.assertIn("public enum SessionType", model)
         self.assertIn("public SessionType? State", model)
+        from stages.scaffold.generate import _return_type
+        # Case 1: the model wrote JSON words or a value name as the calculator result.
+        self.assertEqual(_return_type("calculator", {"out": "number"}, app), "decimal")
+        self.assertEqual(_return_type("calculator", {"out": "paymentUrl"}, app), "DateTimeOffset")
+        self.assertEqual(_return_type("calculator", {"out": "Session"}, app), "Session")
 
     def test_equipment_file_list_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
