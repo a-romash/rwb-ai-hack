@@ -1,0 +1,11 @@
+# Override for a clean clone: images fetch their dependencies while building.
+# docker compose -f infra/docker-compose.yml -f infra/docker-compose.online.yml up -d --build
+services:
+  backend:
+    build: {dockerfile: backend/Dockerfile.online, network: default}
+  worker:
+    build: {dockerfile: backend/Dockerfile.online, network: default}
+  admin:
+    build: {dockerfile: Dockerfile.online, network: default}
+  mobile:
+    build: {dockerfile: Dockerfile.online, network: default}
