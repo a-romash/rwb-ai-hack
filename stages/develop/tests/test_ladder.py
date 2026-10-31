@@ -99,9 +99,10 @@ class LadderTest(unittest.TestCase):
         self.assertIn("Реализовано 1 из 1", result.summary)
         self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1"])
         self.assertEqual(llm.calls[0]["output"], "code")
-        self.assertEqual(sandbox.calls[0]["kind"], "build")
-        self.assertEqual(sandbox.calls[1]["filter"], "AC-04")
-        self.assertEqual(sandbox.calls[1]["timeout_s"], 600)
+        # One sandbox call per candidate: dotnet test compiles the solution itself.
+        self.assertEqual([call["kind"] for call in sandbox.calls], ["test"])
+        self.assertEqual(sandbox.calls[0]["filter"], "AC-04")
+        self.assertEqual(sandbox.calls[0]["timeout_s"], 600)
         self.assertIn("allowed_api", llm.calls[0]["user"])
         self.assertNotIn("previous body:", llm.calls[0]["user"])
 
@@ -132,6 +133,31 @@ class LadderTest(unittest.TestCase):
         self.assertIn("FAIL-19", retried)
         self.assertNotIn("FAIL-20", retried)
         self.assertEqual(llm.replies, [])
+
+    def test_hook_that_cannot_pass_skips_the_ladder(self):
+        chosen = hooks("SlaDeadline")
+        hook = chosen[0]["id"]
+        cases_dir = "product/backend/tests/App.Acceptance.Tests/cases/hooks"
+        # Case 1: AC-01 and AC-08 got cases with equal inputs and different expectations.
+        for cases, manifest, reason in (
+            ([{"id": "A", "inputs": {"x": 1}, "expected": True}, {"id": "B", "inputs": {"x": 1}, "expected": False}], None, "противоречат"),
+            ([], {"tests": [{"ac": "AC-99"}]}, "нет ни одного теста"),
+        ):
+            tmp, root = layout(chosen)
+            (root / cases_dir).mkdir(parents=True)
+            (root / cases_dir / f"{hook}.json").write_text(json.dumps({"cases": cases}), encoding="utf-8")
+            if manifest:
+                (root / "reports").mkdir()
+                (root / "reports" / "tests.json").write_text(json.dumps(manifest), encoding="utf-8")
+            llm, sandbox = FakeLLM([]), FakeSandbox()
+            try:
+                execute(None, root, llm, sandbox)
+                row = report_of(root)["hooks"][0]
+            finally:
+                tmp.cleanup()
+            self.assertEqual((row["status"], row["attempts"]), ("stub", 0))
+            self.assertIn(reason, row["reason"])
+            self.assertEqual((llm.calls, sandbox.calls), ([], []))
 
     def test_prompt_carries_criterion_and_input_shapes(self):
         chosen = hooks("SlaDeadline")
@@ -256,7 +282,7 @@ class LadderTest(unittest.TestCase):
         self.assertEqual(saved["summary"], {"total": 3, "implemented": 1, "stub": 2, "first_pass": 1})
         self.assertIn("Бюджет исчерпан", result.summary)
         self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1", "hook_1"])
-        self.assertEqual(len(sandbox.calls), 2)
+        self.assertEqual(len(sandbox.calls), 1)
 
     def test_dispute_is_not_written(self):
         dispute = "// DISPUTE: AC-04 — ожидание расходится с контрактом, AC-04\n"
@@ -280,7 +306,7 @@ class LadderTest(unittest.TestCase):
         self.assertFalse(hook["first_pass"])
         self.assertEqual(hook["disputes"], [{"test": "AC-04", "reason": "ожидание расходится с контрактом, AC-04",
                                              "decision": "reject", "decision_reason": "спор не рассмотрен: Не читается tests"}])
-        self.assertEqual(len(sandbox.calls), 2)
+        self.assertEqual(len(sandbox.calls), 1)
         self.assertEqual([call["task_class"] for call in llm.calls], ["hook_1", "hook_2"])
         self.assertIn("спор не рассмотрен", llm.calls[1]["user"])
 

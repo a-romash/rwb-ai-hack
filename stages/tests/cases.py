@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, JsonValue
 from contracts.stage import BudgetExceeded, ContractError
 
 MIN_CASES = 3
+CASES = "product/backend/tests/App.Acceptance.Tests/cases/hooks"
 EXPECTED_HEADERS = {"expected", "result", "ожидается", "результат", "итог"}
 TRUE_WORDS = {"да", "true", "yes", "истина"}
 FALSE_WORDS = {"нет", "false", "no", "ложь"}
@@ -115,7 +116,8 @@ expected: the value the function must return for that row, derived from the crit
 return type (bool for validators and policies). Never compute expected values from an implementation."""
 
 
-def ask(llm, hook: dict, app: dict, analysis: dict, criteria: list[dict], rows: dict[str, list]) -> list[Case]:
+def ask(llm, hook: dict, app: dict, analysis: dict, criteria: list[dict], rows: dict[str, list],
+        rejected: dict | None = None) -> list[Case]:
     rules = {rule["id"]: rule for rule in analysis.get("rules", [])}
     packet = {
         "hook": {key: hook.get(key) for key in ("id", "kind", "method", "returns", "contract")},
@@ -128,9 +130,24 @@ def ask(llm, hook: dict, app: dict, analysis: dict, criteria: list[dict], rows: 
         "rows": [{"id": f"{ac}-{index}", "ac": ac, "values": row}
                  for ac, table in rows.items() for index, row in enumerate(table, 1)],
     }
+    if rejected:
+        # G2 repair: a new prompt, so the cache cannot hand back the cases that were just rejected.
+        packet["previous_cases_rejected"] = rejected
     answer = llm(task_class="qa", system=SYSTEM, user=json.dumps(packet, ensure_ascii=False),
                  output=ModelCases, task_id=hook["id"])
     return answer.cases
+
+
+def contradictions(cases: list[dict]) -> list[str]:
+    """Pairs of cases with equal inputs and different expectations: no hook body passes both."""
+    seen, found = {}, []
+    for case in cases:
+        key = json.dumps(case.get("inputs"), sort_keys=True, ensure_ascii=False)
+        first = seen.setdefault(key, case)
+        if first.get("expected") != case.get("expected"):
+            found.append((case.get("ac"), f"кейсы {first.get('id')} и {case.get('id')}: одинаковые входы, разные ожидания "
+                                          f"({first.get('expected')!r} и {case.get('expected')!r})"))
+    return found
 
 
 def check(hook: dict, cases: list[Case], wanted: set[str], criteria: set[str]) -> list[Case]:
@@ -143,15 +160,18 @@ def check(hook: dict, cases: list[Case], wanted: set[str], criteria: set[str]) -
     return good
 
 
-def build(hook: dict, app: dict, analysis: dict, llm) -> tuple[list[Case], str]:
-    """Cases of one hook and how they were obtained: gherkin, model, mixed or none."""
+def build(hook: dict, app: dict, analysis: dict, llm, feedback: dict[str, list[str]] | None = None,
+          previous: list[dict] | None = None) -> tuple[list[Case], str]:
+    """Cases of one hook and how they were obtained: gherkin, model, mixed or none.
+    feedback (G2 findings by criterion) sends those criteria to the model with the rejected cases."""
+    feedback = feedback or {}
     criteria = related(hook, analysis)
     rows = {ac["id"]: examples(ac.get("gherkin", "")) for ac in criteria}
     cases: list[Case] = []
     pending = {}
     for ac in criteria:
         found = direct(hook, ac["id"], rows[ac["id"]])
-        if found and len(found) >= MIN_CASES:
+        if found and len(found) >= MIN_CASES and ac["id"] not in feedback:
             cases += found
         else:
             pending[ac["id"]] = rows[ac["id"]]
@@ -159,7 +179,10 @@ def build(hook: dict, app: dict, analysis: dict, llm) -> tuple[list[Case], str]:
         return cases, "gherkin" if cases else "none"
     wanted = {f"{ac}-{index}" for ac, table in pending.items() for index in range(1, len(table) + 1)}
     try:
-        answer = ask(llm, hook, app, analysis, [ac for ac in criteria if ac["id"] in pending], pending)
+        rejected = {"why": [message for ac in pending for message in feedback.get(ac, [])],
+                    "cases": [case for case in previous or [] if case.get("ac") in pending]}
+        answer = ask(llm, hook, app, analysis, [ac for ac in criteria if ac["id"] in pending], pending,
+                     rejected if rejected["why"] else None)
         cases += check(hook, answer, wanted, set(pending))
     except BudgetExceeded:
         return cases, "budget"
@@ -167,7 +190,7 @@ def build(hook: dict, app: dict, analysis: dict, llm) -> tuple[list[Case], str]:
 
 
 def write(workspace_path, root, hook: dict, cases: list[Case]) -> str:
-    relative = f"product/backend/tests/App.Acceptance.Tests/cases/hooks/{hook['id']}.json"
+    relative = f"{CASES}/{hook['id']}.json"
     target = workspace_path(root, relative)
     target.parent.mkdir(parents=True, exist_ok=True)
     payload = {"schema_version": 1, "hook": hook["id"], "method": hook["method"],

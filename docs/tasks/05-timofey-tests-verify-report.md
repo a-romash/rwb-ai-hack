@@ -618,6 +618,7 @@ class DisputeDecision(BaseModel):
 | `TEST_FAILS_WRONG` | Тест упал не на проверке (компиляция, исключение настройки) | error |
 | `TEST_NO_AC` | Тест без метки AC | error |
 | `AC_NO_TEST` | AC без единого теста | error |
+| `CASES_CONTRADICT` | Два кейса хука с одинаковыми входами и разными ожиданиями: ни одна реализация не пройдёт оба | error |
 | `TEST_FORBIDDEN` | Skip, пустое тело, `DateTime.Now`, `sleep`, литерал порога | error |
 
 ### T3. Споры — `stages/tests/dispute.py`

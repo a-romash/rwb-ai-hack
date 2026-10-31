@@ -6,6 +6,7 @@ The C# side is fixed: a shared data-driven runner in the product template plus o
 class per criterion that carries the AC trait.
 """
 import hashlib
+import json
 
 from contracts.stage import ElementFlag, StageOutput, ContractError
 from contracts.verification import TestsManifest, PlannedTest
@@ -39,13 +40,17 @@ def _hooks(workspace, artifacts):
     return hooks
 
 
-def _generate(workspace, analysis, app, hooks, llm, only=None):
+def _generate(workspace, analysis, app, hooks, llm, only=None, feedback=None):
     """Write case files and per-criterion classes; returns {ac: [hook ids]} and sources by hook."""
     covered, sources = {}, {}
     for hook in hooks:
         if only is not None and not ({ac['id'] for ac in hook_cases.related(hook, analysis)} & only):
             continue
-        found, sources[hook['id']] = hook_cases.build(hook, app, analysis, llm)
+        previous = []
+        if feedback:
+            path = workspace_path(workspace, f"{hook_cases.CASES}/{hook['id']}.json")
+            previous = json.loads(path.read_text(encoding='utf-8')).get('cases', []) if path.is_file() else []
+        found, sources[hook['id']] = hook_cases.build(hook, app, analysis, llm, feedback, previous)
         hook_cases.write(workspace_path, workspace, hook, found)
         for case in found:
             covered.setdefault(case.ac, set()).add(hook['id'])
@@ -141,7 +146,10 @@ def repair(inp, workspace, llm, findings, *, sandbox=None):
     app = read(workspace, inp.artifacts, 'app')
     hooks = _hooks(workspace, inp.artifacts)
     affected = {f.path.removeprefix('tests/') for f in findings} & set(data.acceptance)
-    covered, _ = _generate(workspace, analysis, app, hooks, llm, only=affected)
+    feedback = {}
+    for f in findings:
+        feedback.setdefault(f.path.removeprefix('tests/'), []).append(f"{f.code}: {f.message}")
+    covered, _ = _generate(workspace, analysis, app, hooks, llm, only=affected, feedback=feedback)
     known = {t.ac for t in data.tests}
     for ac in sorted(set(covered) - known):
         data.tests.append(PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ac.replace('-', '_')}.cs", level='unit'))

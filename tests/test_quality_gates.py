@@ -21,6 +21,11 @@ class GateCoverage(unittest.TestCase):
         write(self.root,'reports/tests.json',data)
         codes={f.code for f in g2(self.root,{'tests':'reports/tests.json'}).findings}
         self.assertEqual(codes,{'TEST_GREEN_ON_STUB','TEST_FAILS_WRONG','TEST_NO_AC','TEST_FORBIDDEN','AC_NO_TEST'})
+        cases=[{'id':'AC-02-1','ac':'AC-02','inputs':{'x':1},'expected':True},{'id':'AC-02-2','ac':'AC-02','inputs':{'x':1},'expected':False}]
+        write(self.root,'product/backend/tests/App.Acceptance.Tests/cases/hooks/Gate.json',{'cases':cases})
+        found=[f for f in g2(self.root,{'tests':'reports/tests.json'}).findings if f.code=='CASES_CONTRADICT']
+        self.assertEqual([f.path for f in found],['tests/AC-02'])
+        self.assertIn('AC-02-1',found[0].message)
     def test_g3_g4_codes(self):
         data={'schema_version':1,'build':{'backend':False},'tests':[{'id':'x','ac':'AC-01','level':'unit','file':'x','status':'skipped'}],'mutations':[{'hook':'X','status':'survived'}],'scans':[{'severity':'critical'}],'stand':{'up':False,'smoke':False,'e2e':{},'hash_mismatches':['x']},'ac_status':{'AC-01':{'specified':True,'tested':True,'red_proof':True,'implemented':True,'passes':False,'e2e':None,'reason':'red'}}}
         write(self.root,'verification.json',data)

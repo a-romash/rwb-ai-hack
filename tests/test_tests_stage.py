@@ -57,6 +57,20 @@ class HookCasesTest(unittest.TestCase):
         llm = FakeLLM({('qa', 'Allowed'): [BudgetExceeded('нет бюджета')]})
         self.assertEqual(hook_cases.build(self.hook, {}, analysis, llm), ([], 'budget'))
 
+    def test_g2_feedback_reaches_the_model_with_rejected_cases(self):
+        analysis = {'acceptance': [{'id': 'AC-01', 'rules': [], 'gherkin': TABLE}]}
+        old = [{'id': 'AC-01-1', 'ac': 'AC-01', 'inputs': {'value': 5}, 'expected': False},
+               {'id': 'AC-01-2', 'ac': 'AC-01', 'inputs': {'value': 5}, 'expected': True}]
+        (_, why), = hook_cases.contradictions(old)
+        new = [{'id': f'AC-01-{n}', 'ac': 'AC-01', 'inputs': {'value': v}, 'expected': v >= 5} for n, v in ((1, 4), (2, 5), (3, 6))]
+        llm = FakeLLM({('qa', 'Allowed'): [{'cases': new}]})
+        cases, source = hook_cases.build(self.hook, {}, analysis, llm, {'AC-01': [why]}, old)
+        # Gherkin rows alone would skip the model; the finding sends the criterion back to it.
+        self.assertEqual((len(cases), source), (3, 'model'))
+        packet = json.loads(llm.calls[0]['user'])['previous_cases_rejected']
+        self.assertEqual((packet['why'], packet['cases']), ([why], old))
+        self.assertEqual(hook_cases.contradictions(new), [])
+
     def test_hook_without_inputs_is_accepted(self):
         from stages.tests import _hooks
         with tempfile.TemporaryDirectory() as folder:
