@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -293,6 +294,15 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
 REPAIR_PARALLEL = 8
 
 
+def _repair_workers() -> int:
+    """Do not queue more simultaneous repairs than the shared provider limiter admits."""
+    limits = ("LLM_TPM_LIMIT", "LLM_RPM_LIMIT", "LLM_MAX_PARALLEL")
+    if not any(int(os.getenv(name, "0")) for name in limits):
+        return REPAIR_PARALLEL
+    configured = int(os.getenv("LLM_MAX_PARALLEL", "0"))
+    return min(REPAIR_PARALLEL, max(1, configured))
+
+
 def _fit_repair(payload: dict, limit: int) -> dict | None:
     """Shrink the repair context step by step so one large finding does not stop the repair of the others."""
     analysis, app = payload["analysis"], payload["app"]
@@ -391,7 +401,7 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding], 
         else:
             requests.append((finding, is_analysis, normalized, payload))
     # The model answers in parallel; patches are applied one by one, and a stale one is rejected until the next round.
-    with ThreadPoolExecutor(REPAIR_PARALLEL) as pool:
+    with ThreadPoolExecutor(_repair_workers()) as pool:
         futures = [pool.submit(ask, llm, task_class="patch", agent="system-analyst-repair", payload=payload, output=PatchResponse,
                                task_id=f"spec.repair.{inp.attempt}.{number}") for number, (_, _, _, payload) in enumerate(requests)]
         for future, (finding, is_analysis, normalized, _) in zip(futures, requests):

@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from contracts.app import App
 from gates.g1_spec import check as g1
@@ -218,6 +219,16 @@ class SpecStageTests(unittest.TestCase):
         self.responses["spec.entities.0"] = {"Bad": {"extra": "unsupported"}}
         with self.assertRaises(ContractError):
             execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+
+    def test_parallel_repair_respects_shared_limiter(self) -> None:
+        from stages.spec import _repair_workers
+
+        with patch.dict("os.environ", {"LLM_MAX_PARALLEL": "1", "LLM_TPM_LIMIT": "30000", "LLM_RPM_LIMIT": "60"}):
+            self.assertEqual(_repair_workers(), 1)
+        with patch.dict("os.environ", {"LLM_MAX_PARALLEL": "4", "LLM_TPM_LIMIT": "30000", "LLM_RPM_LIMIT": "60"}):
+            self.assertEqual(_repair_workers(), 4)
+        with patch.dict("os.environ", {"LLM_MAX_PARALLEL": "0", "LLM_TPM_LIMIT": "0", "LLM_RPM_LIMIT": "0"}):
+            self.assertEqual(_repair_workers(), 8)
 
 
 if __name__ == "__main__":
