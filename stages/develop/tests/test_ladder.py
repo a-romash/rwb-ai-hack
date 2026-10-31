@@ -154,6 +154,27 @@ class LadderTest(unittest.TestCase):
             self.assertIn(text, user)
         self.assertNotIn("EXPECTED_UNIQUE", user)
 
+    def test_hook_is_judged_by_its_own_cases(self):
+        from contracts.stage import SandboxResult
+        chosen = hooks("SlaDeadline")
+        tmp, root = layout(chosen)
+        hook = chosen[0]["id"]
+        # Case 1: an API scenario of the same AC failed with a log tail and blocked a correct hook.
+        (root / "r.xml").write_text(
+            f'<testsuite><testcase name=\'AC(key: "{hook}:AC-1")\'/>'
+            '<testcase name="Scenario"><failure message="scenario broke"/></testcase></testsuite>', encoding="utf-8")
+        red = SandboxResult(ok=False, exit_code=2, duration_ms=1, failed=["Scenario"], output_tail="Now listening", reports={"junit": "r.xml"})
+
+        class Sandbox:
+            def run(self, kind, target, filter=None, timeout_s=600):
+                return red if kind == "test" else Result(True)
+        try:
+            execute(None, root, FakeLLM(["return 1;\n"]), Sandbox())
+            saved = report_of(root)["hooks"][0]
+        finally:
+            tmp.cleanup()
+        self.assertEqual((saved["status"], saved["attempts"]), ("implemented", 1))
+
     def test_cut_off_answer_fails_only_that_attempt(self):
         from contracts.stage import ContractError
         chosen = hooks("SlaDeadline")

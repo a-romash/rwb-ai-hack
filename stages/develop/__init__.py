@@ -86,7 +86,7 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
                 failures = f"Спор по тесту: {dispute['decision']} — {dispute['decision_reason']}"
                 previous = raw
                 continue
-            ok, tests, failures = _apply(path, raw, sandbox, ac, workspace)
+            ok, tests, failures = _apply(path, raw, sandbox, ac, workspace, str(hook.get("id") or ""))
             previous = raw
             if ok:
                 accepted = True
@@ -98,7 +98,7 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
     return _row(hook, "stub", attempts, False, tests, disputes, _fail_reason(hook, attempts, failures, disputes)), False
 
 
-def _apply(path: Path, body: str, sandbox, ac: str | None, workspace: Path | None = None):
+def _apply(path: Path, body: str, sandbox, ac: str | None, workspace: Path | None = None, hook_id: str = ""):
     before = path.read_bytes() if path.is_file() else None
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(body, encoding="utf-8")
@@ -108,6 +108,12 @@ def _apply(path: Path, body: str, sandbox, ac: str | None, workspace: Path | Non
     ran = _ran(workspace, test) if build.ok and workspace is not None else None
     if ran == 0:
         test = test.model_copy(update={"ok": False, "failed": [f"нет ни одного теста для {ac or 'хука'}"]})
+    own = _own(workspace, test, hook_id) if build.ok and ran and hook_id else None
+    if own:
+        # The hook is judged by its own cases: an API scenario of the same AC tests generated code
+        # (verify reports it), and its log tail hid the hook's assertion from the model.
+        failed = [f"{name}: {message}" for name, message in own if message is not None]
+        test = test.model_copy(update={"ok": not failed, "failed": failed, "output_tail": ""})
     ok = bool(build.ok) and bool(test.ok)
     if not ok:
         if before is None:
@@ -126,6 +132,22 @@ def _ran(workspace: Path, result) -> int | None:
         return sum(1 for _ in ET.parse(Path(workspace) / report).iter("testcase"))
     except (OSError, ET.ParseError):
         return None
+
+
+def _own(workspace: Path, result, hook_id: str) -> list[tuple[str, str | None]]:
+    """(test, failure message or None) of the hook's own cases: their key is "<hook id>:<case>"."""
+    report = (getattr(result, "reports", None) or {}).get("junit")
+    try:
+        cases = ET.parse(Path(workspace) / report).iter("testcase") if report else []
+    except (OSError, ET.ParseError):
+        return []
+    found = []
+    for case in cases:
+        name = case.get("name") or ""
+        if f'"{hook_id}:' in name:
+            failure = case.find("failure")
+            found.append((name, None if failure is None else (failure.get("message") or "failed")))
+    return found
 
 
 def _load_hooks(workspace: Path) -> list[dict]:
