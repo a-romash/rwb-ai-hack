@@ -28,9 +28,9 @@ TASKS = {
     # Analysis runs without reasoning: on case 1 reasoning ate the whole answer budget (length) 2-4x slower, see HANDOFF.
     'req_extract': (None, 0, .7, 4500), 'req_lint': (None, 0, .7, 3500),
     'spec_step': ('medium', 6000, 1.0, 4000), 'ui': (None, 0, .7, 3000),
-    'patch': (None, 0, .2, 2000), 'hook_1': (None, 0, .2, 1500),
-    'hook_2': (None, 0, .2, 1500), 'hook_3': ('low', 2000, 1.0, 1500),
-    'hook_4': (None, 0, .6, 1500), 'qa': (None, 0, .3, 2500),
+    'patch': (None, 0, .2, 2000), 'hook_1': (None, 0, .2, 6000),
+    'hook_2': (None, 0, .2, 6000), 'hook_3': ('low', 2000, 1.0, 6000),
+    'hook_4': (None, 0, .6, 6000), 'qa': (None, 0, .3, 2500),
     'ci_classify': (None, 0, 0., 1000), 'writer': (None, 0, .7, 2000),
 }
 # input cap and full context window, including reasoning/output reservation
