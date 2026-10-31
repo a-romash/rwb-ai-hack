@@ -8,6 +8,7 @@ from pathlib import Path
 
 from contracts.stage import BudgetExceeded, ContractError, StageOutput
 from stages.tests.cases import CASES, contradictions
+from stages.tests import GENERATED
 
 
 LADDER = ("hook_1", "hook_2", "hook_3", "hook_4")
@@ -191,13 +192,19 @@ def _json(workspace: Path, relative: str) -> dict:
 
 def _blocked(workspace: Path, hook: dict) -> str | None:
     """Why no hook body can pass, known before any model call; None when the ladder may run."""
-    cases = _json(workspace, f"{CASES}/{hook.get('id')}.json").get("cases") or []
+    written = _json(workspace, f"{CASES}/{hook.get('id')}.json")
+    cases = written.get("cases") or []
     for _, message in contradictions(cases):
         return f"{message} — тесты противоречат друг другу (G2 CASES_CONTRADICT)"
-    manifest = _json(workspace, "reports/tests.json")
     ac = _first_ac(hook.get("refs"))
-    if not cases and manifest and ac and not any(test.get("ac") == ac for test in manifest.get("tests") or []):
+    if cases or not ac:
+        return None
+    manifest = _json(workspace, "reports/tests.json")
+    if manifest and not any(test.get("ac") == ac for test in manifest.get("tests") or []):
         return f"для {ac} нет ни одного теста (G2 AC_NO_TEST)"
+    # The tests stage wrote no rows: the criterion class runs zero cases.
+    if written and not (Path(workspace) / f"{GENERATED}/{ac.replace('-', '_')}_Scenario.cs").is_file():
+        return f"для {ac} нет ни кейсов хука, ни API-сценария — проверять нечем (G2)"
     return None
 
 

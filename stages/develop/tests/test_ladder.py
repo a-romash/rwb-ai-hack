@@ -142,6 +142,8 @@ class LadderTest(unittest.TestCase):
         for cases, manifest, reason in (
             ([{"id": "A", "inputs": {"x": 1}, "expected": True}, {"id": "B", "inputs": {"x": 1}, "expected": False}], None, "противоречат"),
             ([], {"tests": [{"ac": "AC-99"}]}, "нет ни одного теста"),
+            # AC-07: an empty case file and a criterion class with no rows.
+            ([], {"tests": [{"ac": "AC-04"}]}, "нет ни кейсов хука"),
         ):
             tmp, root = layout(chosen)
             (root / cases_dir).mkdir(parents=True)
