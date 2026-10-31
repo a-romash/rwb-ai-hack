@@ -229,6 +229,26 @@ class GenerateTests(unittest.TestCase):
         app["entities"]["Route"] = {"fields": {}}
         self.assertIn("using Route = App.Domain.Route;", endpoints_cs(app))
 
+    def test_entity_command_input_id_does_not_duplicate_command_id(self):
+        from stages.scaffold.domain import model_cs
+
+        app = {
+            "entities": {"MeetingRoom": {"fields": {"name": {"type": "string"}}}},
+            "commands": {
+                "updateMeetingRoom": {
+                    "entity": "MeetingRoom",
+                    "input": {
+                        "id": {"type": "ref", "ref": "MeetingRoom"},
+                        "name": {"type": "string", "required": True},
+                    },
+                }
+            },
+        }
+
+        model = model_cs(app)
+
+        self.assertIn("public sealed record UpdateMeetingRoom(Guid Id, string Name);", model)
+
     def test_equipment_file_list_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
