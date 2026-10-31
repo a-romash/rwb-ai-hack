@@ -119,6 +119,7 @@ GateResult(gate="G1", passed=False, decided_by="code",
 | `REQ_UNCOVERED` | Каждый REQ ведёт к US, BR или NFR либо помечен «вне объёма» | error |
 | `BR_NO_AC` | У каждого BR есть AC | error |
 | `BR_NO_BOUNDARY` | У числового или временного порога есть примеры «N−1 / N / N+1» | error |
+| `BR_BOUNDARY_SIDE` | Строка порога N в таблице даёт тот же результат, что N−1 или N+1, как велит сравнение в тексте правила (≤, <, ≥, >) | error |
 | `BR_NO_HOOK` | У каждого BR есть хук или декларативное правило; хук ссылается на AC | error |
 | `AC_NOT_TESTABLE` | В AC есть «Дано / Когда / Тогда» и проверяемый результат | error |
 | `NFR_NOT_MEASURABLE` | У NFR есть число и способ проверки | warning |

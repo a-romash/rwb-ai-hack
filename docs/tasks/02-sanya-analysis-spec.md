@@ -610,6 +610,7 @@ EventRead = {id, type, ts, payload}
 | `REQ_UNCOVERED` | REQ не ведёт к US, BR или NFR и не помечен «вне объёма» | error |
 | `BR_NO_AC` | У BR нет AC | error |
 | `BR_NO_BOUNDARY` | У числового или временного порога нет примеров N−1 / N / N+1 | error |
+| `BR_BOUNDARY_SIDE` | Строка порога N попала не на ту сторону, которую называет сравнение в тексте правила | error |
 | `BR_NO_HOOK` | У BR нет хука или декларативного правила; хук не ссылается на AC | error |
 | `AC_NOT_TESTABLE` | В AC нет «Дано / Когда / Тогда» или проверяемого результата | error |
 | `NFR_NOT_MEASURABLE` | У NFR нет числа или способа проверки | warning |
