@@ -1,7 +1,7 @@
 name: rwb-prototype
 services:
   db:
-    image: postgis/postgis:17-3.5
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: app
