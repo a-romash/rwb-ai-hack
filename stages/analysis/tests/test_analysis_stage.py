@@ -121,6 +121,27 @@ class AnalysisStageTests(unittest.TestCase):
         with self.assertRaisesRegex(ContractError, "критери"):
             self.run_stage(FakeLLM(self.responses))
 
+    def test_eighty_percent_rule_coverage_allows_analysis_and_flags_missing(self) -> None:
+        extra = copy.deepcopy(self.responses["analysis.rules.0"]["rules"][0])
+        extra["text"] = "Новое уникальное бизнес-правило для проверки покрытия."
+        self.responses["analysis.rules.0"]["rules"].append(extra)
+        self.responses["analysis.acceptance.missing.0"] = {"acceptance": []}
+        self.responses["patch"] = {"operations": []}
+        out = self.run_stage(FakeLLM(self.responses))
+        self.assertTrue(any("BR-05" in flag.reason and "критери" in flag.reason for flag in out.flags))
+
+    def test_rule_coverage_threshold_boundaries(self) -> None:
+        from stages.analysis import _check_acceptance_coverage
+        def data(total, covered):
+            return {"rules": [{"id": f"BR-{i}"} for i in range(total)],
+                    "acceptance": [{"rules": [f"BR-{i}" for i in range(covered)]}]}
+        _check_acceptance_coverage(data(5, 4))
+        _check_acceptance_coverage(data(0, 0))
+        with self.assertRaises(ContractError):
+            _check_acceptance_coverage(data(6, 4))
+        with self.assertRaises(ContractError):
+            _check_acceptance_coverage(data(5, 0))
+
     def test_common_gherkin_keyword_formatting_is_normalized(self) -> None:
         for ac in self.responses["analysis.acceptance.0"]["acceptance"]:
             ac["gherkin"] = ac["gherkin"].replace("Дано ", "Дано: ").replace("Когда ", "Когда: ").replace("Тогда ", "Тогда: ")

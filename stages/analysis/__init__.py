@@ -84,6 +84,13 @@ def _findings(analysis: Analysis) -> list[Finding]:
     return [f for f in findings if f.path.startswith("analysis.")]
 
 
+def _check_acceptance_coverage(data: dict) -> None:
+    rules = {rule["id"] for rule in data["rules"]}
+    covered = rules & {rule for item in data["acceptance"] for rule in item["rules"]}
+    if rules and len(covered) * 5 < len(rules) * 4:
+        raise ContractError(f"Недостаточно критериев приёмки: покрыто {len(covered)} из {len(rules)} правил (минимум 80%); не покрыты: {', '.join(sorted(rules - covered))}")
+
+
 def _revise(data: dict, llm: LLM, findings: list[Finding], task_id: str, rejected: list[Finding] | None = None) -> dict:
     normalized_by_path = {}
     for finding in findings:
@@ -264,12 +271,9 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
             result = ask(llm, task_class="req_extract", agent="analyst-acceptance", payload=payload, output=Acceptance, task_id=f"analysis.acceptance.missing.{index}")
             _append(data, "acceptance", [item.model_dump() for item in result.acceptance], "AC")
             write_json(workspace, ARTIFACT, Analysis.model_validate(data))
-        covered = {rule for item in data["acceptance"] for rule in item["rules"]}
-        missing_ids = [rule["id"] for rule in data["rules"] if rule["id"] not in covered]
-        if missing_ids:
-            raise ContractError(f"Не созданы критерии приёмки для правил: {', '.join(missing_ids)}")
+        _check_acceptance_coverage(data)
         for attempt in range(2):
-            issues = _findings(Analysis.model_validate(data))
+            issues = [issue for issue in _findings(Analysis.model_validate(data)) if issue.code != "BR_NO_AC"]
             if not issues:
                 break
             before = encoded(data)
@@ -280,10 +284,7 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
         flags.append(ElementFlag(path="analysis", status="questioned", reason=f"Лимит модели: {exc}; сохранён частичный анализ."))
     except (ValueError, TypeError) as exc:
         raise ContractError("Промежуточный анализ нарушает контракт") from exc
-    covered = {rule for item in data["acceptance"] for rule in item["rules"]}
-    missing_ids = [rule["id"] for rule in data["rules"] if rule["id"] not in covered]
-    if missing_ids:
-        raise ContractError(f"Не созданы критерии приёмки для правил: {', '.join(missing_ids)}")
+    _check_acceptance_coverage(data)
     analysis = Analysis.model_validate(data)
     for issue in _findings(analysis):
         flags.append(ElementFlag(path=issue.path, status="questioned", reason=issue.message, gate="G0" if issue.code == "REQ_NO_QUOTE" else "G1"))

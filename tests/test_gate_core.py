@@ -29,5 +29,17 @@ class GateTests(unittest.TestCase):
         self.assertTrue(rounds[-1].passed)
         self.assertEqual(output.summary, 'исправлено')
 
+    def test_second_repair_receives_previous_repair_result(self):
+        finding = Finding(path='x', code='ERR', severity='error', message='Ошибка')
+        results = [GateResult(gate='G1', passed=False, findings=[finding])] * 2 + [GateResult(gate='G1', passed=True)]
+        seen = []
+        def repair(inp, workspace, llm, findings, previous_output=None):
+            seen.append(previous_output.summary)
+            return StageOutput(artifacts={}, summary=f'попытка {len(seen)}')
+        inp = StageInput(run_id='1', stage='spec', attempt=1, requirements='r', artifacts={})
+        with tempfile.TemporaryDirectory() as tmp, patch('gates.core.check_gate', side_effect=results):
+            run_gate('G1', SimpleNamespace(repair=repair), inp, Path(tmp), None, StageOutput(artifacts={}, summary='исходный'))
+        self.assertEqual(seen, ['исходный', 'попытка 1'])
+
 if __name__ == '__main__':
     unittest.main()

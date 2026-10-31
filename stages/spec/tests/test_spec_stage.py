@@ -44,6 +44,40 @@ class SpecStageTests(unittest.TestCase):
         self.assertTrue(model.entities.root)
         self.assertEqual(model.state_machines.root, {})
 
+    def test_invalid_foundation_is_regenerated_before_behavior(self) -> None:
+        original = copy.deepcopy(self.responses["spec.entities.0"])
+        self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}
+        self.responses["spec.foundation.entities.0"] = original
+        llm = FakeLLM(self.responses)
+        execute(self.inp, self.workspace, llm, FakeSandbox())
+        model = App.model_validate_json((self.workspace / "spec/app.json").read_text())
+        self.assertIn("Ticket", model.entities.root)
+        ids = [call["task_id"] for call in llm.calls]
+        self.assertLess(ids.index("spec.foundation.entities.0"), ids.index("spec.state_machines.0"))
+
+    def test_invalid_foundation_after_retry_is_not_accepted(self) -> None:
+        original = self.responses["spec.entities.0"]
+        self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}
+        self.responses["spec.foundation.entities.0"] = self.responses["spec.entities.0"]
+        with self.assertRaisesRegex(ContractError, "связ"):
+            execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+
+    def test_budget_exhaustion_during_foundation_repair_stops_stage(self) -> None:
+        original = self.responses["spec.entities.0"]
+        self.responses["spec.entities.0"] = {"section": next(iter(original.values()))}
+        self.responses["spec.foundation.entities.0"] = BudgetExceeded()
+        with self.assertRaisesRegex(ContractError, "связ"):
+            execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+
+    def test_future_command_permissions_are_not_checked_early(self) -> None:
+        from stages.spec import _foundation_findings
+        from contracts.analysis import Analysis
+        execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        data = json.loads((self.workspace / "spec/app.json").read_text())
+        data["permissions"].append({"role": data["permissions"][0]["role"], "op": "FutureCommand", "scope": "all"})
+        analysis = Analysis.model_validate_json((self.workspace / "spec/analysis.json").read_text())
+        self.assertFalse(_foundation_findings(analysis, data))
+
     def test_addressed_repair_fixes_unreachable_state(self) -> None:
         self.responses["spec.state_machines.0"]["TicketFlow"]["states"].append("isolated")
         execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
@@ -108,6 +142,22 @@ class SpecStageTests(unittest.TestCase):
         self.assertTrue(output.flags)
         self.assertIn("окна", output.flags[-1].reason)
         self.assertEqual(llm.calls, [])
+
+    def test_second_repair_receives_reason_first_patch_was_rejected(self) -> None:
+        execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        finding = Finding(path="hooks", code="BR_NO_HOOK", severity="error", message="Нет хука.")
+        first = repair(self.inp, self.workspace, FakeLLM({"patch": {"operations": [{"op": "replace", "path": "/hooks", "value": {}}]}}), [finding])
+        llm = FakeLLM({"patch": {"operations": []}})
+        repair(self.inp, self.workspace, llm, [finding], previous_output=first)
+        self.assertIn("Замена корня или целого раздела запрещена", llm.calls[0]["user"])
+
+    def test_second_repair_is_told_when_patch_did_not_change_document(self) -> None:
+        execute(self.inp, self.workspace, FakeLLM(self.responses), FakeSandbox())
+        finding = Finding(path="hooks", code="BR_NO_HOOK", severity="error", message="Нет хука.")
+        first = repair(self.inp, self.workspace, FakeLLM({"patch": {"operations": []}}), [finding])
+        llm = FakeLLM({"patch": {"operations": []}})
+        repair(self.inp, self.workspace, llm, [finding], previous_output=first)
+        self.assertIn("не изменил", llm.calls[0]["user"])
 
     def test_repair_context_shrinks_before_giving_up(self) -> None:
         from stages.spec import _fit_repair

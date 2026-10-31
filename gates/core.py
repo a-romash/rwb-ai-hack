@@ -38,6 +38,9 @@ def run_gate(gate, module, inp: StageInput, workspace: Path, llm, output: StageO
         if not errors or round_number == 2 or not hasattr(module, "repair"):
             break
         import inspect
-        kwargs = {'sandbox': sandbox} if 'sandbox' in inspect.signature(module.repair).parameters else {}
+        parameters = inspect.signature(module.repair).parameters
+        kwargs = {'sandbox': sandbox} if 'sandbox' in parameters else {}
+        if 'previous_output' in parameters:
+            kwargs['previous_output'] = output
         output = StageOutput.model_validate(module.repair(inp, workspace, llm, errors, **kwargs))
     return output, results

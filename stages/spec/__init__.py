@@ -146,6 +146,18 @@ def _requests(analysis: Analysis, data: dict, section: str, model: type[BaseMode
     return result
 
 
+def _foundation_findings(analysis: Analysis, data: dict) -> list[Finding]:
+    # Commands are generated later; only check role and CRUD references already decidable here.
+    from gates.g1_spec import ref_unresolved
+    app = App.model_validate(data)
+    result = []
+    for finding in ref_unresolved(analysis, app):
+        match = re.fullmatch(r"permissions\[(\d+)\]\.(role|op)", finding.path)
+        if match and (match[2] == "role" or "." in app.permissions.root[int(match[1])].op):
+            result.append(finding)
+    return result
+
+
 def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> StageOutput:
     inp = validate_input(inp, "spec")
     try:
@@ -189,7 +201,32 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                     model.model_validate(data[section])
                     write_json(workspace, ARTIFACT, App.model_validate(data))
                 completed.append(section)
+            if step == "access":
+                findings = _foundation_findings(analysis, data)
+                targets = []
+                if any(f.path.endswith(".op") for f in findings):
+                    targets.append(("entities", EntitiesSection))
+                if any(f.path.endswith(".role") for f in findings):
+                    targets.append(("roles", RolesSection))
+                for section, model in targets:
+                    data[section] = {}
+                    for part, payload in enumerate(_requests(analysis, data, section, model, llm)):
+                        relevant = [f for f in findings if f.path.endswith(".op" if section == "entities" else ".role")]
+                        payload["validation_errors"] = [{"path": f.path, "message": f.message,
+                                                         "permission": data["permissions"][int(re.search(r"\[(\d+)\]", f.path)[1])]} for f in relevant]
+                        response = ask(llm, task_class="spec_step", agent=f"system-analyst-{'domain' if section == 'entities' else 'access'}", payload=payload, output=model, task_id=f"spec.foundation.{section}.{part}")
+                        value = normalize_section_roles(section, response.model_dump(mode="json", by_alias=True, exclude_none=True), analysis.roles)
+                        if section == "entities":
+                            value = bind_entities(value, data)
+                        data[section] = _merge(data[section], value, section, conflicts)
+                        model.model_validate(data[section])
+                        write_json(workspace, ARTIFACT, App.model_validate(data))
+                remaining = _foundation_findings(analysis, data)
+                if remaining:
+                    raise ContractError("Не удалось исправить связи сущностей, ролей и прав: " + "; ".join(f"{f.path}: {f.message}" for f in remaining[:5]))
     except BudgetExceeded as exc:
+        if not {"entities", "roles", "permissions"}.issubset(completed) or _foundation_findings(analysis, data):
+            raise ContractError(f"Не удалось проверить связи сущностей, ролей и прав: лимит модели: {exc}") from exc
         flags.append(ElementFlag(path="app", status="questioned", reason=f"Лимит модели: {exc}; сохранена частичная спецификация."))
         notes.append({"stage": "spec", "text": "Незавершённые разделы сохранены пустыми и требуют реализации.", "completed": completed})
     except (ValueError, TypeError) as exc:
@@ -278,7 +315,7 @@ def _repair_request(analysis_data: dict, app_data: dict, finding: Finding, limit
     return is_analysis, normalized, _fit_repair(payload, limit)
 
 
-def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) -> StageOutput:
+def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding], previous_output: StageOutput | None = None) -> StageOutput:
     validate_input(inp, "spec")
     analysis_name = inp.artifacts.get("analysis", "spec/analysis.json")
     app_name = inp.artifacts.get("app", ARTIFACT)
@@ -301,6 +338,10 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
         except PatchRejected:
             flags.append(ElementFlag(path=finding.path, status="questioned", reason="Адрес находки не разрешается в элемент спецификации.", gate="G1"))
             continue
+        feedback = [flag.reason for flag in (previous_output.flags if previous_output else [])
+                    if flag.path == finding.path and flag.reason.startswith(("Предложенный патч отклонён:", "Ответ модели на ремонт не соответствует контракту:"))]
+        if payload is not None and feedback:
+            payload = _fit_repair({**payload, "previous_repair_errors": feedback}, window(llm))
         if payload is None:
             flags.append(ElementFlag(path=finding.path, status="questioned", reason="Контекст ремонта не помещается в профиль окна модели.", gate="G1"))
         else:
@@ -315,11 +356,14 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
             except BudgetExceeded as exc:
                 flags.append(ElementFlag(path=finding.path, status="questioned", reason=f"Лимит адресного ремонта: {exc}.", gate="G1"))
                 continue
-            except ContractError:
-                flags.append(ElementFlag(path=finding.path, status="questioned", reason="Ответ модели на ремонт не соответствует контракту.", gate="G1"))
+            except ContractError as exc:
+                flags.append(ElementFlag(path=finding.path, status="questioned", reason=f"Ответ модели на ремонт не соответствует контракту: {str(exc)[:500]}", gate="G1"))
                 continue
             try:
                 updated = apply_patch(analysis_data if is_analysis else app_data, response, [normalized])
+                if updated == (analysis_data if is_analysis else app_data):
+                    flags.append(ElementFlag(path=finding.path, status="questioned", reason="Предложенный патч отклонён: патч не изменил документ; исправление не выполнено.", gate="G1"))
+                    continue
                 if is_analysis:
                     Analysis.model_validate(updated)
                     changed_analysis = changed_analysis or updated != analysis_data
@@ -328,8 +372,8 @@ def repair(inp: StageInput, workspace: Path, llm: LLM, findings: list[Finding]) 
                     App.model_validate(updated)
                     changed_app = changed_app or updated != app_data
                     app_data = updated
-            except (PatchRejected, ValueError, TypeError):
-                flags.append(ElementFlag(path=finding.path, status="questioned", reason="Предложенный патч отклонён; исходный артефакт сохранён.", gate="G1"))
+            except (PatchRejected, ValueError, TypeError) as exc:
+                flags.append(ElementFlag(path=finding.path, status="questioned", reason=f"Предложенный патч отклонён: {str(exc)[:500]}", gate="G1"))
     write_json(workspace, ARTIFACT, App.model_validate(app_data))
     artifacts = {"app": ARTIFACT}
     if changed_analysis:
