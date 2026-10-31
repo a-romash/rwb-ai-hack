@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 from celery import Celery
+from celery.signals import worker_ready
 
 from app.config import settings
 
@@ -79,6 +80,12 @@ if __name__ == "__main__":
     assert value == {"status": "ok", "broker": "postgresql"}, value
     print(f"Queue check passed: {result.id}: {value}")
     result.forget()
+
+
+@worker_ready.connect
+def recover_stages(sender, **_):
+    from app.runner import recover
+    recover(set(sender.app.amqp.queues))
 
 
 @celery_app.task(name="pipeline.run_stage", acks_late=True)

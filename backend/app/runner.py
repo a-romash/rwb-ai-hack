@@ -4,6 +4,7 @@ import importlib
 import json
 import logging
 import os
+from datetime import timedelta
 from pathlib import Path
 from uuid import UUID
 
@@ -386,6 +387,24 @@ def reconcile():
             run_stage.apply_async(args=[str(row.id)], queue=queue)
             # The claim in execute() is atomic, so duplicates are harmless; this only bounds them to one per 30 s.
             row.queued_at = utc_now()
+
+
+def recover(queues):
+    """A starting worker owns no stage yet, so `running` stages of its queues were orphaned by a killed worker."""
+    # Assumes one worker container per queue (compose.yaml); a second live replica would lose its in-flight stage.
+    with SessionLocal.begin() as session:
+        rows = [row for row in session.scalars(select(StageRun).where(StageRun.status == 'running').with_for_update()).all() if stage_queue(row.stage) in queues]
+        for row in rows:
+            run = session.get(Run, row.run_id)
+            index = next(i for i, stage in enumerate(STAGES) if stage.key == row.stage)
+            predecessor = _latest(session, row.run_id)[STAGES[index - 1].key] if index else None
+            # Drop the half-written output of the killed attempt; the first stage starts from a fresh workspace anyway.
+            if predecessor and predecessor.output_commit:
+                restore(Path(run.workspace_path), predecessor.output_commit)
+            logging.warning('Шаг %s прерван остановкой воркера, возвращён в очередь %s', row.stage, stage_queue(row.stage))
+            # Backdated so the reconciler republishes it on its next pass.
+            row.status, row.started_at, row.queued_at = 'queued', None, utc_now() - timedelta(minutes=1)
+            _event(session, row.run_id, 'stage.requeued', {'stage': row.stage, 'attempt': row.attempt})
 
 
 def retry(run_id, key):
