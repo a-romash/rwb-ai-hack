@@ -58,9 +58,11 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
         attempts += 1
         user = _user(hook, task_class, previous, failures, context)
         samples = 3 if task_class == "hook_4" else 1
-        for _sample in range(samples):
+        for sample in range(samples):
+            # Same messages hit the same cache entry: without a marker three candidates are one answer.
+            asked = user + (f"\n\ncandidate {sample + 1} of {samples}" if samples > 1 else "")
             try:
-                raw = llm(task_class=task_class, system=system, user=user, output="code", task_id=task_id)
+                raw = llm(task_class=task_class, system=system, user=asked, output="code", task_id=task_id)
             except ContractError as exc:
                 # An unusable answer (cut off, too long) fails this attempt of this hook, not the stage.
                 failures = f"Ответ не принят: {exc}"

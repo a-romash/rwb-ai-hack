@@ -192,7 +192,8 @@ class LadderTest(unittest.TestCase):
         signature = chosen[0]["signature"]
         self.assertEqual(llm.calls[0]["user"].count(signature), 1)
         self.assertGreaterEqual(llm.calls[2]["user"].count(signature), 2)
-        self.assertEqual(llm.calls[3]["user"], llm.calls[4]["user"])
+        # Three hook_4 candidates must not share one cached answer.
+        self.assertEqual(len({call["user"] for call in llm.calls[3:]}), 3)
         self.assertEqual(llm.calls[0]["task_id"], "ResolutionRequired")
         self.assertEqual(llm.replies, [])
 
