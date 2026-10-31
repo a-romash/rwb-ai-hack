@@ -41,6 +41,13 @@ class GenerateTests(unittest.TestCase):
         row = _seed(app)["Zone"][0]
         self.assertEqual(row["tariff"], '{"periods": [{"price": 100}]}')
         self.assertNotIn("points", row)
+        # A business key resolves to the row that holds it; an unknown one leaves no link.
+        app["entities"]["Event"] = {"fields": {"zone": {"type": "ref", "ref": "Zone"}}}
+        app["seed"]["Zone"][0]["code"] = "Z-1"
+        app["seed"]["Event"] = [{"zone": "Z-1"}, {"zone": "Z-404"}]
+        events = _seed(app)["Event"]
+        self.assertEqual(events[0]["zone"], _seed(app)["Zone"][0]["id"])
+        self.assertNotIn("zone", events[1])
 
     def test_hook_spec_carries_rule_text_and_gherkin_rows(self):
         from stages.scaffold.generate import _hooks

@@ -76,19 +76,26 @@ def _nullable(cs_type: str, spec: dict) -> bool:
     return not spec.get("required") or bool(spec.get("nullable"))
 
 
+def _json_name(name: str) -> str:
+    # The API policy is snake_case; a spec with camelCase fields (case 1) would not match the seed,
+    # the client or the test cases, which all use the app.json name.
+    return f"[System.Text.Json.Serialization.JsonPropertyName({json.dumps(name)})]"
+
+
 def _property(name: str, spec: dict, app: dict) -> str:
     cs_type = field_type(spec, app)
+    named = f"    {_json_name(name)}\n"
     machine = _section(app, "state_machines").get(spec.get("machine")) if spec.get("type") == "state" else None
     if isinstance(machine, dict) and machine.get("initial") in (machine.get("states") or []):
         # A record always has a state; it starts in the machine's initial state.
         initial = _members(machine["states"])[machine["states"].index(machine["initial"])]
-        return f"    public {cs_type} {pascal(name)} {{ get; set; }} = {cs_type}.{initial};"
+        return f"{named}    public {cs_type} {pascal(name)} {{ get; set; }} = {cs_type}.{initial};"
     if _nullable(cs_type, spec):
-        return f"    public {cs_type}? {pascal(name)} {{ get; set; }}"
+        return f"{named}    public {cs_type}? {pascal(name)} {{ get; set; }}"
     default = ' = "";' if cs_type in _REFERENCE else ""
     # The API rejects a body without fields the client must send (computed and state are server-side).
     required = "    [System.Text.Json.Serialization.JsonRequired]\n" if not spec.get("computed_by") else ""
-    return f"{required}    public {cs_type} {pascal(name)} {{ get; set; }}{default}"
+    return f"{required}{named}    public {cs_type} {pascal(name)} {{ get; set; }}{default}"
 
 
 def param_type(declared: dict) -> str:
@@ -173,7 +180,7 @@ def model_cs(app: dict) -> str:
             spec = inputs[field] if isinstance(inputs[field], dict) else {}
             cs_type = field_type(spec, app)
             optional = "?" if _nullable(cs_type, spec) else ""
-            parameters.append(f"{cs_type}{optional} {pascal(field)}")
+            parameters.append(f"[property: {_json_name(field)[1:-1]}] {cs_type}{optional} {pascal(field)}")
         lines += [f"public sealed record {pascal(name)}({', '.join(parameters)});", ""]
     return "\n".join(lines)
 

@@ -536,6 +536,7 @@ def _routes_ts(screens: list[tuple[str, dict]]) -> str:
 
 # Seed rows get stable ids so the stand, the screens and the E2E walks agree on Ticket[0] without a lookup.
 _SEED_NAMESPACE = uuid.UUID("5f0c6a52-8d7e-4c1b-9a43-2f6d1e0b7a10")
+_UUID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
 
 
 def _seed_id(entity: str, index: int) -> str:
@@ -558,6 +559,13 @@ def _seed(app: dict) -> dict:
                     if not 0 <= value < len((app.get("seed") or {}).get(ref) or []):
                         _contract_error(f"seed.{entity}[{index}].{key}: no row {value} in seed.{ref}")
                     value = _seed_id(ref, value)
+                elif ref and isinstance(value, str) and not _UUID.fullmatch(value):
+                    # A business key ("PS-001"): the referenced row that holds it, else no link at all.
+                    targets = (app.get("seed") or {}).get(ref) or []
+                    found = next((i for i, target in enumerate(targets) if isinstance(target, dict) and value in target.values()), None)
+                    if found is None:
+                        continue
+                    value = _seed_id(ref, found)
                 if fields.get(key) and isinstance(value, (dict, list)):
                     # One value the C# model cannot read drops the whole row on the stand.
                     if field_type(field, app) != "string":
