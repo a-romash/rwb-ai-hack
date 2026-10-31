@@ -203,6 +203,10 @@ class GenerateTests(unittest.TestCase):
         self.assertEqual(_return_type("calculator", {"out": "number"}, app), "decimal")
         self.assertEqual(_return_type("calculator", {"out": "paymentUrl"}, app), "DateTimeOffset")
         self.assertEqual(_return_type("calculator", {"out": "Session"}, app), "Session")
+        from stages.scaffold.api import endpoints_cs
+        # Case 1 entities named Route and Notification clashed with ASP.NET routing and the outbox.
+        app["entities"]["Route"] = {"fields": {}}
+        self.assertIn("using Route = App.Domain.Route;", endpoints_cs(app))
 
     def test_equipment_file_list_snapshot(self):
         with tempfile.TemporaryDirectory() as tmp:

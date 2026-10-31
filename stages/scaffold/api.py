@@ -116,6 +116,12 @@ def _transitions(app: dict, command: str, spec: dict, entity: str) -> list[str]:
     return lines
 
 
+def _domain_aliases(app: dict) -> list[str]:
+    """A domain name like Route or Notification also exists in ASP.NET or the outbox; aliases win over imports."""
+    names = {pascal(name) for section in ("entities", "commands") for name in _section(app, section)}
+    return [f"using {name} = App.Domain.{name};" for name in sorted(names)]
+
+
 def endpoints_cs(app: dict) -> str:
     roles = sorted((app.get("roles") or {}).keys())
     allowed = sorted(_ops(app))
@@ -126,6 +132,7 @@ def endpoints_cs(app: dict) -> str:
         "using App.Infrastructure;",
         "using App.Infrastructure.Outbox;",
         "using Microsoft.EntityFrameworkCore;",
+        *_domain_aliases(app),
         "",
         "namespace App.Api.Features.Generated;",
         "",
@@ -285,6 +292,7 @@ def timers_cs(app: dict) -> str:
         "using App.Domain;",
         "using App.Infrastructure.Outbox;",
         "using Microsoft.EntityFrameworkCore;",
+        *_domain_aliases(app),
         "",
         "namespace App.Infrastructure;",
         "",
