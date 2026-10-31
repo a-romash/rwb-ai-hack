@@ -27,13 +27,17 @@ def _seed(app: dict, ref: str):
     return row if match.group(3) is None else row[match.group(3)]
 
 
-def _value(app: dict, value):
+# A generated value the form input accepts; inputs follow screen-page.ts input().
+_GENERATED = {"datetime": "2030-01-01T10:00", "date": "2030-01-01", "int": "1", "decimal": "1", "money": "1", "number": "1"}
+
+
+def _value(app: dict, value, field: str = ""):
     if isinstance(value, dict) and "seed" in value:
         return _seed(app, value["seed"])
     if isinstance(value, dict) and "param" in value:
         return ((app.get("params") or {}).get(value["param"]) or {}).get("value")
     if isinstance(value, dict) and "gen" in value:
-        return "e2e-value"
+        return _GENERATED.get(_field_type(app, field), "e2e-value")
     return value
 
 
@@ -45,8 +49,11 @@ def _widget(screen: dict, field: str, kinds: tuple[str, ...]) -> str:
 
 
 def _field_type(app: dict, ref: str):
-    entity, _, name = ref.partition(".")
-    return (((app.get("entities") or {}).get(entity) or {}).get("fields") or {}).get(name, {}).get("type")
+    """Type of Entity.field or Command.input."""
+    owner, _, name = ref.partition(".")
+    entity = ((app.get("entities") or {}).get(owner) or {}).get("fields") or {}
+    command = ((app.get("commands") or {}).get(owner) or {}).get("input") or {}
+    return (entity.get(name) or command.get(name) or {}).get("type")
 
 
 def _row(app: dict, screen: dict, name: str, ref: str) -> str:
@@ -80,7 +87,7 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
             raise ContractError("Шаг прохода до открытия экрана")
         if kind in ("fill", "scan"):
             testid = _widget(screen, step[kind], ("field", "scan", "file"))
-            value = _value(app, step.get("value"))
+            value = _value(app, step.get("value"), step[kind])
             lines.append(f"await page.getByTestId({json.dumps(testid)}).fill({json.dumps(str(value), ensure_ascii=False)});")
         elif kind == "tap":
             target = step["tap"]
@@ -122,7 +129,9 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
                                       and _field_type(app, w.get("field", "")) in ("enum", "state")]
                 if not testids:
                     raise ContractError(f"На экране {current} нет виджета статуса")
-                lines.append(f"await expect(page.getByTestId({json.dumps(testids[0])}).first()).toContainText({json.dumps(expect['status'])});")
+                # Case is a wire detail: a spec may seed "Active" for the value "active".
+                pattern = json.dumps(re.escape(expect["status"]))
+                lines.append(f"await expect(page.getByTestId({json.dumps(testids[0])}).first()).toContainText(new RegExp({pattern}, 'i'));")
             for testid in expect.get("visible", []):
                 lines.append(f"await expect(page.getByTestId({json.dumps(testid)}).first()).toBeVisible();")
             if expect.get("copy"):

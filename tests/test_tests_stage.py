@@ -151,7 +151,7 @@ class E2ETest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             e2e.generate(Path(tmp), ui, app)
             spec = (Path(tmp) / 'product/admin-web/e2e/US-01.spec.ts').read_text(encoding='utf-8')
-        self.assertIn('getByTestId("zones.state").first()).toContainText("active")', spec)
+        self.assertIn("""getByTestId("zones.state").first()).toContainText(new RegExp("active", 'i'))""", spec)
 
     def test_broken_walk_is_skipped_not_fatal(self):
         from stages.tests import e2e
@@ -175,6 +175,13 @@ class E2ETest(unittest.TestCase):
             spec = (Path(tmp) / 'product/admin-web/e2e/US-01.spec.ts').read_text(encoding='utf-8')
         self.assertIn('getByTestId("vehicles.row").first().click()', spec)
         self.assertIn('.fill("А001АА")', spec)
+        app['commands'] = {'Report': {'input': {'at': {'type': 'datetime'}}}}
+        screens['Vehicle']['widgets'].append({'kind': 'field', 'testid': 'vehicle.at', 'field': 'Report.at'})
+        ui['walks'] = {'US-03': {'steps': steps[:2] + [{'fill': 'Report.at', 'value': {'gen': 'any'}}]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            e2e.generate(Path(tmp), ui, app)
+            spec = (Path(tmp) / 'product/admin-web/e2e/US-03.spec.ts').read_text(encoding='utf-8')
+        self.assertIn('.fill("2030-01-01T10:00")', spec)
         # A seed field that does not exist skips the walk instead of typing "None".
         self.assertEqual(list(skipped), ['US-02'])
 
