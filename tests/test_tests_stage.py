@@ -162,6 +162,22 @@ class E2ETest(unittest.TestCase):
         self.assertEqual(files, ['product/admin-web/e2e/US-01.spec.ts'])
         self.assertEqual(list(skipped), ['US-02'])
 
+    def test_detail_opens_from_a_list_row_and_seed_fields_keep_their_case(self):
+        from stages.tests import e2e
+        app = {'seed': {'Vehicle': [{'id': 'v1', 'licensePlate': 'А001АА'}]}}
+        screens = {'Vehicles': {'pattern': 'list', 'nav': ['Vehicle'], 'widgets': []},
+                   'Vehicle': {'pattern': 'detail', 'widgets': [{'kind': 'field', 'testid': 'vehicle.plate', 'field': 'Report.plate'}]}}
+        steps = [{'open': 'Vehicles'}, {'tap': 'Vehicle'}, {'fill': 'Report.plate', 'value': {'seed': 'Vehicle[0].licensePlate'}}]
+        ui = {'screens': screens, 'walks': {'US-01': {'steps': steps},
+                                            'US-02': {'steps': steps[:2] + [{'fill': 'Report.plate', 'value': {'seed': 'Vehicle[0].licenseplate'}}]}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            _, skipped = e2e.generate(Path(tmp), ui, app)
+            spec = (Path(tmp) / 'product/admin-web/e2e/US-01.spec.ts').read_text(encoding='utf-8')
+        self.assertIn('getByTestId("vehicles.row").first().click()', spec)
+        self.assertIn('.fill("А001АА")', spec)
+        # A seed field that does not exist skips the walk instead of typing "None".
+        self.assertEqual(list(skipped), ['US-02'])
+
 
 class ScenariosTest(unittest.TestCase):
     def test_command_scenario_walks_the_state_machine(self):

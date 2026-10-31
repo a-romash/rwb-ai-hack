@@ -17,12 +17,14 @@ def _kebab(name: str) -> str:
 
 def _seed(app: dict, ref: str):
     """'Ticket[0]' or 'Ticket[0].title' from app.json seed."""
-    match = re.fullmatch(r"([A-Za-z0-9_]+)\[(\d+)\](?:\.([a-z0-9_]+))?", ref)
+    match = re.fullmatch(r"([A-Za-z0-9_]+)\[(\d+)\](?:\.([A-Za-z0-9_]+))?", ref)
     rows = (app.get("seed") or {}).get(match.group(1), []) if match else []
     if not match or int(match.group(2)) >= len(rows):
         raise ContractError(f"Нет seed-значения {ref}")
     row = rows[int(match.group(2))]
-    return row if match.group(3) is None else row.get(match.group(3))
+    if match.group(3) is not None and row.get(match.group(3)) is None:
+        raise ContractError(f"Нет seed-значения {ref}")
+    return row if match.group(3) is None else row[match.group(3)]
 
 
 def _value(app: dict, value):
@@ -98,6 +100,9 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
                 elif screens[target].get("pattern") != "detail":
                     # The screen's nav link carries the open record (?id=), a bare URL would lose it.
                     lines.append(f"await page.getByTestId({json.dumps(_kebab(current) + '.nav-' + target)}).click();")
+                elif screen.get("pattern") == "list":
+                    # A bare detail URL carries no id; any row of the list opens a real record.
+                    lines.append(f"await page.getByTestId({json.dumps(_kebab(current) + '.row')}).first().click();")
                 else:
                     lines.append(f"await page.goto({json.dumps('/' + target)});")
                 current = target

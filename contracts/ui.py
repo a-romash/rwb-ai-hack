@@ -29,7 +29,7 @@ OPERATION = r"^[A-Za-z_][A-Za-z0-9_]*(\.(create|read|update|delete))?$"  # comma
 TESTID = r"^[a-z][a-z0-9]*(-[a-z0-9]+)*\.[a-z][a-z0-9]*([.-][a-z0-9]+)*$"
 COPY_KEY = r"^[a-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*$"
 SEED_ROW = r"^[A-Z][A-Za-z0-9]*\[\d+\]$"
-SEED_VALUE = r"^[A-Z][A-Za-z0-9]*\[\d+\](\.[a-z][a-z0-9_]*)?$"
+SEED_VALUE = r"^[A-Z][A-Za-z0-9]*\[\d+\](\.[A-Za-z_][A-Za-z0-9_]*)?$"   # field as named in app.json
 
 # Mandatory screen states for screens with a data source; the model writes only the texts.
 REQUIRED_STATES: dict[str, tuple[str, ...]] = {
