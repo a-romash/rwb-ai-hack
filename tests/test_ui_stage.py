@@ -164,6 +164,11 @@ class GateTest(unittest.TestCase):
         self.assertCode("UI_REF_UNRESOLVED", lambda r: r["copy"].pop("ticket.take.confirm"))
         self.assertCode("UI_REF_UNRESOLVED", lambda r: r["walks"]["US-05"]["steps"][1]["expect"].update(status="lost"))
         self.assertCode("UI_REF_UNRESOLVED", lambda r: r["walks"]["US-01"]["steps"][2]["value"].update(seed="Ticket[9].title"))
+        # Seed fields are named as in app.json, camelCase included.
+        app = copy.deepcopy(APP)
+        app["entities"]["Ticket"]["fields"]["dueAt"] = app["entities"]["Ticket"]["fields"]["due_at"]
+        found = self.findings(lambda r: r["walks"]["US-01"]["steps"][2]["value"].update(seed="Ticket[0].dueAt"), app=app)
+        self.assertEqual([f for f in found if f.code == "UI_REF_UNRESOLVED"], [])
 
     def test_walk_forbidden(self):
         def give_take_to_employee(raw):

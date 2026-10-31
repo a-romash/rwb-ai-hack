@@ -18,7 +18,7 @@ from contracts.ui import (REQUIRED_STATES, ExpectStep, FillStep, GenRef, OpenSte
 from harness.fakes import workspace_path
 from stages.ui.appview import AppView
 
-SEED_REF = re.compile(r"^(?P<entity>[A-Z][A-Za-z0-9]*)\[(?P<index>\d+)\](\.(?P<field>[a-z][a-z0-9_]*))?$")
+SEED_REF = re.compile(r"^(?P<entity>[A-Z][A-Za-z0-9]*)\[(?P<index>\d+)\](\.(?P<field>[A-Za-z_][A-Za-z0-9_]*))?$")
 CYRILLIC = re.compile(r"[А-Яа-яЁё]")
 LATIN_WORD = re.compile(r"[A-Za-z]{2,}")
 CYRILLIC_LANGS = {"ru", "uk", "be", "kk", "bg", "sr", "mk", "ky", "tg", "mn"}
