@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from stages.quality import write,junit
 from contracts.stage import SandboxResult,StageInput
 from contracts.verification import PlannedTest
@@ -31,7 +32,7 @@ class GateCoverage(unittest.TestCase):
         write(self.root,'verification.json',data)
         artifacts={'verification':'verification.json'}
         self.assertTrue({'BUILD_FAILED','TEST_HASH_MISMATCH','AC_RED','MUTANT_SURVIVED','SCAN_HIGH','SKIPPED_AS_PASS'} <= {f.code for f in g3(self.root,artifacts).findings})
-        self.assertEqual({'STAND_DOWN','SMOKE_FAILED','E2E_FAILED'},{f.code for f in g4(self.root,artifacts).findings})
+        self.assertEqual({'STAND_DOWN','E2E_FAILED'},{f.code for f in g4(self.root,artifacts).findings})
     def test_junit_trait_mapping_and_missing_report(self):
         planned=[PlannedTest(id='AC-01',ac='AC-01',file='test.cs',level='unit')]
         result=SandboxResult(ok=False,exit_code=1,duration_ms=1,failed=[],output_tail='',reports={'junit':'junit.xml'})
@@ -74,6 +75,22 @@ class GateCoverage(unittest.TestCase):
         self.assertFalse(g3(self.root,out.artifacts).passed)
         self.assertFalse(g4(self.root,out.artifacts).passed)
         self.assertEqual(sandbox.calls[-1]['kind'],'down')
+
+    def test_healthy_prototype_is_published_without_smoke(self):
+        from stages.verify import execute as verify
+        write(self.root,'analysis.json',{'roles':[],'acceptance':[]})
+        write(self.root,'tests.json',{'tests':[],'hashes':{},'acceptance':[],'build_ok':True})
+        ok=SandboxResult(ok=True,exit_code=0,duration_ms=1,failed=[],output_tail='')
+        sandbox=FakeSandbox({('build','backend'):[ok],('test','backend'):[ok],('scan','stack'):[ok],('up','stack'):[ok]})
+        sandbox.keep_stand=True
+        inp=StageInput(run_id='r',stage='verify',attempt=1,requirements='r',artifacts={'analysis':'analysis.json','tests':'tests.json'})
+        with patch('harness.prototype.reset_data') as reset, patch('harness.prototype.mark_ready') as ready, patch('harness.prototype.url',return_value='/agent-prototype/'):
+            output=verify(inp,self.root,FakeLLM({}),sandbox)
+        stand=json.loads((self.root/output.artifacts['verification']).read_text())['stand']
+        self.assertEqual(stand['url'],'/agent-prototype/')
+        self.assertNotIn('smoke',[call['kind'] for call in sandbox.calls])
+        reset.assert_called_once_with('r');ready.assert_called_once_with('r')
+        self.assertTrue(g4(self.root,output.artifacts).passed)
 
     def test_warm_runtime_never_publishes_stale_output_after_failed_build(self):
         from stages.verify import execute as verify

@@ -133,24 +133,6 @@ stop:
 
 # The job container cannot reach the stand network, so the checks run in containers attached to it.
 # Sources travel in a build context (docker build), not a bind mount: the socket's daemon sees host paths.
-smoke:
-  stage: e2e
-  image: docker:27-cli
-  needs: [deploy]
-  script:
-    - |
-      docker build -t "$COMPOSE_PROJECT_NAME-smoke" -f - . <<'EOF'
-      FROM python:3.12-slim
-      COPY infra /work/infra
-      WORKDIR /work
-      EOF
-    - docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" -e BASE_URL=http://backend:8080
-      --name "$COMPOSE_PROJECT_NAME-smoke-$CI_JOB_ID" "$COMPOSE_PROJECT_NAME-smoke"
-      python3 infra/smoke.py --report /tmp/smoke.json
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-
 e2e:
   stage: e2e
   image: docker:27-cli

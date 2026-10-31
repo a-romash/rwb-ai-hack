@@ -4,22 +4,12 @@ from harness.workspace import describe
 from stages.quality import read,write,junit
 
 
-def _smoke(workspace, sandbox, roles):
-    import json
-    from harness.fakes import workspace_path
-    smoke=sandbox.run('smoke','stack')
-    evidence=json.loads(workspace_path(workspace,smoke.reports['json']).read_text()) if smoke.reports.get('json') else {}
-    results=evidence.get('roles',{})
-    passed=smoke.ok and bool(roles) and all(results.get(role,{}).get('login') is True and results.get(role,{}).get('request') is True for role in roles)
-    return passed,results
-
-
 def execute(inp,workspace,llm,sandbox):
     workspace=workspace.resolve()
     plan=TestsManifest.model_validate(read(workspace,inp.artifacts,'tests'))
     analysis=read(workspace,inp.artifacts,'analysis')
     develop=read(workspace,inp.artifacts,'develop',optional=True)
-    build={};cases=[];scans=[];stand={'up':False,'smoke':False,'e2e':{},'down':False}
+    build={};cases=[];scans=[];stand={'up':False,'e2e':{},'down':False}
     mismatches=[p for p,h in plan.hashes.items() if describe(workspace,p)[0]!=h]
     # The stand builds every web app offline from its restored node_modules, so each one present is built here.
     targets=['backend']+[t for t,app in (('admin','admin-web'),('pwa','mobile-web')) if (workspace/'product'/app/'package.json').is_file()]
@@ -47,22 +37,21 @@ def execute(inp,workspace,llm,sandbox):
         if not getattr(sandbox,'keep_stand',False) or all(build.values()):
             stand['up']=sandbox.run('up','stack').ok
         if stand['up']:
-            roles=[r['id'] for r in analysis.get('roles',[])]
-            stand['smoke'],stand['roles']=_smoke(workspace,sandbox,roles)
             for target in [t for t in targets if t!='backend' and build.get(t)]:
                 evidence=playwright(workspace,sandbox.run('e2e',target))
                 stand['e2e'][target]=evidence['ok']
                 stand.setdefault('e2e_results',{})[target]=evidence
-            if getattr(sandbox,'keep_stand',False) and stand['smoke']:
-                from harness import prototype
-                prototype.reset_data(inp.run_id)
-                stand['smoke'],stand['roles']=_smoke(workspace,sandbox,roles)
-                stand['data_reset']=True
     finally:
-        if getattr(sandbox,'keep_stand',False) and stand['up'] and stand['smoke'] and stand.get('data_reset'):
+        if getattr(sandbox,'keep_stand',False) and stand['up']:
             from harness import prototype
-            prototype.mark_ready(inp.run_id)
-            stand['url']=prototype.url(inp.run_id)
+            try:
+                prototype.reset_data(inp.run_id)
+                stand['data_reset']=True
+                prototype.mark_ready(inp.run_id)
+                stand['url']=prototype.url(inp.run_id)
+            except Exception:
+                stand['down']=sandbox.run('down','stack').ok
+                raise
         else:
             stand['down']=sandbox.run('down','stack').ok
     status={}

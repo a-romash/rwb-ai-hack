@@ -66,8 +66,8 @@ python scripts/run_pipeline.py --requirements stages/spec/eval/case1/requirement
 - `backend/` — ASP.NET Core 10: Minimal API с правами по ролям, EF Core на PostgreSQL/PostGIS, хуки бизнес-правил в `App.Domain/Hooks`, тесты xunit.v3 на Microsoft.Testing.Platform. Каждый хук проверяют кейсы из примеров Gherkin, а права — матрица ролей.
 - `admin-web/` — Angular 20.1.6 и Material. Экраны строятся из `ui.json` одним рендерером: списки, карточки, формы и дашборды с `data-testid`. Есть демо-вход по роли.
 - `mobile-web/` — PWA на том же рендерере: service worker, офлайн-кэш, геолокация, локальные уведомления, нижнее меню.
-- `infra/docker-compose.yml` — стенд: postgis, wiremock, backend, worker, admin, mobile. Образы собираются без сети из восстановленных зависимостей. `infra/smoke.py` входит под каждой ролью.
-- `.gitlab-ci.yml` — CI продукта: lint, build, test, security, deploy, smoke, E2E, docs. Команды те же, что в `pack.json`.
+- `infra/docker-compose.yml` — стенд: postgis, wiremock, backend, worker, admin, mobile. Образы собираются без сети из восстановленных зависимостей.
+- `.gitlab-ci.yml` — CI продукта: lint, build, test, security, deploy, E2E, docs. Команды те же, что в `pack.json`.
 - `docs/` и `mkdocs.yml` — паспорт, роли, трассировка критериев и эксплуатация.
 
 ## Отступления от стека ТЗ
@@ -91,7 +91,7 @@ docker run --rm --network rwbtest -v "$PWD":/src -w /src -e POSTGRES_HOST=rwbtes
 cd frontend && npm ci && npm run e2e:install && npm run e2e
 ```
 
-Цепочка продукта на фикстуре без модели и с настоящей песочницей. Она проходит scaffold → tests → develop → verify → report: собирает, тестирует, сканирует, поднимает стенд, выполняет smoke и E2E.
+Цепочка продукта на фикстуре без модели и с настоящей песочницей. Она проходит scaffold → tests → develop → verify → report: собирает, тестирует, сканирует, поднимает стенд и выполняет E2E.
 
 ```sh
 MSYS_NO_PATHCONV=1 docker compose run --rm --no-deps -v ./scripts:/app/scripts worker-build \
