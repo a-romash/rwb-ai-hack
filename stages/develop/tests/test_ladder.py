@@ -133,6 +133,27 @@ class LadderTest(unittest.TestCase):
         self.assertNotIn("FAIL-20", retried)
         self.assertEqual(llm.replies, [])
 
+    def test_prompt_carries_rule_criterion_and_input_shapes(self):
+        chosen = hooks("SlaDeadline")
+        tmp, root = layout(chosen)
+        ref = chosen[0]["refs"][0]
+        (root / "spec").mkdir()
+        (root / "spec" / "analysis.json").write_text(json.dumps({
+            "rules": [{"id": ref, "text": "RULE_TEXT_UNIQUE"}],
+            "acceptance": [{"id": "AC-X", "rules": [ref], "gherkin": "GHERKIN_UNIQUE"}]}), encoding="utf-8")
+        cases = root / "product/backend/tests/App.Acceptance.Tests/cases/hooks" / f"{chosen[0]['id']}.json"
+        cases.parent.mkdir(parents=True)
+        cases.write_text(json.dumps({"cases": [{"inputs": {"x": "INPUT_UNIQUE"}, "expected": "EXPECTED_UNIQUE"}]}), encoding="utf-8")
+        llm = FakeLLM(["return 1;\n"])
+        try:
+            execute(None, root, llm, FakeSandbox())
+        finally:
+            tmp.cleanup()
+        user = llm.calls[0]["user"]
+        for text in ("RULE_TEXT_UNIQUE", "GHERKIN_UNIQUE", "INPUT_UNIQUE"):
+            self.assertIn(text, user)
+        self.assertNotIn("EXPECTED_UNIQUE", user)
+
     def test_cut_off_answer_fails_only_that_attempt(self):
         from contracts.stage import ContractError
         chosen = hooks("SlaDeadline")
