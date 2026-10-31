@@ -127,6 +127,27 @@ class E2ETest(unittest.TestCase):
         self.assertIn('getByTestId("ticket-detail.nav-ResolveTicketForm").click()', spec)
         self.assertNotIn('nth(', spec)
 
+    def test_status_of_a_plain_enum_field(self):
+        from stages.tests import e2e
+        app = {'entities': {'Zone': {'fields': {'name': {'type': 'string'}, 'state': {'type': 'enum'}}}}}
+        widgets = [{'kind': 'field', 'testid': 'zones.name', 'field': 'Zone.name'},
+                   {'kind': 'field', 'testid': 'zones.state', 'field': 'Zone.state'}]
+        ui = {'screens': {'Zones': {'widgets': widgets}},
+              'walks': {'US-01': {'steps': [{'open': 'Zones'}, {'expect': {'status': 'active'}}]}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            e2e.generate(Path(tmp), ui, app)
+            spec = (Path(tmp) / 'product/admin-web/e2e/US-01.spec.ts').read_text(encoding='utf-8')
+        self.assertIn('getByTestId("zones.state").first()).toContainText("active")', spec)
+
+    def test_broken_walk_is_skipped_not_fatal(self):
+        from stages.tests import e2e
+        ui = {'screens': {'Zones': {'widgets': []}},
+              'walks': {'US-01': {'steps': [{'open': 'Zones'}]}, 'US-02': {'steps': [{'open': 'Zones'}, {'fill': 'Zone.nope', 'value': 1}]}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            files, skipped = e2e.generate(Path(tmp), ui, {})
+        self.assertEqual(files, ['product/admin-web/e2e/US-01.spec.ts'])
+        self.assertEqual(list(skipped), ['US-02'])
+
 
 class ScenariosTest(unittest.TestCase):
     def test_command_scenario_walks_the_state_machine(self):

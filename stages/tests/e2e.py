@@ -42,6 +42,11 @@ def _widget(screen: dict, field: str, kinds: tuple[str, ...]) -> str:
     return found[0]
 
 
+def _field_type(app: dict, ref: str):
+    entity, _, name = ref.partition(".")
+    return (((app.get("entities") or {}).get(entity) or {}).get("fields") or {}).get(name, {}).get("type")
+
+
 def _row(app: dict, screen: dict, name: str, ref: str) -> str:
     """The list row of a seed record, found by the text it shows: a query filters and orders rows,
     so the seed index is not the row position."""
@@ -107,6 +112,9 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
                 screen = screens.get(current, screen)
             if expect.get("status"):
                 testids = [w["testid"] for w in screen.get("widgets", []) if w.get("kind") == "status"]
+                # An enum that is not a state machine field is drawn as a plain field and still shows the value.
+                testids = testids or [w["testid"] for w in screen.get("widgets", []) if w.get("kind") == "field"
+                                      and _field_type(app, w.get("field", "")) in ("enum", "state")]
                 if not testids:
                     raise ContractError(f"На экране {current} нет виджета статуса")
                 lines.append(f"await expect(page.getByTestId({json.dumps(testids[0])}).first()).toContainText({json.dumps(expect['status'])});")
@@ -126,8 +134,9 @@ def _steps(walk: dict, ui: dict, app: dict) -> list[str]:
     return lines
 
 
-def generate(root, ui: dict, app: dict | None = None) -> list[str]:
-    files = []
+def generate(root, ui: dict, app: dict | None = None) -> tuple[list[str], dict[str, str]]:
+    """Spec files written and walks skipped with the reason: one broken walk does not stop the rest."""
+    files, skipped = [], {}
     app = app or {}
     for ident, walk in (ui or {}).get("walks", {}).items():
         if not re.fullmatch(r"US-[0-9A-Za-z_-]+", ident):
@@ -140,11 +149,15 @@ def generate(root, ui: dict, app: dict | None = None) -> list[str]:
         lines.append("test(" + json.dumps(title.strip()) + ", async ({page}) => {")
         # Demo sign-in: the app reads the role from localStorage and logs in through /api/auth/login.
         lines.append(f"  await page.addInitScript((role) => localStorage.setItem('role', role), {json.dumps(walk.get('role', ''))});")
-        lines += ["  " + line for line in _steps(walk, ui, app)]
+        try:
+            lines += ["  " + line for line in _steps(walk, ui, app)]
+        except ContractError as error:
+            skipped[ident] = str(error)
+            continue
         lines.append("});")
         relative = f"product/{target}/e2e/{ident}.spec.ts"
         path = workspace_path(root, relative)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         files.append(relative)
-    return files
+    return files, skipped

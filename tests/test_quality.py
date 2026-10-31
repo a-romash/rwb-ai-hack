@@ -45,20 +45,19 @@ class QualityTests(unittest.TestCase):
 
     def test_e2e_deterministic_and_unknown_step_rejected(self):
         from stages.tests.e2e import generate
-        from contracts.stage import ContractError
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             ui={'screens':{'ItemList':{'platform':'web','widgets':[{'kind':'status','field':'Item.status','testid':'item-list.status'}],
                                        'actions':[{'command':'TakeItem','testid':'item-list.take'}]}},
                 'walks':{'US-01':{'platform':'web','covers':['AC-01'],'steps':[{'open':'ItemList'},{'tap':'TakeItem'},{'expect':{'status':'taken'}}]}}}
-            files=generate(root,ui)
+            files,_=generate(root,ui)
             text=(root/files[0]).read_text()
             self.assertIn('page.goto("/ItemList")',text)
             self.assertIn('getByTestId("item-list.take").click()',text)
             self.assertIn('getByTestId("item-list.status")',text)
-            self.assertEqual(generate(root,ui),files)
+            self.assertEqual(generate(root,ui),(files,{}))
             ui['walks']['US-01']['steps']=[{'open':'ItemList'},{'scan':'Item.code','value':'x'}]
-            with self.assertRaises(ContractError):generate(root,ui)
+            self.assertEqual(list(generate(root,ui)[1]),['US-01'])
 
     def test_mutation_restores_hook_on_sandbox_exception(self):
         from stages.verify.mutations import run

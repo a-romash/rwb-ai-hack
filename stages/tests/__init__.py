@@ -7,7 +7,7 @@ class per criterion that carries the AC trait.
 """
 import hashlib
 
-from contracts.stage import StageOutput, ContractError
+from contracts.stage import ElementFlag, StageOutput, ContractError
 from contracts.verification import TestsManifest, PlannedTest
 from harness.fakes import workspace_path
 from stages.quality import read, write, junit, assertion_failure
@@ -94,7 +94,7 @@ def execute(inp, workspace, llm, sandbox):
         else:
             tests.append(PlannedTest(id=ac, ac=ac, file=f"{GENERATED}/{ident}_Scenario.cs", level='api', neutral=True))
     from stages.tests.e2e import generate
-    e2e = generate(workspace, read(workspace, inp.artifacts, 'ui', optional=True), app)
+    e2e, skipped = generate(workspace, read(workspace, inp.artifacts, 'ui', optional=True), app)
     build = sandbox.run('build', 'backend')
     manifest = TestsManifest(tests=tests, hashes={}, acceptance=[a['id'] for a in analysis.get('acceptance', [])], build_ok=build.ok)
     if build.ok:
@@ -107,6 +107,8 @@ def execute(inp, workspace, llm, sandbox):
                                                  'covered': {ac: sorted(ids) for ac, ids in covered.items()},
                                                  'scenarios': {ac: [x['id'] for x in found] for ac, found in flows.items()}})
     return StageOutput(artifacts={'tests': 'reports/tests.json'},
+                       flags=[ElementFlag(path=f"ui.walks.{ident}", status='questioned', reason=f"E2E-проход не собран: {reason}")
+                              for ident, reason in skipped.items()],
                        summary=f"Тесты для {len(tests)} из {len(manifest.acceptance)} AC "
                                f"(сценариев API: {sum(map(len, flows.values()))}); E2E-проходов: {len(e2e)}")
 
