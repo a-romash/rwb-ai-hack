@@ -1,0 +1,4 @@
+# rwb/tool-node:22 — Node 22 with Playwright browsers for build, jest and E2E of admin-web/mobile-web.
+FROM mcr.microsoft.com/playwright:v1.64.1-noble
+
+WORKDIR /work

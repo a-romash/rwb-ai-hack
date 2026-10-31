@@ -1,0 +1,10 @@
+@import '@angular/material/prebuilt-themes/azure-blue.css';
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  /* No web fonts: the image builds offline and the stand may have no internet. */
+  font-family: Roboto, system-ui, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: #fafafa;
+}

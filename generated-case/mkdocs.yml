@@ -1,0 +1,11 @@
+site_name: Документация продукта
+theme:
+  name: material
+docs_dir: docs
+nav:
+  - Паспорт: index.md
+  - Система: system.md
+  - Эксплуатация: operations.md
+  - Трассировка: trace.md
+  - Водитель: role-ROLE-01.md
+  - Администратор: role-ROLE-02.md

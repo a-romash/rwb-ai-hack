@@ -1,0 +1,2319 @@
+{
+  "info": {
+    "title": "Мобильный помощник для отслеживания парковочных сессий на объектах Санкт-Петербурга",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/Driver": {
+      "get": {
+        "operationId": "Driver_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "Driver_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/Driver/{id}": {
+      "delete": {
+        "operationId": "Driver_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "Driver_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "Driver_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/GeoPoint": {
+      "get": {
+        "operationId": "GeoPoint_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "GeoPoint_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/GeoPoint/{id}": {
+      "delete": {
+        "operationId": "GeoPoint_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "GeoPoint_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "GeoPoint_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/Notification": {
+      "get": {
+        "operationId": "Notification_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "Notification_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/Notification/{id}": {
+      "delete": {
+        "operationId": "Notification_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "Notification_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "Notification_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/NotificationType": {
+      "get": {
+        "operationId": "NotificationType_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "post": {
+        "operationId": "NotificationType_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/NotificationType/{id}": {
+      "delete": {
+        "operationId": "NotificationType_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "NotificationType_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "put": {
+        "operationId": "NotificationType_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingEvent": {
+      "get": {
+        "operationId": "ParkingEvent_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "ParkingEvent_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/ParkingEvent/commands/GetParkingEvents": {
+      "post": {
+        "operationId": "GetParkingEvents",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingEvent/{id}": {
+      "delete": {
+        "operationId": "ParkingEvent_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "ParkingEvent_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "ParkingEvent_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingEventType": {
+      "get": {
+        "operationId": "ParkingEventType_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "post": {
+        "operationId": "ParkingEventType_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingEventType/{id}": {
+      "delete": {
+        "operationId": "ParkingEventType_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "ParkingEventType_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "put": {
+        "operationId": "ParkingEventType_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession": {
+      "get": {
+        "operationId": "ParkingSession_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "ParkingSession_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/ParkingSession/commands/ConfirmParkingSession": {
+      "post": {
+        "operationId": "ConfirmParkingSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession/commands/EndParkingSession": {
+      "post": {
+        "operationId": "EndParkingSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession/commands/GetActiveParkingSession": {
+      "post": {
+        "operationId": "GetActiveParkingSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession/commands/GetParkingSessionHistory": {
+      "post": {
+        "operationId": "GetParkingSessionHistory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession/commands/GetPaymentUrl": {
+      "post": {
+        "operationId": "GetPaymentUrl",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession/commands/RenewParkingSession": {
+      "post": {
+        "operationId": "RenewParkingSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSession/{id}": {
+      "delete": {
+        "operationId": "ParkingSession_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "ParkingSession_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "ParkingSession_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01"
+        ]
+      }
+    },
+    "/api/ParkingSessionStatus": {
+      "get": {
+        "operationId": "ParkingSessionStatus_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "post": {
+        "operationId": "ParkingSessionStatus_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingSessionStatus/{id}": {
+      "delete": {
+        "operationId": "ParkingSessionStatus_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "ParkingSessionStatus_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "put": {
+        "operationId": "ParkingSessionStatus_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingZone": {
+      "get": {
+        "operationId": "ParkingZone_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "ParkingZone_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/ParkingZone/commands/GetCurrentZone": {
+      "post": {
+        "operationId": "GetCurrentZone",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingZone/commands/GetZoneTariff": {
+      "post": {
+        "operationId": "GetZoneTariff",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ParkingZone/{id}": {
+      "delete": {
+        "operationId": "ParkingZone_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "ParkingZone_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "ParkingZone_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/Route": {
+      "get": {
+        "operationId": "Route_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "Route_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/Route/commands/GetVehicleRoute": {
+      "post": {
+        "operationId": "GetVehicleRoute",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/Route/{id}": {
+      "delete": {
+        "operationId": "Route_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "Route_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "Route_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/Tariff": {
+      "get": {
+        "operationId": "Tariff_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "Tariff_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/Tariff/{id}": {
+      "delete": {
+        "operationId": "Tariff_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "Tariff_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "Tariff_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/TariffPeriod": {
+      "get": {
+        "operationId": "TariffPeriod_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "TariffPeriod_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/TariffPeriod/{id}": {
+      "delete": {
+        "operationId": "TariffPeriod_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "TariffPeriod_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "TariffPeriod_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/Vehicle": {
+      "get": {
+        "operationId": "Vehicle_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "Vehicle_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/Vehicle/commands/GetAllVehicles": {
+      "post": {
+        "operationId": "GetAllVehicles",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/Vehicle/commands/ReportVehicleLocation": {
+      "post": {
+        "operationId": "ReportVehicleLocation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/Vehicle/{id}": {
+      "delete": {
+        "operationId": "Vehicle_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "Vehicle_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "Vehicle_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/VehicleStatus": {
+      "get": {
+        "operationId": "VehicleStatus_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "post": {
+        "operationId": "VehicleStatus_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/VehicleStatus/{id}": {
+      "delete": {
+        "operationId": "VehicleStatus_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "VehicleStatus_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "put": {
+        "operationId": "VehicleStatus_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/VehicleType": {
+      "get": {
+        "operationId": "VehicleType_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "post": {
+        "operationId": "VehicleType_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/VehicleType/{id}": {
+      "delete": {
+        "operationId": "VehicleType_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "VehicleType_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "put": {
+        "operationId": "VehicleType_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/WorkObject": {
+      "get": {
+        "operationId": "WorkObject_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "post": {
+        "operationId": "WorkObject_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/WorkObject/{id}": {
+      "delete": {
+        "operationId": "WorkObject_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "WorkObject_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-01",
+          "ROLE-02"
+        ]
+      },
+      "put": {
+        "operationId": "WorkObject_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": [
+          "ROLE-02"
+        ]
+      }
+    },
+    "/api/ZoneState": {
+      "get": {
+        "operationId": "ZoneState_list",
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "post": {
+        "operationId": "ZoneState_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    },
+    "/api/ZoneState/{id}": {
+      "delete": {
+        "operationId": "ZoneState_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "get": {
+        "operationId": "ZoneState_read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      },
+      "put": {
+        "operationId": "ZoneState_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "ok"
+          },
+          "403": {
+            "description": "forbidden"
+          }
+        },
+        "x-roles": []
+      }
+    }
+  }
+}

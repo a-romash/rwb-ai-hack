@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "ac": "AC-06",
+  "scenarios": [
+    {
+      "id": "AC-06-create-ParkingSession",
+      "source": "create",
+      "steps": [
+        {
+          "as": "ROLE-01",
+          "method": "POST",
+          "path": "/api/ParkingSession",
+          "body": {
+            "createdAt": "sample",
+            "endsAt": "sample",
+            "startedAt": "sample",
+            "state": "sample",
+            "vehicleId": "sample",
+            "zoneId": "sample"
+          },
+          "expect": {
+            "status": 201
+          },
+          "save": "id"
+        },
+        {
+          "as": "ROLE-01",
+          "method": "GET",
+          "path": "/api/ParkingSession/{id}",
+          "body": null,
+          "expect": {
+            "status": 200
+          }
+        }
+      ]
+    }
+  ]
+}

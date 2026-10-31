@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "hook": "WeekendTariffPolicy",
+  "method": "Allow",
+  "cases": [
+    {
+      "id": "AC-04-extra-1",
+      "ac": "AC-04",
+      "inputs": {
+        "currentDay": "2023-10-28T10:00:00+03:00",
+        "zoneTariffHasHolidays": "false",
+        "zoneTariffPeriods": "08:00-20:00"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-04-extra-2",
+      "ac": "AC-04",
+      "inputs": {
+        "currentDay": "2023-10-29T10:00:00+03:00",
+        "zoneTariffHasHolidays": "false",
+        "zoneTariffPeriods": "08:00-20:00"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-04-extra-3",
+      "ac": "AC-04",
+      "inputs": {
+        "currentDay": "2023-10-30T10:00:00+03:00",
+        "zoneTariffHasHolidays": "false",
+        "zoneTariffPeriods": "08:00-20:00"
+      },
+      "expected": true
+    }
+  ]
+}

@@ -1,0 +1,1053 @@
+{
+  "cases": [
+    {
+      "expected": 401,
+      "id": "Driver.read.anonymous",
+      "method": "GET",
+      "path": "/api/Driver",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "Driver.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/Driver",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "employeeId": "sample",
+        "fullName": "sample"
+      },
+      "expected": 403,
+      "id": "Driver.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/Driver",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Driver.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/Driver",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "employeeId": "sample",
+        "fullName": "sample"
+      },
+      "expected": 201,
+      "id": "Driver.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/Driver",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "fullName": "sample"
+      },
+      "expected": 400,
+      "id": "Driver.create.ROLE-02.invalid",
+      "method": "POST",
+      "path": "/api/Driver",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "GeoPoint.read.anonymous",
+      "method": "GET",
+      "path": "/api/GeoPoint",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "GeoPoint.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/GeoPoint",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "GeoPoint.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/GeoPoint",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "GeoPoint.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/GeoPoint",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 201,
+      "id": "GeoPoint.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/GeoPoint",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "Notification.read.anonymous",
+      "method": "GET",
+      "path": "/api/Notification",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Notification.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/Notification",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "Notification.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/Notification",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Notification.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/Notification",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 201,
+      "id": "Notification.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/Notification",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "NotificationType.read.anonymous",
+      "method": "GET",
+      "path": "/api/NotificationType",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "NotificationType.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/NotificationType",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "NotificationType.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/NotificationType",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "NotificationType.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/NotificationType",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "NotificationType.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/NotificationType",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "ParkingEvent.read.anonymous",
+      "method": "GET",
+      "path": "/api/ParkingEvent",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "ParkingEvent.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/ParkingEvent",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ParkingEvent.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingEvent",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "ParkingEvent.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/ParkingEvent",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 201,
+      "id": "ParkingEvent.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingEvent",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "ParkingEventType.read.anonymous",
+      "method": "GET",
+      "path": "/api/ParkingEventType",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "ParkingEventType.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/ParkingEventType",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ParkingEventType.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingEventType",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "ParkingEventType.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/ParkingEventType",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ParkingEventType.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingEventType",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "ParkingSession.read.anonymous",
+      "method": "GET",
+      "path": "/api/ParkingSession",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "ParkingSession.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/ParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "createdAt": "sample",
+        "endsAt": "sample",
+        "startedAt": "sample",
+        "state": "sample",
+        "vehicleId": "sample",
+        "zoneId": "sample"
+      },
+      "expected": 201,
+      "id": "ParkingSession.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "endsAt": "sample",
+        "startedAt": "sample",
+        "state": "sample",
+        "vehicleId": "sample",
+        "zoneId": "sample"
+      },
+      "expected": 400,
+      "id": "ParkingSession.create.ROLE-01.invalid",
+      "method": "POST",
+      "path": "/api/ParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "ParkingSession.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/ParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "createdAt": "sample",
+        "endsAt": "sample",
+        "startedAt": "sample",
+        "state": "sample",
+        "vehicleId": "sample",
+        "zoneId": "sample"
+      },
+      "expected": 201,
+      "id": "ParkingSession.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "endsAt": "sample",
+        "startedAt": "sample",
+        "state": "sample",
+        "vehicleId": "sample",
+        "zoneId": "sample"
+      },
+      "expected": 400,
+      "id": "ParkingSession.create.ROLE-02.invalid",
+      "method": "POST",
+      "path": "/api/ParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "ParkingSessionStatus.read.anonymous",
+      "method": "GET",
+      "path": "/api/ParkingSessionStatus",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "ParkingSessionStatus.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/ParkingSessionStatus",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ParkingSessionStatus.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSessionStatus",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "ParkingSessionStatus.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/ParkingSessionStatus",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ParkingSessionStatus.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSessionStatus",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "ParkingZone.read.anonymous",
+      "method": "GET",
+      "path": "/api/ParkingZone",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "ParkingZone.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/ParkingZone",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "displayName": "sample",
+        "externalZoneId": "sample",
+        "geometry": "sample",
+        "initDate": "sample",
+        "lastSyncedAt": "sample",
+        "minTime": 1,
+        "price": 1,
+        "priceDescription": "sample",
+        "state": "value",
+        "tariff": "sample",
+        "timeStep": 1
+      },
+      "expected": 403,
+      "id": "ParkingZone.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingZone",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "ParkingZone.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/ParkingZone",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "displayName": "sample",
+        "externalZoneId": "sample",
+        "geometry": "sample",
+        "initDate": "sample",
+        "lastSyncedAt": "sample",
+        "minTime": 1,
+        "price": 1,
+        "priceDescription": "sample",
+        "state": "value",
+        "tariff": "sample",
+        "timeStep": 1
+      },
+      "expected": 201,
+      "id": "ParkingZone.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingZone",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "externalZoneId": "sample",
+        "geometry": "sample",
+        "initDate": "sample",
+        "lastSyncedAt": "sample",
+        "minTime": 1,
+        "price": 1,
+        "priceDescription": "sample",
+        "state": "value",
+        "tariff": "sample",
+        "timeStep": 1
+      },
+      "expected": 400,
+      "id": "ParkingZone.create.ROLE-02.invalid",
+      "method": "POST",
+      "path": "/api/ParkingZone",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "Route.read.anonymous",
+      "method": "GET",
+      "path": "/api/Route",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Route.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/Route",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "Route.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/Route",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Route.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/Route",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 201,
+      "id": "Route.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/Route",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "Tariff.read.anonymous",
+      "method": "GET",
+      "path": "/api/Tariff",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Tariff.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/Tariff",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "hasHolidays": "sample",
+        "periods": "sample"
+      },
+      "expected": 403,
+      "id": "Tariff.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/Tariff",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Tariff.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/Tariff",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "hasHolidays": "sample",
+        "periods": "sample"
+      },
+      "expected": 403,
+      "id": "Tariff.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/Tariff",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "TariffPeriod.read.anonymous",
+      "method": "GET",
+      "path": "/api/TariffPeriod",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "TariffPeriod.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/TariffPeriod",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "from": "sample",
+        "price": "sample",
+        "to": "sample",
+        "type": "sample"
+      },
+      "expected": 403,
+      "id": "TariffPeriod.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/TariffPeriod",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "TariffPeriod.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/TariffPeriod",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "from": "sample",
+        "price": "sample",
+        "to": "sample",
+        "type": "sample"
+      },
+      "expected": 403,
+      "id": "TariffPeriod.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/TariffPeriod",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "Vehicle.read.anonymous",
+      "method": "GET",
+      "path": "/api/Vehicle",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Vehicle.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/Vehicle",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "licensePlate": "sample",
+        "vehicleType": "sample"
+      },
+      "expected": 403,
+      "id": "Vehicle.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/Vehicle",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "Vehicle.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/Vehicle",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "licensePlate": "sample",
+        "vehicleType": "sample"
+      },
+      "expected": 201,
+      "id": "Vehicle.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/Vehicle",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "vehicleType": "sample"
+      },
+      "expected": 400,
+      "id": "Vehicle.create.ROLE-02.invalid",
+      "method": "POST",
+      "path": "/api/Vehicle",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "VehicleStatus.read.anonymous",
+      "method": "GET",
+      "path": "/api/VehicleStatus",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "VehicleStatus.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/VehicleStatus",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "VehicleStatus.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/VehicleStatus",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "VehicleStatus.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/VehicleStatus",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "VehicleStatus.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/VehicleStatus",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "VehicleType.read.anonymous",
+      "method": "GET",
+      "path": "/api/VehicleType",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "VehicleType.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/VehicleType",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "VehicleType.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/VehicleType",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "VehicleType.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/VehicleType",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "VehicleType.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/VehicleType",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "WorkObject.read.anonymous",
+      "method": "GET",
+      "path": "/api/WorkObject",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "WorkObject.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/WorkObject",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "name": "sample"
+      },
+      "expected": 403,
+      "id": "WorkObject.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/WorkObject",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 200,
+      "id": "WorkObject.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/WorkObject",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "name": "sample"
+      },
+      "expected": 201,
+      "id": "WorkObject.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/WorkObject",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 400,
+      "id": "WorkObject.create.ROLE-02.invalid",
+      "method": "POST",
+      "path": "/api/WorkObject",
+      "role": "ROLE-02"
+    },
+    {
+      "expected": 401,
+      "id": "ZoneState.read.anonymous",
+      "method": "GET",
+      "path": "/api/ZoneState",
+      "role": null
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "ZoneState.read.ROLE-01",
+      "method": "GET",
+      "path": "/api/ZoneState",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ZoneState.create.ROLE-01",
+      "method": "POST",
+      "path": "/api/ZoneState",
+      "role": "ROLE-01"
+    },
+    {
+      "body": null,
+      "expected": 403,
+      "id": "ZoneState.read.ROLE-02",
+      "method": "GET",
+      "path": "/api/ZoneState",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {},
+      "expected": 403,
+      "id": "ZoneState.create.ROLE-02",
+      "method": "POST",
+      "path": "/api/ZoneState",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "ConfirmParkingSession.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/ConfirmParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "ConfirmParkingSession.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/ConfirmParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "EndParkingSession.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/EndParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "EndParkingSession.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/EndParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetActiveParkingSession.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/GetActiveParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetActiveParkingSession.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/GetActiveParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetAllVehicles.ROLE-01",
+      "method": "POST",
+      "path": "/api/Vehicle/commands/GetAllVehicles",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetAllVehicles.ROLE-02",
+      "method": "POST",
+      "path": "/api/Vehicle/commands/GetAllVehicles",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetCurrentZone.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingZone/commands/GetCurrentZone",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetCurrentZone.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingZone/commands/GetCurrentZone",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetParkingEvents.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingEvent/commands/GetParkingEvents",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetParkingEvents.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingEvent/commands/GetParkingEvents",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetParkingSessionHistory.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/GetParkingSessionHistory",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetParkingSessionHistory.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/GetParkingSessionHistory",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetPaymentUrl.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/GetPaymentUrl",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetPaymentUrl.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/GetPaymentUrl",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetVehicleRoute.ROLE-01",
+      "method": "POST",
+      "path": "/api/Route/commands/GetVehicleRoute",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetVehicleRoute.ROLE-02",
+      "method": "POST",
+      "path": "/api/Route/commands/GetVehicleRoute",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetZoneTariff.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingZone/commands/GetZoneTariff",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "GetZoneTariff.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingZone/commands/GetZoneTariff",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "RenewParkingSession.ROLE-01",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/RenewParkingSession",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "RenewParkingSession.ROLE-02",
+      "method": "POST",
+      "path": "/api/ParkingSession/commands/RenewParkingSession",
+      "role": "ROLE-02"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "ReportVehicleLocation.ROLE-01",
+      "method": "POST",
+      "path": "/api/Vehicle/commands/ReportVehicleLocation",
+      "role": "ROLE-01"
+    },
+    {
+      "body": {
+        "id": "00000000-0000-0000-0000-0000000000ff"
+      },
+      "expected": 403,
+      "id": "ReportVehicleLocation.ROLE-02",
+      "method": "POST",
+      "path": "/api/Vehicle/commands/ReportVehicleLocation",
+      "role": "ROLE-02"
+    }
+  ],
+  "schema_version": 1
+}

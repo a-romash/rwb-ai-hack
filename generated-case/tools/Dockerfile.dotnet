@@ -1,0 +1,4 @@
+# rwb/tool-dotnet:10 — .NET 10 SDK for restore, build and tests of backend/.
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /src

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "hook": "PaymentWarningValidator",
+  "method": "Validate",
+  "cases": [
+    {
+      "id": "AC-06-1",
+      "ac": "AC-06",
+      "inputs": {
+        "paymentWarningLeadTime": "00:10:00",
+        "sessionEndsAt": "2023-11-15T12:10:01+03:00"
+      },
+      "expected": false
+    },
+    {
+      "id": "AC-06-2",
+      "ac": "AC-06",
+      "inputs": {
+        "paymentWarningLeadTime": "00:10:00",
+        "sessionEndsAt": "2023-11-15T12:10:00+03:00"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-06-3",
+      "ac": "AC-06",
+      "inputs": {
+        "paymentWarningLeadTime": "00:10:00",
+        "sessionEndsAt": "2023-11-15T12:09:59+03:00"
+      },
+      "expected": true
+    }
+  ]
+}

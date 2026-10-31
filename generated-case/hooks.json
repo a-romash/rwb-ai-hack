@@ -1,0 +1,360 @@
+[
+  {
+    "allowed_api": [
+      "session.state"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-05: Если оплата парковочной сессии производится через внешний сервис, система не отслеживает и не хранит время окончания оплаченной сессии (ASM-06). В этом случае логика контроля времени (REQ-12) и отправки предупреждений (REQ-35) не применяется к внешним платежам."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/ExternalPaymentTrackingPolicyHook.cs",
+    "id": "ExternalPaymentTrackingPolicy",
+    "kind": "policy",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Allow",
+    "parameters": [
+      {
+        "name": "sessionState",
+        "source": "input",
+        "type": "string"
+      }
+    ],
+    "refs": [
+      "AC-05",
+      "BR-05"
+    ],
+    "returns": "bool",
+    "signature": "public bool Allow(string sessionState)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "vehicle.currentLocation",
+      "zone.geometry",
+      "zone_detection_radius"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-01: Определение нахождения автомобиля в платной парковочной зоне (REQ-05, REQ-10, REQ-11) выполняется путем проверки пересечения текущей GPS-координаты с геометрией линии (LineString/MultiLineString) зоны, расширенной буфером радиусом zone_detection_radius. Граница зоны считается включенной (inclusive) в область действия, если расстояние от GPS-точки до линии зоны меньше или равно zone_detection_radius."
+    },
+    "examples": [
+      {
+        "ac": "AC-01",
+        "expected": "считается находящимся",
+        "input": {
+          "distance": "49 секунд"
+        }
+      },
+      {
+        "ac": "AC-01",
+        "expected": "считается находящимся",
+        "input": {
+          "distance": "50 секунд"
+        }
+      },
+      {
+        "ac": "AC-01",
+        "expected": "не находится",
+        "input": {
+          "distance": "51 секунд"
+        }
+      }
+    ],
+    "file": "backend/src/App.Domain/Hooks/InZoneValidatorHook.cs",
+    "id": "InZoneValidator",
+    "kind": "validator",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Validate",
+    "parameters": [
+      {
+        "name": "vehicleCurrentLocation",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneGeometry",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneDetectionRadius",
+        "source": "input",
+        "type": "TimeSpan"
+      }
+    ],
+    "refs": [
+      "AC-01",
+      "BR-01"
+    ],
+    "returns": "bool",
+    "signature": "public bool Validate(string vehicleCurrentLocation, string zoneGeometry, TimeSpan zoneDetectionRadius)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "duration",
+      "vehicle.vehicleType",
+      "zone.tariff.periods"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-03: Расчет стоимости парковки и определение действующего тарифа выполняются исключительно по объекту tariff.periods из данных зоны (ASM-02). Поле priceDescription используется только для информационного отображения и не участвует в логике расчета."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/ParkingCostCalculatorHook.cs",
+    "id": "ParkingCostCalculator",
+    "kind": "calculator",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Evaluate",
+    "parameters": [
+      {
+        "name": "durationValue",
+        "source": "input",
+        "type": "TimeSpan"
+      },
+      {
+        "name": "vehicleVehicleType",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneTariffPeriods",
+        "source": "input",
+        "type": "string"
+      }
+    ],
+    "refs": [
+      "AC-03",
+      "BR-03"
+    ],
+    "returns": "decimal",
+    "signature": "public decimal Evaluate(TimeSpan durationValue, string vehicleVehicleType, string zoneTariffPeriods)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-07: Для перехода к официальному сервису оплаты парковки система использует фиксированный URL официального сервиса Санкт-Петербурга (ASM-05). Собственный платежный механизм не реализуется (REQ-29)."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/PaymentServiceUrlPolicyHook.cs",
+    "id": "PaymentServiceUrlPolicy",
+    "kind": "policy",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Allow",
+    "parameters": [],
+    "refs": [
+      "AC-07",
+      "BR-07"
+    ],
+    "returns": "bool",
+    "signature": "public bool Allow()",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "payment_warning_lead_time",
+      "session.endsAt"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-06: Система отправляет водителю предупреждение о необходимости проверки или новой оплаты за payment_warning_lead_time до расчетного времени окончания оплаченной парковочной сессии. Предупреждение срабатывает, если оставшееся время сессии меньше или равно payment_warning_lead_time (inclusive)."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/PaymentWarningValidatorHook.cs",
+    "id": "PaymentWarningValidator",
+    "kind": "validator",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Validate",
+    "parameters": [
+      {
+        "name": "paymentWarningLeadTime",
+        "source": "input",
+        "type": "TimeSpan"
+      },
+      {
+        "name": "sessionEndsAt",
+        "source": "input",
+        "type": "string"
+      }
+    ],
+    "refs": [
+      "AC-06",
+      "BR-06"
+    ],
+    "returns": "bool",
+    "signature": "public bool Validate(TimeSpan paymentWarningLeadTime, string sessionEndsAt)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "session.state",
+      "session.status"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-09: Парковочная сессия считается активной только после явного запуска или подтверждения водителем (REQ-33). Время окончания подтвержденной сессии отображается в интерфейсе (REQ-34) на основе данных, полученных от внешнего сервиса или локального расчета, если оплата не внешняя (см. BR-005)."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/SessionActivationPolicyHook.cs",
+    "id": "SessionActivationPolicy",
+    "kind": "policy",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Allow",
+    "parameters": [
+      {
+        "name": "sessionState",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "sessionStatus",
+        "source": "input",
+        "type": "string"
+      }
+    ],
+    "refs": [
+      "AC-09",
+      "BR-09"
+    ],
+    "returns": "bool",
+    "signature": "public bool Allow(string sessionState, string sessionStatus)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "currentDay",
+      "zone.tariff.hasHolidays",
+      "zone.tariff.periods"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-04: Платность парковки в выходные и праздничные дни не учитывается системой отдельно. Если в данных тарифа нет разбивки по дням недели, применяется базовый тариф, указанный в периоде 08:00-20:00, без дополнительных надбавок или освобождений от оплаты в выходные дни (ASM-04)."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/WeekendTariffPolicyHook.cs",
+    "id": "WeekendTariffPolicy",
+    "kind": "policy",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Allow",
+    "parameters": [
+      {
+        "name": "currentDay",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneTariffHasHolidays",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneTariffPeriods",
+        "source": "input",
+        "type": "string"
+      }
+    ],
+    "refs": [
+      "AC-04",
+      "BR-04"
+    ],
+    "returns": "bool",
+    "signature": "public bool Allow(string currentDay, string zoneTariffHasHolidays, string zoneTariffPeriods)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "ref:zone.externalZoneId"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-02: В интерфейсе водителя номер текущей зоны платной парковки отображается на основе значения поля externalZoneId из данных карты (ASM-03). Границы зоны отображаются в соответствии с геометрией, используемой для определения нахождения (BR-001)."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/ZoneDisplayPolicyHook.cs",
+    "id": "ZoneDisplayPolicy",
+    "kind": "policy",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Allow",
+    "parameters": [
+      {
+        "name": "refZoneExternalZoneId",
+        "source": "input",
+        "type": "string"
+      }
+    ],
+    "refs": [
+      "AC-02",
+      "BR-02"
+    ],
+    "returns": "bool",
+    "signature": "public bool Allow(string refZoneExternalZoneId)",
+    "stub": "neutral"
+  },
+  {
+    "allowed_api": [
+      "vehicle.currentLocation",
+      "zone.geometry",
+      "zone_detection_radius"
+    ],
+    "contract": {
+      "post": [],
+      "pre": [],
+      "summary": "BR-08: Выход автомобиля из текущей зоны (REQ-10) или переход в другую зону (REQ-11) определяется при изменении результата проверки пересечения GPS-точки с зонами согласно BR-001. При переходе в новую зону система инициирует запрос у водителя о необходимости новой оплаты (REQ-37)."
+    },
+    "examples": [],
+    "file": "backend/src/App.Domain/Hooks/ZoneTransitionDeciderHook.cs",
+    "id": "ZoneTransitionDecider",
+    "kind": "decider",
+    "language": "csharp",
+    "max_lines": 60,
+    "method": "Decide",
+    "parameters": [
+      {
+        "name": "initialState",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "vehicleCurrentLocation",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneGeometry",
+        "source": "input",
+        "type": "string"
+      },
+      {
+        "name": "zoneDetectionRadius",
+        "source": "input",
+        "type": "TimeSpan"
+      }
+    ],
+    "refs": [
+      "AC-08",
+      "BR-08"
+    ],
+    "returns": "string",
+    "signature": "public string Decide(string initialState, string vehicleCurrentLocation, string zoneGeometry, TimeSpan zoneDetectionRadius)",
+    "stub": "neutral"
+  }
+]

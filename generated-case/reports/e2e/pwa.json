@@ -1,0 +1,958 @@
+{
+  "config": {
+    "argv": [
+      "/usr/bin/node",
+      "/work/mobile-web/node_modules/.bin/playwright",
+      "test"
+    ],
+    "configFile": "/work/mobile-web/playwright.config.ts",
+    "rootDir": "/work/mobile-web/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 10
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/work/mobile-web/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 10
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/work/mobile-web/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/work/mobile-web/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 10
+        },
+        "name": "mobile",
+        "testDir": "/work/mobile-web/e2e",
+        "snapshotDir": "/work/mobile-web/e2e",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 30000,
+        "use": {
+          "baseURL": "http://mobile",
+          "permissions": [
+            "geolocation",
+            "notifications"
+          ],
+          "geolocation": {
+            "latitude": 59.9386,
+            "longitude": 30.3141
+          },
+          "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Mobile Safari/537.36",
+          "viewport": {
+            "width": 412,
+            "height": 839
+          },
+          "screen": {
+            "width": 412,
+            "height": 915
+          },
+          "deviceScaleFactor": 2.625,
+          "isMobile": true,
+          "hasTouch": true,
+          "defaultBrowserType": "chromium"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "mobile"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "../reports/e2e/pwa.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.1",
+    "workers": 12,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "smoke.spec.ts",
+      "file": "smoke.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "installable PWA shell",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2214,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.378Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4219922fea2e2bd3c691-fce23094678af4c04bb0",
+          "file": "smoke.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-01.spec.ts",
+      "file": "US-01.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "US-01",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "failed",
+                  "duration": 7111,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-list.state').first()\nExpected substring: \u001b[32m\"\u001b[7ma\u001b[27mctive\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mA\u001b[27mctive\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-list.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-list.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-list.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-list.state').first()\nExpected substring: \u001b[32m\"\u001b[7ma\u001b[27mctive\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mA\u001b[27mctive\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-list.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-list.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-list.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n    at /work/mobile-web/e2e/US-01.spec.ts:7:76",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-01.spec.ts",
+                      "column": 76,
+                      "line": 7
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  5 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m\"/MobileParkingZoneList\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m  6 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneList(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  7 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-list.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"active\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  8 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-list.row\"\u001b[39m)\u001b[33m.\u001b[39mfilter({hasText\u001b[33m:\u001b[39m \u001b[32m\"517641\"\u001b[39m})\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-list.row\"\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-01.spec.ts",
+                        "column": 76,
+                        "line": 7
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-list.state').first()\nExpected substring: \u001b[32m\"\u001b[7ma\u001b[27mctive\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mA\u001b[27mctive\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-list.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-list.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-list.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n\n   5 |   await page.goto(\"/MobileParkingZoneList\");\n   6 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneList(?:[/?#]|$)\"));\n>  7 |   await expect(page.getByTestId(\"mobile-parking-zone-list.state\").first()).toContainText(\"active\");\n     |                                                                            ^\n   8 |   await expect(page.getByTestId(\"mobile-parking-zone-list.row\").filter({hasText: \"517641\"}).first()).toBeVisible();\n   9 |   await page.getByTestId(\"mobile-parking-zone-list.row\").first().click();\n  10 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneDetail(?:[/?#]|$)\"));\n    at /work/mobile-web/e2e/US-01.spec.ts:7:76"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.379Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-01-US-01-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-01.spec.ts",
+                    "column": 76,
+                    "line": 7
+                  }
+                },
+                {
+                  "workerIndex": 11,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5245,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-list.state').first()\nExpected substring: \u001b[32m\"\u001b[7ma\u001b[27mctive\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mA\u001b[27mctive\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-list.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-list.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-list.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-list.state').first()\nExpected substring: \u001b[32m\"\u001b[7ma\u001b[27mctive\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mA\u001b[27mctive\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-list.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-list.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-list.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n    at /work/mobile-web/e2e/US-01.spec.ts:7:76",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-01.spec.ts",
+                      "column": 76,
+                      "line": 7
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  5 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m\"/MobileParkingZoneList\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m  6 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneList(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m  7 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-list.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"active\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m  8 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-list.row\"\u001b[39m)\u001b[33m.\u001b[39mfilter({hasText\u001b[33m:\u001b[39m \u001b[32m\"517641\"\u001b[39m})\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-list.row\"\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-01.spec.ts",
+                        "column": 76,
+                        "line": 7
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-list.state').first()\nExpected substring: \u001b[32m\"\u001b[7ma\u001b[27mctive\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mA\u001b[27mctive\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-list.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-list.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-list.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n\n   5 |   await page.goto(\"/MobileParkingZoneList\");\n   6 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneList(?:[/?#]|$)\"));\n>  7 |   await expect(page.getByTestId(\"mobile-parking-zone-list.state\").first()).toContainText(\"active\");\n     |                                                                            ^\n   8 |   await expect(page.getByTestId(\"mobile-parking-zone-list.row\").filter({hasText: \"517641\"}).first()).toBeVisible();\n   9 |   await page.getByTestId(\"mobile-parking-zone-list.row\").first().click();\n  10 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneDetail(?:[/?#]|$)\"));\n    at /work/mobile-web/e2e/US-01.spec.ts:7:76"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-10-31T04:06:40.335Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-01-US-01-mobile-retry1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-01.spec.ts",
+                    "column": 76,
+                    "line": 7
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ad3b92b2690d2b73be3f-ea5bfaae038645deb6d6",
+          "file": "US-01.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-03.spec.ts",
+      "file": "US-03.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "US-03",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "failed",
+                  "duration": 8105,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/MobileParkingZoneDetail(?:[/?#]|$)/\u001b[39m\nReceived string:  \u001b[31m\"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    14 × locator resolved to <html lang=\"ru\" data-beasties-container=\"\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/MobileParkingZoneDetail(?:[/?#]|$)/\u001b[39m\nReceived string:  \u001b[31m\"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    14 × locator resolved to <html lang=\"ru\" data-beasties-container=\"\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[22m\n\n    at /work/mobile-web/e2e/US-03.spec.ts:10:22",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-03.spec.ts",
+                      "column": 22,
+                      "line": 10
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-get-current-zone-form.vehicle-id\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"ВЭН-001\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-get-current-zone-form.submit\"\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                      \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"in_zone\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 12 |\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-03.spec.ts",
+                        "column": 22,
+                        "line": 10
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/MobileParkingZoneDetail(?:[/?#]|$)/\u001b[39m\nReceived string:  \u001b[31m\"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    14 × locator resolved to <html lang=\"ru\" data-beasties-container=\"\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[22m\n\n\n   8 |   await page.getByTestId(\"mobile-get-current-zone-form.vehicle-id\").fill(\"ВЭН-001\");\n   9 |   await page.getByTestId(\"mobile-get-current-zone-form.submit\").click();\n> 10 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneDetail(?:[/?#]|$)\"));\n     |                      ^\n  11 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.state\").first()).toContainText(\"in_zone\");\n  12 | });\n  13 |\n    at /work/mobile-web/e2e/US-03.spec.ts:10:22"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.388Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-03-US-03-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-03.spec.ts",
+                    "column": 22,
+                    "line": 10
+                  }
+                },
+                {
+                  "workerIndex": 14,
+                  "parallelIndex": 2,
+                  "status": "failed",
+                  "duration": 5322,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/MobileParkingZoneDetail(?:[/?#]|$)/\u001b[39m\nReceived string:  \u001b[31m\"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    14 × locator resolved to <html lang=\"ru\" data-beasties-container=\"\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/MobileParkingZoneDetail(?:[/?#]|$)/\u001b[39m\nReceived string:  \u001b[31m\"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    14 × locator resolved to <html lang=\"ru\" data-beasties-container=\"\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[22m\n\n    at /work/mobile-web/e2e/US-03.spec.ts:10:22",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-03.spec.ts",
+                      "column": 22,
+                      "line": 10
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  8 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-get-current-zone-form.vehicle-id\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"ВЭН-001\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-get-current-zone-form.submit\"\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                      \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"in_zone\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 12 |\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-03.spec.ts",
+                        "column": 22,
+                        "line": 10
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/MobileParkingZoneDetail(?:[/?#]|$)/\u001b[39m\nReceived string:  \u001b[31m\"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 5000ms\u001b[22m\n\u001b[2m    14 × locator resolved to <html lang=\"ru\" data-beasties-container=\"\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"http://mobile/MobileGetCurrentZoneForm?id=0a508fd3-06e8-5a89-8441-0a1c26920806\"\u001b[22m\n\n\n   8 |   await page.getByTestId(\"mobile-get-current-zone-form.vehicle-id\").fill(\"ВЭН-001\");\n   9 |   await page.getByTestId(\"mobile-get-current-zone-form.submit\").click();\n> 10 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneDetail(?:[/?#]|$)\"));\n     |                      ^\n  11 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.state\").first()).toContainText(\"in_zone\");\n  12 | });\n  13 |\n    at /work/mobile-web/e2e/US-03.spec.ts:10:22"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-10-31T04:06:41.597Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-03-US-03-mobile-retry1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-03.spec.ts",
+                    "column": 22,
+                    "line": 10
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "1e32752ea83c0b12aeb9-a645ebf1f28d7971586d",
+          "file": "US-03.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-04.spec.ts",
+      "file": "US-04.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "@AC-02 US-04",
+          "ok": false,
+          "tags": [
+            "AC-02"
+          ],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "failed",
+                  "duration": 7717,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-detail.state').first()\nExpected substring: \u001b[32m\"\u001b[7min_zon\u001b[27me\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mActiv\u001b[27me\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-detail.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-detail.state').first()\u001b[22m\n\u001b[2m    13 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-detail.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-detail.state').first()\nExpected substring: \u001b[32m\"\u001b[7min_zon\u001b[27me\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mActiv\u001b[27me\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-detail.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-detail.state').first()\u001b[22m\n\u001b[2m    13 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-detail.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n    at /work/mobile-web/e2e/US-04.spec.ts:11:78",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-04.spec.ts",
+                      "column": 78,
+                      "line": 11
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.geometry\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"in_zone\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 12 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.external-zone-id\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.geometry\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 14 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.row\"\u001b[39m)\u001b[33m.\u001b[39mfilter({hasText\u001b[33m:\u001b[39m \u001b[32m\"517641\"\u001b[39m})\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-04.spec.ts",
+                        "column": 78,
+                        "line": 11
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-detail.state').first()\nExpected substring: \u001b[32m\"\u001b[7min_zon\u001b[27me\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mActiv\u001b[27me\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-detail.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-detail.state').first()\u001b[22m\n\u001b[2m    13 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-detail.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n\n   9 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.geometry\").first()).toBeVisible();\n  10 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneDetail(?:[/?#]|$)\"));\n> 11 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.state\").first()).toContainText(\"in_zone\");\n     |                                                                              ^\n  12 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.external-zone-id\").first()).toBeVisible();\n  13 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.geometry\").first()).toBeVisible();\n  14 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.row\").filter({hasText: \"517641\"}).first()).toBeVisible();\n    at /work/mobile-web/e2e/US-04.spec.ts:11:78"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.351Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-04--AC-02-US-04-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-04.spec.ts",
+                    "column": 78,
+                    "line": 11
+                  }
+                },
+                {
+                  "workerIndex": 12,
+                  "parallelIndex": 1,
+                  "status": "failed",
+                  "duration": 5425,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-detail.state').first()\nExpected substring: \u001b[32m\"\u001b[7min_zon\u001b[27me\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mActiv\u001b[27me\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-detail.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-detail.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-detail.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-detail.state').first()\nExpected substring: \u001b[32m\"\u001b[7min_zon\u001b[27me\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mActiv\u001b[27me\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-detail.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-detail.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-detail.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n    at /work/mobile-web/e2e/US-04.spec.ts:11:78",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-04.spec.ts",
+                      "column": 78,
+                      "line": 11
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.geometry\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingZoneDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"in_zone\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                              \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 12 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.external-zone-id\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.geometry\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 14 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-zone-detail.row\"\u001b[39m)\u001b[33m.\u001b[39mfilter({hasText\u001b[33m:\u001b[39m \u001b[32m\"517641\"\u001b[39m})\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-04.spec.ts",
+                        "column": 78,
+                        "line": 11
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-zone-detail.state').first()\nExpected substring: \u001b[32m\"\u001b[7min_zon\u001b[27me\"\u001b[39m\nReceived string:    \u001b[31m\"\u001b[7mActiv\u001b[27me\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByTestId('mobile-parking-zone-detail.state').first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-zone-detail.state').first()\u001b[22m\n\u001b[2m    14 × locator resolved to <span _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-zone-detail.state\">Active</span>\u001b[22m\n\u001b[2m       - unexpected value \"Active\"\u001b[22m\n\n\n   9 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.geometry\").first()).toBeVisible();\n  10 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingZoneDetail(?:[/?#]|$)\"));\n> 11 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.state\").first()).toContainText(\"in_zone\");\n     |                                                                              ^\n  12 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.external-zone-id\").first()).toBeVisible();\n  13 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.geometry\").first()).toBeVisible();\n  14 |   await expect(page.getByTestId(\"mobile-parking-zone-detail.row\").filter({hasText: \"517641\"}).first()).toBeVisible();\n    at /work/mobile-web/e2e/US-04.spec.ts:11:78"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-10-31T04:06:40.784Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-04--AC-02-US-04-mobile-retry1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-04.spec.ts",
+                    "column": 78,
+                    "line": 11
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "ed3e0e1f8a6b6eeb2079-ecd00a67b4fc2100c761",
+          "file": "US-04.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-05.spec.ts",
+      "file": "US-05.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "@AC-01 US-05",
+          "ok": true,
+          "tags": [
+            "AC-01"
+          ],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 4,
+                  "status": "passed",
+                  "duration": 2798,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.378Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "eaab23e89b8074b6d432-3ea52b794cf19f6b9394",
+          "file": "US-05.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-06.spec.ts",
+      "file": "US-06.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "@AC-09 US-06",
+          "ok": false,
+          "tags": [
+            "AC-09"
+          ],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 5,
+                  "status": "failed",
+                  "duration": 3281,
+                  "error": {
+                    "message": "Error: locator.fill: Error: Malformed value\nCall log:\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-form.planned-end-at')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"datetime-local\" _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-session-form.planned-end-at\"/>\u001b[22m\n\u001b[2m    - fill(\"e2e-value\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and editable\u001b[22m\n",
+                    "stack": "Error: locator.fill: Error: Malformed value\nCall log:\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-form.planned-end-at')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"datetime-local\" _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-session-form.planned-end-at\"/>\u001b[22m\n\u001b[2m    - fill(\"e2e-value\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and editable\u001b[22m\n\n    at /work/mobile-web/e2e/US-06.spec.ts:11:72",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-06.spec.ts",
+                      "column": 72,
+                      "line": 11
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.ends-at\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"e2e-value\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.state\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"{'values': ['active', 'expired', 'cancelled']}\"\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.planned-end-at\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"e2e-value\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 12 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.create\"\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingSessionDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n \u001b[90m 14 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.status\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"active\"\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-06.spec.ts",
+                        "column": 72,
+                        "line": 11
+                      },
+                      "message": "Error: locator.fill: Error: Malformed value\nCall log:\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-form.planned-end-at')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"datetime-local\" _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-session-form.planned-end-at\"/>\u001b[22m\n\u001b[2m    - fill(\"e2e-value\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and editable\u001b[22m\n\n\n   9 |   await page.getByTestId(\"mobile-parking-session-form.ends-at\").fill(\"e2e-value\");\n  10 |   await page.getByTestId(\"mobile-parking-session-form.state\").fill(\"{'values': ['active', 'expired', 'cancelled']}\");\n> 11 |   await page.getByTestId(\"mobile-parking-session-form.planned-end-at\").fill(\"e2e-value\");\n     |                                                                        ^\n  12 |   await page.getByTestId(\"mobile-parking-session-form.create\").click();\n  13 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingSessionDetail(?:[/?#]|$)\"));\n  14 |   await expect(page.getByTestId(\"mobile-parking-session-detail.status\").first()).toContainText(\"active\");\n    at /work/mobile-web/e2e/US-06.spec.ts:11:72"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.389Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-06--AC-09-US-06-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-06.spec.ts",
+                    "column": 72,
+                    "line": 11
+                  }
+                },
+                {
+                  "workerIndex": 10,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 210,
+                  "error": {
+                    "message": "Error: locator.fill: Error: Malformed value\nCall log:\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-form.planned-end-at')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"datetime-local\" _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-session-form.planned-end-at\"/>\u001b[22m\n\u001b[2m    - fill(\"e2e-value\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and editable\u001b[22m\n",
+                    "stack": "Error: locator.fill: Error: Malformed value\nCall log:\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-form.planned-end-at')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"datetime-local\" _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-session-form.planned-end-at\"/>\u001b[22m\n\u001b[2m    - fill(\"e2e-value\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and editable\u001b[22m\n\n    at /work/mobile-web/e2e/US-06.spec.ts:11:72",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-06.spec.ts",
+                      "column": 72,
+                      "line": 11
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.ends-at\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"e2e-value\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.state\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"{'values': ['active', 'expired', 'cancelled']}\"\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.planned-end-at\"\u001b[39m)\u001b[33m.\u001b[39mfill(\u001b[32m\"e2e-value\"\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 12 |\u001b[39m   \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-form.create\"\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[36mnew\u001b[39m \u001b[33mRegExp\u001b[39m(\u001b[32m\"/MobileParkingSessionDetail(?:[/?#]|$)\"\u001b[39m))\u001b[33m;\u001b[39m\n \u001b[90m 14 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.status\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoContainText(\u001b[32m\"active\"\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-06.spec.ts",
+                        "column": 72,
+                        "line": 11
+                      },
+                      "message": "Error: locator.fill: Error: Malformed value\nCall log:\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-form.planned-end-at')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"datetime-local\" _ngcontent-ng-c3753651062=\"\" data-testid=\"mobile-parking-session-form.planned-end-at\"/>\u001b[22m\n\u001b[2m    - fill(\"e2e-value\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and editable\u001b[22m\n\n\n   9 |   await page.getByTestId(\"mobile-parking-session-form.ends-at\").fill(\"e2e-value\");\n  10 |   await page.getByTestId(\"mobile-parking-session-form.state\").fill(\"{'values': ['active', 'expired', 'cancelled']}\");\n> 11 |   await page.getByTestId(\"mobile-parking-session-form.planned-end-at\").fill(\"e2e-value\");\n     |                                                                        ^\n  12 |   await page.getByTestId(\"mobile-parking-session-form.create\").click();\n  13 |   await expect(page).toHaveURL(new RegExp(\"/MobileParkingSessionDetail(?:[/?#]|$)\"));\n  14 |   await expect(page.getByTestId(\"mobile-parking-session-detail.status\").first()).toContainText(\"active\");\n    at /work/mobile-web/e2e/US-06.spec.ts:11:72"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-10-31T04:06:36.264Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-06--AC-09-US-06-mobile-retry1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-06.spec.ts",
+                    "column": 72,
+                    "line": 11
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "d2ca54b46e556073eba7-952e814ad7dbaca98bcb",
+          "file": "US-06.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-07.spec.ts",
+      "file": "US-07.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "@AC-09 US-07",
+          "ok": false,
+          "tags": [
+            "AC-09"
+          ],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 6,
+                  "status": "failed",
+                  "duration": 7805,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\u001b[22m\n\n    at /work/mobile-web/e2e/US-07.spec.ts:11:108",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-07.spec.ts",
+                      "column": 108,
+                      "line": 11
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.ends-at\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.row\"\u001b[39m)\u001b[33m.\u001b[39mfilter({hasText\u001b[33m:\u001b[39m \u001b[32m\"ВЭН-001\"\u001b[39m})\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                                                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 12 |\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-07.spec.ts",
+                        "column": 108,
+                        "line": 11
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\u001b[22m\n\n\n   9 |   await expect(page.getByTestId(\"mobile-parking-session-detail.ends-at\").first()).toBeVisible();\n  10 |   await expect(page.getByTestId(\"mobile-parking-session-detail.state\").first()).toBeVisible();\n> 11 |   await expect(page.getByTestId(\"mobile-parking-session-detail.row\").filter({hasText: \"ВЭН-001\"}).first()).toBeVisible();\n     |                                                                                                            ^\n  12 | });\n  13 |\n    at /work/mobile-web/e2e/US-07.spec.ts:11:108"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.450Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-07--AC-09-US-07-mobile/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-07.spec.ts",
+                    "column": 108,
+                    "line": 11
+                  }
+                },
+                {
+                  "workerIndex": 13,
+                  "parallelIndex": 3,
+                  "status": "failed",
+                  "duration": 5347,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\u001b[22m\n\n    at /work/mobile-web/e2e/US-07.spec.ts:11:108",
+                    "location": {
+                      "file": "/work/mobile-web/e2e/US-07.spec.ts",
+                      "column": 108,
+                      "line": 11
+                    },
+                    "snippet": "\u001b[0m \u001b[90m  9 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.ends-at\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 10 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.state\"\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 11 |\u001b[39m   \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m\"mobile-parking-session-detail.row\"\u001b[39m)\u001b[33m.\u001b[39mfilter({hasText\u001b[33m:\u001b[39m \u001b[32m\"ВЭН-001\"\u001b[39m})\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                                                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 12 |\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 13 |\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/work/mobile-web/e2e/US-07.spec.ts",
+                        "column": 108,
+                        "line": 11
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('mobile-parking-session-detail.row').filter({ hasText: 'ВЭН-001' }).first()\u001b[22m\n\n\n   9 |   await expect(page.getByTestId(\"mobile-parking-session-detail.ends-at\").first()).toBeVisible();\n  10 |   await expect(page.getByTestId(\"mobile-parking-session-detail.state\").first()).toBeVisible();\n> 11 |   await expect(page.getByTestId(\"mobile-parking-session-detail.row\").filter({hasText: \"ВЭН-001\"}).first()).toBeVisible();\n     |                                                                                                            ^\n  12 | });\n  13 |\n    at /work/mobile-web/e2e/US-07.spec.ts:11:108"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-10-31T04:06:40.821Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-07--AC-09-US-07-mobile-retry1/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/work/mobile-web/e2e/US-07.spec.ts",
+                    "column": 108,
+                    "line": 11
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "35565ef474538296b2e7-7779c5b615aef283f51e",
+          "file": "US-07.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-08.spec.ts",
+      "file": "US-08.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "US-08",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 7,
+                  "status": "passed",
+                  "duration": 2901,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.352Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f899a2daeb63cbc12002-78b8bba5f6faa3fd50c7",
+          "file": "US-08.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-09.spec.ts",
+      "file": "US-09.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "@AC-07 US-09",
+          "ok": false,
+          "tags": [
+            "AC-07"
+          ],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 8,
+                  "parallelIndex": 8,
+                  "status": "timedOut",
+                  "duration": 30018,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:32.344Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-09--AC-07-US-09-mobile/error-context.md"
+                    }
+                  ]
+                },
+                {
+                  "workerIndex": 15,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 30015,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-10-31T04:07:04.170Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/work/mobile-web/test-results/US-09--AC-07-US-09-mobile-retry1/error-context.md"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3a536153922845378500-17421686bcb028d1c35b",
+          "file": "US-09.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "title": "US-10.spec.ts",
+      "file": "US-10.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "US-10",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 9,
+                  "parallelIndex": 9,
+                  "status": "passed",
+                  "duration": 3193,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-31T04:06:31.378Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1edf8750555b60893a84-83c58448936d2f42451e",
+          "file": "US-10.spec.ts",
+          "line": 3,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-31T04:06:29.152Z",
+    "duration": 65146.58500000001,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 6,
+    "flaky": 0
+  }
+}

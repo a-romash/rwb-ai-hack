@@ -1,0 +1,196 @@
+# Product CI, GitLab CI/CD 19.x, Docker executor. Generated with the product; it never calls a model.
+# Commands are the ones pack.json gives the platform sandbox, so a green pipeline here means the same
+# checks that verify ran. Tool images are local: build them on the runner host once with
+#   docker compose --profile tools build        (in the platform repository)
+# and keep the runner's pull_policy at if-not-present. deploy and e2e need a runner that mounts
+# /var/run/docker.sock; the stand stays up after the pipeline as the review environment.
+
+stages:
+  - lint
+  - build
+  - test
+  - security
+  - deploy
+  - e2e
+  - docs
+
+variables:
+  NUGET_PACKAGES: "$CI_PROJECT_DIR/.nuget/packages"
+  DOTNET_CLI_HOME: /tmp
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  NPM_CONFIG_CACHE: "$CI_PROJECT_DIR/.npm"
+  COMPOSE_PROJECT_NAME: "$CI_PROJECT_PATH_SLUG"
+
+default:
+  interruptible: true
+
+.dotnet:
+  image: rwb/tool-dotnet:10
+  before_script:
+    - cd backend
+    - dotnet restore App.sln
+  cache:
+    key: nuget
+    paths: [.nuget/packages]
+
+.web:
+  image: rwb/tool-node:22
+  before_script:
+    - cd "$APP"
+    - npm ci --no-audit --no-fund
+  cache:
+    key: npm
+    paths: [.npm]
+  parallel:
+    matrix:
+      - APP: [admin-web, mobile-web]
+
+lint:backend:
+  extends: .dotnet
+  stage: lint
+  script:
+    - dotnet format App.sln --verify-no-changes --no-restore
+
+build:backend:
+  extends: .dotnet
+  stage: build
+  script:
+    - dotnet build App.sln --nologo --no-restore
+  # The stand is built offline from these packages (backend/Dockerfile).
+  artifacts:
+    paths: [.nuget/packages]
+    expire_in: 1 day
+
+build:web:
+  extends: .web
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths: ["$APP/node_modules"]
+    expire_in: 1 day
+
+test:backend:
+  extends: .dotnet
+  stage: test
+  script:
+    # Exit code 8 is "zero tests ran" (Microsoft.Testing.Platform): a fresh product has none of its own.
+    - dotnet test --solution App.sln --no-restore --report-xunit-junit --results-directory "$CI_PROJECT_DIR/reports/junit" --ignore-exit-code 8
+  artifacts:
+    when: always
+    reports:
+      junit: reports/junit/*.xml
+
+test:web:
+  extends: .web
+  stage: test
+  script:
+    - npx jest --ci
+
+security:
+  stage: security
+  image: rwb/tool-security:1
+  script:
+    - mkdir -p reports
+    - gitleaks detect --source . --no-git --redact --report-format json --report-path reports/gitleaks.json
+    # Angular 20.1.6 is pinned by the case; infra/trivy-pinned-stack.rego documents the exception.
+    - trivy fs --cache-dir /opt/trivy --skip-db-update --skip-java-db-update --offline-scan
+      --severity HIGH,CRITICAL --exit-code 1 --ignore-policy infra/trivy-pinned-stack.rego
+      --skip-dirs node_modules,.nuget,.npm --format sarif --output reports/trivy.sarif .
+  artifacts:
+    when: always
+    paths: [reports/gitleaks.json, reports/trivy.sarif]
+
+deploy:
+  stage: deploy
+  image: docker:27-cli
+  needs: [build:backend, build:web]
+  script:
+    - docker compose -f infra/docker-compose.yml up -d --build --wait
+    - docker compose -f infra/docker-compose.yml ps
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    on_stop: stop
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+stop:
+  stage: deploy
+  image: docker:27-cli
+  script:
+    - docker compose -f infra/docker-compose.yml down -v
+  environment:
+    name: review/$CI_COMMIT_REF_SLUG
+    action: stop
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+  allow_failure: true
+
+# The job container cannot reach the stand network, so the checks run in containers attached to it.
+# Sources travel in a build context (docker build), not a bind mount: the socket's daemon sees host paths.
+smoke:
+  stage: e2e
+  image: docker:27-cli
+  needs: [deploy]
+  script:
+    - |
+      docker build -t "$COMPOSE_PROJECT_NAME-smoke" -f - . <<'EOF'
+      FROM python:3.12-slim
+      COPY infra /work/infra
+      WORKDIR /work
+      EOF
+    - docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" -e BASE_URL=http://backend:8080
+      --name "$COMPOSE_PROJECT_NAME-smoke-$CI_JOB_ID" "$COMPOSE_PROJECT_NAME-smoke"
+      python3 infra/smoke.py --report /tmp/smoke.json
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+e2e:
+  stage: e2e
+  image: docker:27-cli
+  needs: [deploy, build:web]
+  parallel:
+    matrix:
+      - APP: [admin-web, mobile-web]
+  script:
+    - SERVICE=$([ "$APP" = admin-web ] && echo admin || echo mobile)
+    - |
+      docker build -t "$COMPOSE_PROJECT_NAME-$APP-e2e" -f - . <<'EOF'
+      FROM rwb/tool-node:22
+      COPY . /work
+      EOF
+    - docker run --network "${COMPOSE_PROJECT_NAME}_default" -e CI=1 -e "BASE_URL=http://$SERVICE"
+      --name "$COMPOSE_PROJECT_NAME-e2e-$CI_JOB_ID" -w "/work/$APP" "$COMPOSE_PROJECT_NAME-$APP-e2e"
+      npx playwright test || STATUS=$?
+    - mkdir -p reports && docker cp "$COMPOSE_PROJECT_NAME-e2e-$CI_JOB_ID:/work/reports/e2e" reports/ || true
+    - docker rm "$COMPOSE_PROJECT_NAME-e2e-$CI_JOB_ID"
+    - exit "${STATUS:-0}"
+  artifacts:
+    when: always
+    paths: [reports/e2e]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+docs:
+  stage: docs
+  image: python:3.12-slim
+  script:
+    # The report stage writes docs/ and mkdocs.yml; every page in the navigation must exist.
+    - test -f docs/index.md
+    - |
+      python3 - <<'EOF'
+      import pathlib, re, sys
+      nav = pathlib.Path("mkdocs.yml")
+      pages = re.findall(r":\s*(\S+\.md)", nav.read_text(encoding="utf-8")) if nav.exists() else []
+      missing = [page for page in pages if not (pathlib.Path("docs") / page).exists()]
+      sys.exit(f"missing: {missing}" if missing else 0)
+      EOF
+  artifacts:
+    paths: [docs, mkdocs.yml]

@@ -1,0 +1,20 @@
+export const MobileParkingSessionDetailPage = {
+  testids: [
+    "mobile-parking-session-detail.actual-end-at",
+    "mobile-parking-session-detail.confirm-parking-session",
+    "mobile-parking-session-detail.created-at",
+    "mobile-parking-session-detail.end-parking-session",
+    "mobile-parking-session-detail.ends-at",
+    "mobile-parking-session-detail.get-active-parking-session",
+    "mobile-parking-session-detail.get-parking-session-history",
+    "mobile-parking-session-detail.get-payment-url",
+    "mobile-parking-session-detail.history",
+    "mobile-parking-session-detail.planned-end-at",
+    "mobile-parking-session-detail.renew-parking-session",
+    "mobile-parking-session-detail.started-at",
+    "mobile-parking-session-detail.state",
+    "mobile-parking-session-detail.status",
+    "mobile-parking-session-detail.vehicle-id",
+    "mobile-parking-session-detail.zone-id",
+  ],
+};
