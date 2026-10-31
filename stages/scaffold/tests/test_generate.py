@@ -33,6 +33,15 @@ EQUIPMENT_FILES = [
 
 
 class GenerateTests(unittest.TestCase):
+    def test_seed_values_fit_the_csharp_model(self):
+        from stages.scaffold.generate import _seed
+        # Case 1: a tariff object in a string field and a list in a ref field dropped whole rows on the stand.
+        app = {"entities": {"Zone": {"fields": {"tariff": {"type": "string"}, "points": {"type": "ref", "ref": "Zone"}}}},
+               "seed": {"Zone": [{"tariff": {"periods": [{"price": 100}]}, "points": [0]}]}}
+        row = _seed(app)["Zone"][0]
+        self.assertEqual(row["tariff"], '{"periods": [{"price": 100}]}')
+        self.assertNotIn("points", row)
+
     def test_hook_spec_carries_rule_text_and_gherkin_rows(self):
         from stages.scaffold.generate import _hooks
         app = {"hooks": {"Allowed": {"kind": "validator", "in": [], "rule": "BR-01", "traces": ["AC-01"]}}}

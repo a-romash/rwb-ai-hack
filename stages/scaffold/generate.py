@@ -12,7 +12,7 @@ from pathlib import Path
 from contracts.stage import StageOutput
 
 from .api import api_cases, dbcontext_cs, endpoints_cs, notifications_cs, timers_cs
-from .domain import SCALARS, hook_input, model_cs, param_type, params_cs
+from .domain import SCALARS, field_type, hook_input, model_cs, param_type, params_cs
 from .models import HookContract, HookExample, HookSpec
 
 # ponytail: kafka topics and EF migrations are out of this stage.
@@ -558,6 +558,11 @@ def _seed(app: dict) -> dict:
                     if not 0 <= value < len((app.get("seed") or {}).get(ref) or []):
                         _contract_error(f"seed.{entity}[{index}].{key}: no row {value} in seed.{ref}")
                     value = _seed_id(ref, value)
+                if fields.get(key) and isinstance(value, (dict, list)):
+                    # One value the C# model cannot read drops the whole row on the stand.
+                    if field_type(field, app) != "string":
+                        continue
+                    value = json.dumps(value, ensure_ascii=False)
                 item[key] = value
             result[entity].append(item)
     return result
