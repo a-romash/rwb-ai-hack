@@ -40,7 +40,7 @@ class GateTests(unittest.TestCase):
     def test_clean_fixture_passes_both_gates(self) -> None:
         self.assertEqual(g0_inputs.check(self.workspace, {}).findings, [])
         self.assertEqual(g1_spec.check(self.workspace, {}).findings, [])
-        self.assertEqual(len(g1_spec.VALIDATORS), 18)
+        self.assertEqual(len(g1_spec.VALIDATORS), 19)
 
     def test_contract_analysis(self) -> None:
         self.analysis["unexpected"] = True
@@ -109,6 +109,17 @@ class GateTests(unittest.TestCase):
     def test_br_no_boundary(self) -> None:
         self.analysis["acceptance"][4]["gherkin"] = self.analysis["acceptance"][4]["gherkin"].replace("14399", "14398")
         self.errors("BR_NO_BOUNDARY")
+
+    def test_boundary_row_lands_on_the_side_the_rule_names(self) -> None:
+        # Seen on case 1: "<= offset" in the rule, while the table sent the warning from 600 upwards.
+        self.analysis["rules"][1]["text"] = "Предупреждение, когда оставшееся время равно или меньше NOTICE."
+        self.analysis["rules"][1]["params"] = {"NOTICE": {"type": "duration", "value": "PT10M"}}
+        table = "# language: ru\nФункция: Порог\n  Структура сценария: Остаток\n    Дано осталось <remaining_seconds> секунд\n    Когда проверен срок\n    Тогда предупреждение <sent>\n    Примеры:\n      | remaining_seconds | sent |\n"
+        self.analysis["acceptance"][3]["gherkin"] = table + "      | 599 | да |\n      | 600 | да |\n      | 601 | нет |"
+        self.assertEqual(g1_spec.br_boundary_side(Analysis.model_validate(self.analysis), App.model_validate(self.app)), [])
+        self.analysis["acceptance"][3]["gherkin"] = table + "      | 599 | нет |\n      | 600 | да |\n      | 601 | да |"
+        self.save()
+        self.assertEqual([f.path for f in self.errors("BR_BOUNDARY_SIDE")], ["analysis.acceptance[AC-04]"])
 
     def test_boundary_numbers_outside_examples_do_not_count(self) -> None:
         self.analysis["acceptance"][4]["gherkin"] = "# language: ru\nФункция: Граница\n  Сценарий: Числа в прозе\n    Дано порог 14399, 14400, 14401\n    Когда проверен срок\n    Тогда статус равен new"

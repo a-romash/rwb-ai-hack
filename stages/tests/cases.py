@@ -112,6 +112,7 @@ threshold, plus one step) with ids "<ac>-extra-<n>".
 inputs: one key per input parameter of the hook, using the exact parameter names given.
 Objects use the field names of the given shapes (snake_case); enum and state values exactly as listed;
 dates and times as ISO 8601 with offset (meta.timezone); durations as "hh:mm:ss"; ids as UUID strings.
+Geometry as WKT with "lon lat" order; to place a point N meters away, 1 m is 0.00000898 degrees of latitude.
 expected: the value the function must return for that row, derived from the criterion, of the given
 return type (bool for validators and policies). Never compute expected values from an implementation."""
 

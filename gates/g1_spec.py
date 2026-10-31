@@ -157,42 +157,84 @@ def br_no_ac(analysis: Analysis, app: App) -> list[Finding]:
     return [finding("BR_NO_AC", "analysis.acceptance", f"Для бизнес-правила {rule.id} отсутствует критерий приёмки.") for rule in analysis.rules if rule.id not in covered]
 
 
+def _targets(rule) -> list[tuple[Decimal, bool]]:
+    """Numeric thresholds of a rule and whether each is temporal."""
+    targets = [(number(p.value), p.type == "duration" or isinstance(p.value, str) and bool(re.fullmatch(r"\d{2}:\d{2}(?::\d{2})?", p.value))) for p in rule.params.values() if p.type in ("int", "decimal", "money", "duration", "date", "datetime", "string")]
+    targets = [(target, temporal) for target, temporal in targets if target is not None]
+    return targets or [(Decimal(value), False) for value in re.findall(r"(?<![\w-])\d+(?:\.\d+)?(?![\w-])", rule.text)]
+
+
+def _columns(analysis: Analysis, rule):
+    """Example table columns of the rule's criteria: (ac, cells of each row, column index, values, scaled, epsilon)."""
+    for ac in analysis.acceptance:
+        if rule.id not in ac.rules:
+            continue
+        document = parse_gherkin(ac.gherkin)
+        if not document:
+            continue
+        for scenario in scenarios(document):
+            for examples in scenario.get("examples", []):
+                rows = [[cell["value"] for cell in row["cells"]] for row in examples.get("tableBody", [])]
+                for index, header in enumerate(examples.get("tableHeader", {}).get("cells", [])):
+                    cells = [row[index] for row in rows if len(row) > index]
+                    values = {number(cell) for cell in cells} - {None}
+                    label = header["value"].casefold()
+                    clocks = [cell for cell in cells if re.fullmatch(r"\d{2}:\d{2}(?::\d{2})?", cell)]
+                    durations = [cell for cell in cells if re.fullmatch(r"P[\d.DTHMS]+", cell)]
+                    scale = 86400 if re.search(r"day|дн|день|сут", label) else 3600 if re.search(r"hour|час", label) else 60 if re.search(r"minute|мин", label) else 1
+                    if durations:
+                        epsilon = min(1 if "S" in cell else 60 if "M" in cell else 3600 if "H" in cell else 86400 for cell in durations)
+                    else:
+                        epsilon = 60 if clocks and all(len(cell) == 5 for cell in clocks) else 1 if clocks else scale
+                    scaled = values if clocks or durations else {value * scale for value in values}
+                    yield ac, rows, index, values, scaled, Decimal(epsilon), (scale if not (clocks or durations) else 1)
+
+
 def br_no_boundary(analysis: Analysis, app: App) -> list[Finding]:
     result: list[Finding] = []
     for rule in analysis.rules:
-        targets = [(number(p.value), p.type == "duration" or isinstance(p.value, str) and bool(re.fullmatch(r"\d{2}:\d{2}(?::\d{2})?", p.value))) for p in rule.params.values() if p.type in ("int", "decimal", "money", "duration", "date", "datetime", "string")]
-        targets = [(target, temporal) for target, temporal in targets if target is not None]
-        if not targets:
-            targets = [(Decimal(value), False) for value in re.findall(r"(?<![\w-])\d+(?:\.\d+)?(?![\w-])", rule.text)]
+        targets = _targets(rule)
         if not targets:
             continue
-        columns: list[tuple[set[Decimal], set[Decimal], Decimal]] = []
-        for ac in analysis.acceptance:
-            if rule.id not in ac.rules:
-                continue
-            document = parse_gherkin(ac.gherkin)
-            if not document:
-                continue
-            for scenario in scenarios(document):
-                for examples in scenario.get("examples", []):
-                    rows = examples.get("tableBody", [])
-                    for index, header in enumerate(examples.get("tableHeader", {}).get("cells", [])):
-                        cells = [row["cells"][index]["value"] for row in rows if len(row["cells"]) > index]
-                        values = {number(cell) for cell in cells} - {None}
-                        label = header["value"].casefold()
-                        clocks = [cell for cell in cells if re.fullmatch(r"\d{2}:\d{2}(?::\d{2})?", cell)]
-                        durations = [cell for cell in cells if re.fullmatch(r"P[\d.DTHMS]+", cell)]
-                        scale = 86400 if re.search(r"day|дн|день|сут", label) else 3600 if re.search(r"hour|час", label) else 60 if re.search(r"minute|мин", label) else 1
-                        if durations:
-                            epsilon = min(1 if "S" in cell else 60 if "M" in cell else 3600 if "H" in cell else 86400 for cell in durations)
-                        else:
-                            epsilon = 60 if clocks and all(len(cell) == 5 for cell in clocks) else 1 if clocks else scale
-                        scaled = values if clocks or durations else {value * scale for value in values}
-                        columns.append((values, scaled, Decimal(epsilon)))
+        columns = [(values, scaled, epsilon) for _, _, _, values, scaled, epsilon, _ in _columns(analysis, rule)]
         if any(not any({target - (epsilon if temporal else 1), target, target + (epsilon if temporal else 1)} <= (scaled if temporal else values) for values, scaled, epsilon in columns) for target, temporal in targets):
             related = next((ac for ac in analysis.acceptance if rule.id in ac.rules), None)
             path = f"analysis.acceptance[{related.id}]" if related else "analysis.acceptance"
             result.append(finding("BR_NO_BOUNDARY", path, f"У порога правила {rule.id} нет примеров N−1, N и N+1 в одной колонке таблицы сценария."))
+    return result
+
+
+# N groups with N-1 for "<= N" and "> N", with N+1 for ">= N" and "< N".
+_WITH_LOWER = re.compile(r"меньше или равн|равн\w* или меньше|не более|не больше|превыша|≤|<=|(?<!или )больше(?! или равн)|>(?!=)", re.I)
+_WITH_UPPER = re.compile(r"больше или равн|равн\w* или больше|не менее|не меньше|≥|>=|(?<!или )меньше(?! или равн)|<(?!=)", re.I)
+
+
+def br_boundary_side(analysis: Analysis, app: App) -> list[Finding]:
+    """The N row of a boundary table must land on the side the rule text names (inclusive or strict)."""
+    result: list[Finding] = []
+    for rule in analysis.rules:
+        targets = _targets(rule)
+        lower, upper = bool(_WITH_LOWER.search(rule.text)), bool(_WITH_UPPER.search(rule.text))
+        if len(targets) != 1 or lower == upper:
+            continue  # shortcut: one threshold and one comparison word only; anything richer is not judged.
+        target, temporal = targets[0]
+        for ac, rows, index, values, scaled, epsilon, scale in _columns(analysis, rule):
+            step = epsilon if temporal else 1
+            factor = scale if temporal else 1
+            outcome = {}
+            for row in rows:
+                value = number(row[index]) if len(row) > index else None
+                if value is not None and value * factor in (target - step, target, target + step):
+                    outcome[value * factor] = tuple(cell for position, cell in enumerate(row) if position != index)
+            if len(outcome) != 3:
+                continue
+            below, at, above = outcome[target - step], outcome[target], outcome[target + step]
+            if below == above:
+                continue
+            if (at == below) != lower:
+                side = "N−1" if lower else "N+1"
+                result.append(finding("BR_BOUNDARY_SIDE", f"analysis.acceptance[{ac.id}]",
+                                      f"По тексту правила {rule.id} строка порога N должна давать тот же результат, что {side}; в таблице наоборот."))
     return result
 
 
@@ -383,7 +425,7 @@ def param_literal(analysis: Analysis, app: App) -> list[Finding]:
 
 VALIDATORS: dict[str, Callable[[Analysis, App], list[Finding]]] = {
     "REF_UNRESOLVED": ref_unresolved, "REQ_UNCOVERED": req_uncovered,
-    "BR_NO_AC": br_no_ac, "BR_NO_BOUNDARY": br_no_boundary,
+    "BR_NO_AC": br_no_ac, "BR_NO_BOUNDARY": br_no_boundary, "BR_BOUNDARY_SIDE": br_boundary_side,
     "BR_NO_HOOK": br_no_hook, "AC_NOT_TESTABLE": ac_not_testable,
     "NFR_NOT_MEASURABLE": nfr_not_measurable, "VAGUE_WORD": vague_word,
     "SM_UNREACHABLE": sm_unreachable, "SM_DEADLOCK": sm_deadlock,
