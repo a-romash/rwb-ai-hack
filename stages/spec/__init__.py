@@ -53,6 +53,16 @@ def bind_entities(value: dict, data: dict) -> dict:
     return value
 
 
+def bind_hook_inputs(value: dict) -> dict:
+    """The model sometimes writes hook inputs as "name: ref"; the contract wants the ref alone, and `now`
+    stays `now` (the current moment, hooks never read the clock)."""
+    for hook in value.values():
+        items = [item.split(":", 1) if isinstance(item, str) and ":" in item else None for item in hook.get("in", [])]
+        hook["in"] = [item if pair is None else "now" if "now" in (pair[0].strip(), pair[1].strip()) else pair[1].strip()
+                      for item, pair in zip(hook.get("in", []), items)]
+    return value
+
+
 STEPS: tuple[tuple[str, tuple[tuple[str, type[BaseModel]], ...]], ...] = (
     ("domain", (("meta", MetaSection), ("types", TypesSection), ("entities", EntitiesSection))),
     ("access", (("roles", RolesSection), ("permissions", PermissionsSection))),
@@ -180,6 +190,8 @@ def execute(inp: StageInput, workspace: Path, llm: LLM, sandbox: Sandbox) -> Sta
                     value = normalize_section_roles(section, value, analysis.roles)
                     if section == "entities":
                         value = bind_entities(value, data)
+                    if section == "hooks":
+                        value = bind_hook_inputs(value)
                     if section == "meta":
                         if not part:
                             data[section] = value

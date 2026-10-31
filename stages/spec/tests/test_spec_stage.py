@@ -132,6 +132,12 @@ class SpecStageTests(unittest.TestCase):
         self.assertNotIn("owner", bound["Vehicle"])
         self.assertEqual(bound["ParkingSession"]["owner"], "vehicleId")
 
+    def test_hook_inputs_written_as_name_and_ref_keep_the_ref(self) -> None:
+        from stages.spec import bind_hook_inputs
+        # Shape of the case 1 answer after the `now` prompt.
+        value = {"session_warning_due": {"in": ["session_ends_at: ParkingSession.endsAt", "now: datetime", "Session.state"]}}
+        self.assertEqual(bind_hook_inputs(value)["session_warning_due"]["in"], ["ParkingSession.endsAt", "now", "Session.state"])
+
     def test_bad_contract_cannot_be_repaired_silently(self) -> None:
         self.responses["spec.entities.0"] = {"Bad": {"extra": "unsupported"}}
         with self.assertRaises(ContractError):
