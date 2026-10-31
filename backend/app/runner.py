@@ -39,11 +39,10 @@ def _latest(session, run_id):
 
 
 def _blocks(gate, result):
-    """Whether a gate still failing after repair stops the run: any G0 error, only reference errors of G1."""
-    from gates.g1_spec import BLOCKING
-    if gate == 'G0':
-        return not result.passed
-    return gate == 'G1' and any(f.severity == 'error' and f.code in BLOCKING for f in result.findings)
+    """Whether a gate still failing after repair stops the run. Only G0: an empty or broken analysis makes every
+    later stage meaningless. G1 findings stay flags, since scaffold builds a weak specification and the build,
+    tests and stand show what was lost."""
+    return gate == 'G0' and not result.passed
 
 
 APP_SECTIONS = frozenset({
