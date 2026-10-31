@@ -220,6 +220,9 @@ class GenerateTests(unittest.TestCase):
         self.assertEqual(hook_input("session_warning_threshold", app), ("int", "sessionWarningThreshold"))
         self.assertEqual(hook_input("current_time", app), ("string", "currentTime"))
         self.assertEqual(hook_input("now", app), ("DateTimeOffset", "now"))
+        # Seen on case 1: a command on an entity that also lists `id` among its inputs.
+        from stages.scaffold.domain import model_cs
+        self.assertIn("record ConfirmSession(Guid Id);", model_cs({"commands": {"confirmSession": {"entity": "Session", "input": {"id": {"type": "string"}}}}}))
         from stages.scaffold.generate import _parameters
         hook = {"in": ["now", "session_warning_threshold"], "params": ["session_warning_threshold"]}
         self.assertEqual(_parameters("validator", hook, app), [("DateTimeOffset", "now"), ("int", "session_warning_threshold")])

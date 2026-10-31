@@ -177,6 +177,8 @@ def model_cs(app: dict) -> str:
         parameters = ["Guid Id"] if isinstance(command.get("entity"), str) else []
         inputs = command.get("input") if isinstance(command.get("input"), dict) else {}
         for field in sorted(inputs):
+            if parameters and pascal(field) == "Id":
+                continue  # the record id is already the target of the command
             spec = inputs[field] if isinstance(inputs[field], dict) else {}
             cs_type = field_type(spec, app)
             optional = "?" if _nullable(cs_type, spec) else ""
