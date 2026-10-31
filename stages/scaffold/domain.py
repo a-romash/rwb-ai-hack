@@ -201,6 +201,8 @@ def hook_input(token: str, app: dict) -> tuple[str, str]:
         if isinstance(spec, dict):
             cs_type = field_type(spec, app)
             return (cs_type + "?" if _nullable(cs_type, spec) else cs_type), camel(f"{entity}_{field}")
+    if token == "now":
+        return "DateTimeOffset", "now"
     if token in SCALARS:
         return SCALARS[token], camel(token + "_value")
     params = _section(app, "params")

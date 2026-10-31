@@ -219,6 +219,7 @@ class GenerateTests(unittest.TestCase):
                "entities": {"Session": {"label": None, "fields": {"end": {"type": "datetime", "label": None}}}}}
         self.assertEqual(hook_input("session_warning_threshold", app), ("int", "sessionWarningThreshold"))
         self.assertEqual(hook_input("current_time", app), ("string", "currentTime"))
+        self.assertEqual(hook_input("now", app), ("DateTimeOffset", "now"))
         self.assertNotIn("null", _model_ts(app, {}, [], False))
         from stages.scaffold.domain import model_cs
         app["types"] = {"Session": {"kind": "enum", "values": ["active"]}}

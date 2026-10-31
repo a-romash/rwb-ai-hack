@@ -103,7 +103,8 @@ def ref_unresolved(analysis: Analysis, app: App) -> list[Finding]:
                 if trigger.timer:
                     entity = app.entities.root.get(machine.entity)
                     ref(trigger.timer, entity.fields if entity else {}, target + ".trigger.timer")
-    known_inputs = set(app.entities.root) | set(app.commands.root) | set(app.types.root) | set(get_args(FieldType))
+    # `now`: the current moment, passed in because hooks never read the clock.
+    known_inputs = set(app.entities.root) | set(app.commands.root) | set(app.types.root) | set(get_args(FieldType)) | {"now"}
     known_inputs |= {f"{name}.{field}" for name, entity in app.entities.root.items() for field in entity.fields}
     for name, hook in app.hooks.root.items():
         path = f"hooks.{name}"
