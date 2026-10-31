@@ -1,0 +1,9 @@
+node_modules/
+.nuget/
+.npm/
+bin/
+obj/
+dist/
+.angular/
+test-results/
+playwright-report/

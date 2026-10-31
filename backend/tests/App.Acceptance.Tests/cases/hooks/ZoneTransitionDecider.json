@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "hook": "ZoneTransitionDecider",
+  "method": "Decide",
+  "cases": [
+    {
+      "id": "AC-08-extra-1",
+      "ac": "AC-08",
+      "inputs": {
+        "initialState": "in_zone",
+        "vehicleCurrentLocation": "59.9343,30.3351",
+        "zoneGeometry": "LINESTRING(59.9342 30.3350, 59.9344 30.3352)",
+        "zoneDetectionRadius": "00:00:10"
+      },
+      "expected": "transition_to_new_zone"
+    },
+    {
+      "id": "AC-08-extra-2",
+      "ac": "AC-08",
+      "inputs": {
+        "initialState": "in_zone",
+        "vehicleCurrentLocation": "59.9350,30.3360",
+        "zoneGeometry": "LINESTRING(59.9342 30.3350, 59.9344 30.3352)",
+        "zoneDetectionRadius": "00:00:10"
+      },
+      "expected": "exit_zone"
+    },
+    {
+      "id": "AC-08-extra-3",
+      "ac": "AC-08",
+      "inputs": {
+        "initialState": "in_zone",
+        "vehicleCurrentLocation": "59.9343,30.3351",
+        "zoneGeometry": "LINESTRING(59.9342 30.3350, 59.9344 30.3352)",
+        "zoneDetectionRadius": "00:00:10"
+      },
+      "expected": "no_change"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+// RS0030. Time only through TimeProvider.
+P:System.DateTime.Now;Use TimeProvider.GetUtcNow.
+P:System.DateTime.UtcNow;Use TimeProvider.GetUtcNow.
+
+M:System.Console.WriteLine;Do not write to the console.
+M:System.Console.WriteLine(System.Boolean);Do not write to the console.
+M:System.Console.WriteLine(System.Char);Do not write to the console.
+M:System.Console.WriteLine(System.Char[]);Do not write to the console.
+M:System.Console.WriteLine(System.Char[],System.Int32,System.Int32);Do not write to the console.
+M:System.Console.WriteLine(System.Decimal);Do not write to the console.
+M:System.Console.WriteLine(System.Double);Do not write to the console.
+M:System.Console.WriteLine(System.Int32);Do not write to the console.
+M:System.Console.WriteLine(System.Int64);Do not write to the console.
+M:System.Console.WriteLine(System.Object);Do not write to the console.
+M:System.Console.WriteLine(System.ReadOnlySpan{System.Char});Do not write to the console.
+M:System.Console.WriteLine(System.Single);Do not write to the console.
+M:System.Console.WriteLine(System.String);Do not write to the console.
+M:System.Console.WriteLine(System.String,System.Object);Do not write to the console.
+M:System.Console.WriteLine(System.String,System.Object,System.Object);Do not write to the console.
+M:System.Console.WriteLine(System.String,System.Object,System.Object,System.Object);Do not write to the console.
+M:System.Console.WriteLine(System.String,System.Object[]);Do not write to the console.
+M:System.Console.WriteLine(System.UInt32);Do not write to the console.
+M:System.Console.WriteLine(System.UInt64);Do not write to the console.

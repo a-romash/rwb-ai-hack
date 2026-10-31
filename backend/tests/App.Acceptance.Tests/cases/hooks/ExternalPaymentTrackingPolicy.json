@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "hook": "ExternalPaymentTrackingPolicy",
+  "method": "Allow",
+  "cases": [
+    {
+      "id": "AC-05-extra-1",
+      "ac": "AC-05",
+      "inputs": {
+        "sessionState": "created"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-05-extra-2",
+      "ac": "AC-05",
+      "inputs": {
+        "sessionState": "active"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-05-extra-3",
+      "ac": "AC-05",
+      "inputs": {
+        "sessionState": "warning_sent"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-05-extra-4",
+      "ac": "AC-05",
+      "inputs": {
+        "sessionState": "expired"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-05-extra-5",
+      "ac": "AC-05",
+      "inputs": {
+        "sessionState": "completed"
+      },
+      "expected": true
+    }
+  ]
+}

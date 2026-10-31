@@ -1,0 +1,13 @@
+{
+  "health": true,
+  "roles": {
+    "ROLE-01": {
+      "login": true,
+      "request": true
+    },
+    "ROLE-02": {
+      "login": true,
+      "request": true
+    }
+  }
+}

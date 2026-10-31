@@ -1,0 +1,289 @@
+{
+  "Driver": [
+    {
+      "employeeId": "EMP-001",
+      "fullName": "Иванов Иван Иванович",
+      "id": "d62aaca4-4aa8-5d17-9ea9-a660e36a4fe1",
+      "name": "Иван",
+      "phone": "+79111234567"
+    },
+    {
+      "employeeId": "EMP-002",
+      "fullName": "Петров Петр Петрович",
+      "id": "14a2ec39-1c0c-5ea6-9f07-c7668940d1e6",
+      "name": "Петр",
+      "phone": "+79119876543"
+    }
+  ],
+  "GeoPoint": [
+    {
+      "id": "e4ae18eb-8e94-5bf1-8071-00bb9966c469",
+      "latitude": 59.95531,
+      "longitude": 30.30684
+    },
+    {
+      "id": "627af354-8e53-5c30-973d-50e9e8bb42f0",
+      "latitude": 59.92579,
+      "longitude": 30.34624
+    }
+  ],
+  "Notification": [
+    {
+      "id": "a86f49ab-2c2c-51e6-821a-75130bd47c0e",
+      "message": "Ваша парковочная сессия в зоне 517641 закончится через 10 минут",
+      "sentAt": null,
+      "type": "payment_warning"
+    },
+    {
+      "id": "85ffd6b1-d3e5-51a5-aecd-2a79e1913c4e",
+      "message": "Ваша парковочная сессия в зоне 512726 закончится через 10 минут",
+      "sentAt": null,
+      "type": "payment_warning"
+    }
+  ],
+  "NotificationType": [
+    {
+      "id": "777b48ca-a9e9-50a7-a5f0-25dedb75afe0",
+      "values": "[\"payment_warning\", \"session_expired\", \"zone_change\", \"payment_required\"]"
+    }
+  ],
+  "ParkingEvent": [
+    {
+      "id": "0b5669d2-e0d9-5430-99a6-8e773b74bce7",
+      "message": "Вход в зону 517641",
+      "occurredAt": "2026-10-06T08:30:00Z",
+      "type": "zone_entered",
+      "zoneId": "f074d5bc-4e6e-59ad-ad05-33d14da47f8a"
+    },
+    {
+      "id": "b39bae80-d414-5b13-8a93-7dffb8476a46",
+      "message": "Парковочная сессия запущена",
+      "occurredAt": "2026-10-06T08:30:00Z",
+      "type": "session_started",
+      "zoneId": "f074d5bc-4e6e-59ad-ad05-33d14da47f8a"
+    },
+    {
+      "id": "7e3a3e19-daa7-5903-861c-a730c8770768",
+      "message": "Вход в зону 512726",
+      "occurredAt": "2026-10-06T09:00:00Z",
+      "type": "zone_entered",
+      "zoneId": "2341a30a-31cc-5f0f-b728-6d011bdc5b4e"
+    }
+  ],
+  "ParkingEventType": [
+    {
+      "id": "5572b69e-8b27-5dc6-9f7f-f0e298eb98b0",
+      "values": "[\"zone_entered\", \"zone_exited\", \"session_started\", \"session_ended\", \"payment_warning\"]"
+    }
+  ],
+  "ParkingSession": [
+    {
+      "actualEndAt": null,
+      "createdAt": "2026-10-06T08:30:00Z",
+      "endsAt": "2026-10-06T10:30:00Z",
+      "id": "5fa559f2-b9f5-584c-a2ee-99cd853af678",
+      "plannedEndAt": "2026-10-06T10:30:00Z",
+      "startedAt": "2026-10-06T08:30:00Z",
+      "state": "active",
+      "status": "active",
+      "vehicleId": "ВЭН-001",
+      "zoneId": "517641"
+    },
+    {
+      "actualEndAt": null,
+      "createdAt": "2026-10-06T09:00:00Z",
+      "endsAt": "2026-10-06T11:00:00Z",
+      "id": "b52ca36a-d0e4-5256-be1a-386a5a59b9b8",
+      "plannedEndAt": "2026-10-06T11:00:00Z",
+      "startedAt": "2026-10-06T09:00:00Z",
+      "state": "active",
+      "status": "active",
+      "vehicleId": "ВЭН-002",
+      "zoneId": "512726"
+    }
+  ],
+  "ParkingSessionStatus": [
+    {
+      "id": "334e7bc2-feb2-54f9-a87c-cb63178f2573",
+      "values": "[\"active\", \"expired\", \"cancelled\"]"
+    }
+  ],
+  "ParkingZone": [
+    {
+      "displayName": "Введенская ул. д.22",
+      "externalZoneId": "517641",
+      "geometry": "LINESTRING (30.306660532951 59.955370164005, 30.307041406631 59.955265416589)",
+      "id": "f074d5bc-4e6e-59ad-ad05-33d14da47f8a",
+      "initDate": "2026-10-06T08:25:26.741413Z",
+      "lastSyncedAt": "2026-10-06T08:29:43.61782Z",
+      "minTime": 60,
+      "price": 28020,
+      "priceDescription": "пн-пт 08:00-20:00, 280-280,2 ₽/час",
+      "state": "Active",
+      "tariff": "{\"hasHolidays\": \"true\", \"periods\": [{\"from\": 480, \"to\": 1200, \"duration\": null, \"price\": 28020, \"type\": \"car\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 56000, \"type\": \"truck\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 55980, \"type\": \"bus\"}]}",
+      "timeStep": 15
+    },
+    {
+      "displayName": "Большая Московская улица дом 11",
+      "externalZoneId": "512726",
+      "geometry": "LINESTRING (30.34611582756 59.925724184264, 30.346378684044 59.925882789412)",
+      "id": "2341a30a-31cc-5f0f-b728-6d011bdc5b4e",
+      "initDate": "2026-10-06T08:25:51.842495Z",
+      "lastSyncedAt": "2026-10-06T08:29:43.61782Z",
+      "minTime": 60,
+      "price": 36000,
+      "priceDescription": "пн-пт 08:00-20:00, 360-360 ₽/час",
+      "state": "Active",
+      "tariff": "{\"hasHolidays\": \"true\", \"periods\": [{\"from\": 480, \"to\": 1200, \"duration\": null, \"price\": 36000, \"type\": \"car\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 72000, \"type\": \"truck\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 71980, \"type\": \"bus\"}]}",
+      "timeStep": 15
+    },
+    {
+      "displayName": "переулок Джамбула дом 11",
+      "externalZoneId": "514335",
+      "geometry": "LINESTRING (30.334593057632 59.925595149008, 30.334973931313 59.925431165979)",
+      "id": "0a508fd3-06e8-5a89-8441-0a1c26920806",
+      "initDate": "2026-10-06T08:25:56.134841Z",
+      "lastSyncedAt": "2026-10-06T08:29:43.61782Z",
+      "minTime": 60,
+      "price": 36000,
+      "priceDescription": "пн-пт 08:00-20:00, 360-360 ₽/час",
+      "state": "Active",
+      "tariff": "{\"hasHolidays\": \"true\", \"periods\": [{\"from\": 480, \"to\": 1200, \"duration\": null, \"price\": 36000, \"type\": \"car\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 72000, \"type\": \"truck\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 71980, \"type\": \"bus\"}]}",
+      "timeStep": 15
+    }
+  ],
+  "Route": [
+    {
+      "id": "50ea9b73-9b2a-57ff-847a-2013de0812e5",
+      "isMock": true,
+      "name": "Маршрут по центру"
+    }
+  ],
+  "Tariff": [
+    {
+      "hasHolidays": "true",
+      "id": "80d7de4f-e17f-5e93-aa75-26e7015052c0",
+      "periods": "[{\"from\": 480, \"to\": 1200, \"duration\": null, \"price\": 28020, \"type\": \"car\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 56000, \"type\": \"truck\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 55980, \"type\": \"bus\"}]"
+    },
+    {
+      "hasHolidays": "true",
+      "id": "e8c7ff96-6a5f-5fb8-98e9-ca1b4a4e4ed2",
+      "periods": "[{\"from\": 480, \"to\": 1200, \"duration\": null, \"price\": 36000, \"type\": \"car\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 72000, \"type\": \"truck\"}, {\"from\": 480, \"to\": 1200, \"duration\": 60, \"price\": 71980, \"type\": \"bus\"}]"
+    }
+  ],
+  "Vehicle": [
+    {
+      "assignedDriverId": "DRV-001",
+      "currentLocation": "{\"latitude\": 59.95531, \"longitude\": 30.30684}",
+      "driverId": "DRV-001",
+      "id": "92391d21-478d-5df6-a009-d7cbc9b25f49",
+      "lastPositionAt": "2026-10-06T09:15:00Z",
+      "licensePlate": "А123ВС 78",
+      "plate": "А123ВС 78",
+      "routeId": null,
+      "status": "parked",
+      "vehicleType": "car"
+    },
+    {
+      "assignedDriverId": "DRV-002",
+      "currentLocation": "{\"latitude\": 59.92579, \"longitude\": 30.34624}",
+      "driverId": "DRV-002",
+      "id": "d72dd580-1fdf-53f8-af89-8d3eae1b51e2",
+      "lastPositionAt": "2026-10-06T09:20:00Z",
+      "licensePlate": "В456ЕК 78",
+      "plate": "В456ЕК 78",
+      "status": "driving",
+      "vehicleType": "car"
+    }
+  ],
+  "VehicleStatus": [
+    {
+      "id": "b4844616-65e8-5bc6-9eaa-9739f2b791ef",
+      "values": "[\"parked\", \"driving\", \"off_duty\", \"maintenance\"]"
+    }
+  ],
+  "VehicleType": [
+    {
+      "id": "6bf74733-6c8f-5616-9356-db9ba53dbc9b",
+      "values": "[\"car\", \"truck\", \"bus\"]"
+    }
+  ],
+  "ZoneState": [
+    {
+      "id": "2ef96172-f9f6-5f7e-a643-08c118360640",
+      "values": "[\"Active\", \"Inactive\", \"Maintenance\"]"
+    }
+  ],
+  "custom": [
+    {
+      "acceptance_ids": [
+        "AC-01"
+      ],
+      "description": "Определяет буферную зону (в секундах) вокруг линии платной парковки для определения нахождения автомобиля внутри зоны. Значение 50 секунд означает, что если автомобиль находится на расстоянии ≤ 50 секунд ходьбы от линии зоны, он считается внутри.",
+      "id": "4df8fe0b-3bfe-50a9-8fda-18eaf8550e47",
+      "location": "hook: zone_detection_service",
+      "parameters": {
+        "unit": "seconds_of_walk",
+        "zone_detection_radius_seconds": 50
+      },
+      "traces": [
+        "BR-01",
+        "US-03"
+      ],
+      "type": "zone_detection_buffer"
+    },
+    {
+      "acceptance_ids": [
+        "AC-06"
+      ],
+      "description": "Определяет время (в секундах) до окончания сессии, когда система отправляет предупреждение водителю о необходимости новой оплаты. Значение 600 секунд = 10 минут.",
+      "id": "4b57ed6d-9030-5dfc-8f51-baed11ea6b0d",
+      "location": "hook: notification_service",
+      "parameters": {
+        "payment_warning_lead_time_seconds": 600,
+        "unit": "seconds"
+      },
+      "traces": [
+        "BR-06",
+        "US-08"
+      ],
+      "type": "payment_warning_lead_time"
+    },
+    {
+      "acceptance_ids": [
+        "AC-07"
+      ],
+      "description": "Фиксированный URL официального сервиса платной парковки Санкт-Петербурга, по которому система инициирует переход при нажатии кнопки оплаты. Собственный платежный механизм не используется.",
+      "id": "72a9a790-dfdd-5038-9fde-55530e2997c1",
+      "location": "screen: payment_button_handler",
+      "parameters": {
+        "assumption": "Точный URL официального сервиса парковки СПб не указан в источнике; указано как placeholder",
+        "payment_url": "https://parking.spb.ru",
+        "requires_confirmation": true
+      },
+      "traces": [
+        "BR-07",
+        "US-09"
+      ],
+      "type": "external_payment_url"
+    },
+    {
+      "acceptance_ids": [
+        "AC-08"
+      ],
+      "description": "Логика определения момента, когда автомобиль покидает одну платную зону и попадает в другую. Система фиксирует событие выхода из текущей зоны и инициирует запрос о новой оплате для новой зоны.",
+      "id": "38f767b2-c57f-541e-b81e-768260801224",
+      "location": "hook: zone_tracking_service",
+      "parameters": {
+        "assumption": "Интервал опроса GPS-позиции не указан в источнике",
+        "detection_interval_seconds": 5,
+        "requires_confirmation": true
+      },
+      "traces": [
+        "BR-08",
+        "US-03"
+      ],
+      "type": "zone_change_detection"
+    }
+  ]
+}

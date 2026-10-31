@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "hook": "InZoneValidator",
+  "method": "Validate",
+  "cases": [
+    {
+      "id": "AC-01-1",
+      "ac": "AC-01",
+      "inputs": {
+        "vehicleCurrentLocation": "59.934300,30.335100",
+        "zoneDetectionRadius": "00:00:50",
+        "zoneGeometry": "LINESTRING(59.934200 30.335000, 59.934400 30.335200)"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-01-2",
+      "ac": "AC-01",
+      "inputs": {
+        "vehicleCurrentLocation": "59.934300,30.335100",
+        "zoneDetectionRadius": "00:00:50",
+        "zoneGeometry": "LINESTRING(59.934200 30.335000, 59.934400 30.335200)"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-01-3",
+      "ac": "AC-01",
+      "inputs": {
+        "vehicleCurrentLocation": "59.934300,30.335100",
+        "zoneDetectionRadius": "00:00:50",
+        "zoneGeometry": "LINESTRING(59.934200 30.335000, 59.934400 30.335200)"
+      },
+      "expected": false
+    }
+  ]
+}

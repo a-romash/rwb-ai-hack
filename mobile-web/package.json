@@ -1,0 +1,37 @@
+{
+  "name": "mobile-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "ng serve --host 127.0.0.1 --port 4300",
+    "build": "ng build",
+    "test": "jest --ci"
+  },
+  "dependencies": {
+    "@angular/animations": "20.1.6",
+    "@angular/cdk": "20.1.6",
+    "@angular/common": "20.1.6",
+    "@angular/compiler": "20.1.6",
+    "@angular/core": "20.1.6",
+    "@angular/forms": "20.1.6",
+    "@angular/material": "20.1.6",
+    "@angular/platform-browser": "20.1.6",
+    "@angular/router": "20.1.6",
+    "@angular/service-worker": "20.1.6",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1",
+    "zone.js": "0.15.1"
+  },
+  "devDependencies": {
+    "@angular/build": "20.1.6",
+    "@angular/cli": "20.1.6",
+    "@angular/compiler-cli": "20.1.6",
+    "@playwright/test": "1.64.1",
+    "@types/jest": "30.0.0",
+    "jest": "30.5.2",
+    "jest-environment-jsdom": "30.5.2",
+    "jest-preset-angular": "17.0.3",
+    "jsdom": "26.1.0",
+    "typescript": "5.8.3"
+  }
+}

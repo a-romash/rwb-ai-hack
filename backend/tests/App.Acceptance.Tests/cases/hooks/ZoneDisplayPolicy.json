@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "hook": "ZoneDisplayPolicy",
+  "method": "Allow",
+  "cases": [
+    {
+      "id": "AC-02-extra-1",
+      "ac": "AC-02",
+      "inputs": {
+        "refZoneExternalZoneId": "Z-105"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-02-extra-2",
+      "ac": "AC-02",
+      "inputs": {
+        "refZoneExternalZoneId": "Z-105"
+      },
+      "expected": true
+    },
+    {
+      "id": "AC-02-extra-3",
+      "ac": "AC-02",
+      "inputs": {
+        "refZoneExternalZoneId": "Z-105"
+      },
+      "expected": true
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "targets": {
+    "backend": {
+      "image": "rwb/tool-dotnet:10",
+      "workdir": "backend",
+      "env": {
+        "NUGET_PACKAGES": "/work/.nuget/packages",
+        "DOTNET_CLI_HOME": "/tmp",
+        "HOME": "/tmp",
+        "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+        "DOTNET_NOLOGO": "1"
+      },
+      "restore": [
+        "dotnet",
+        "restore",
+        "App.sln"
+      ],
+      "build": [
+        "dotnet",
+        "build",
+        "App.sln",
+        "--nologo",
+        "--no-restore"
+      ],
+      "publish": [
+        "sh", "-c",
+        "dotnet publish src/App.Api/App.Api.csproj -c Debug --no-restore -o /work/.publish/backend && dotnet publish src/App.Worker/App.Worker.csproj -c Debug --no-restore -o /work/.publish/worker"
+      ],
+      "test": [
+        "dotnet",
+        "test",
+        "--solution",
+        "App.sln",
+        "--no-restore",
+        "--report-xunit-junit",
+        "--results-directory",
+        "/work/reports/junit/backend",
+        "--ignore-exit-code",
+        "8"
+      ],
+      "filter": [
+        "--filter-trait",
+        "AC={filter}"
+      ],
+      "reports": {
+        "junit": "reports/junit/backend/*.xml"
+      }
+    },
+    "admin": {
+      "image": "rwb/tool-node:22",
+      "workdir": "admin-web",
+      "env": {
+        "HOME": "/tmp",
+        "CI": "1",
+        "NPM_CONFIG_CACHE": "/work/.npm",
+        "BASE_URL": "http://admin"
+      },
+      "restore": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "build": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "test": [
+        "npx",
+        "jest",
+        "--ci"
+      ],
+      "e2e": [
+        "npx",
+        "playwright",
+        "test"
+      ],
+      "filter": [
+        "--grep",
+        "@{filter}"
+      ],
+      "reports": {
+        "json": "reports/e2e/admin.json"
+      }
+    },
+    "pwa": {
+      "image": "rwb/tool-node:22",
+      "workdir": "mobile-web",
+      "env": {
+        "HOME": "/tmp",
+        "CI": "1",
+        "NPM_CONFIG_CACHE": "/work/.npm",
+        "BASE_URL": "http://mobile"
+      },
+      "restore": [
+        "npm",
+        "ci",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "build": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "test": [
+        "npx",
+        "jest",
+        "--ci"
+      ],
+      "e2e": [
+        "npx",
+        "playwright",
+        "test"
+      ],
+      "filter": [
+        "--grep",
+        "@{filter}"
+      ],
+      "reports": {
+        "json": "reports/e2e/pwa.json"
+      }
+    },
+    "stack": {
+      "image": "python:3.12-slim",
+      "env": {
+        "BASE_URL": "http://backend:8080"
+      },
+      "up": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.yml",
+        "up",
+        "-d",
+        "--build",
+        "--wait"
+      ],
+      "smoke": [
+        "python3",
+        "infra/smoke.py",
+        "--report",
+        "reports/smoke.json"
+      ],
+      "down": [
+        "docker",
+        "compose",
+        "-f",
+        "infra/docker-compose.yml",
+        "down",
+        "-v"
+      ],
+      "reports": {
+        "json": "reports/smoke.json"
+      }
+    }
+  },
+  "scan": {
+    "image": "rwb/tool-security:1",
+    "commands": [
+      [
+        "gitleaks",
+        "detect",
+        "--source",
+        ".",
+        "--no-git",
+        "--redact",
+        "--report-format",
+        "json",
+        "--report-path",
+        "reports/gitleaks.json"
+      ],
+      [
+        "trivy",
+        "fs",
+        "--cache-dir",
+        "/opt/trivy",
+        "--skip-db-update",
+        "--skip-java-db-update",
+        "--offline-scan",
+        "--severity",
+        "HIGH,CRITICAL",
+        "--exit-code",
+        "1",
+        "--ignore-policy",
+        "infra/trivy-pinned-stack.rego",
+        "--skip-dirs",
+        "node_modules,.nuget,.npm",
+        "--format",
+        "sarif",
+        "--output",
+        "reports/trivy.sarif",
+        "."
+      ]
+    ],
+    "reports": {
+      "json": "reports/gitleaks.json",
+      "sarif": "reports/trivy.sarif"
+    }
+  },
+  "write_roots": [
+    "backend/src/App.Domain/Hooks",
+    "backend/src/App.Api/Custom",
+    "admin-web/src/app/custom",
+    "mobile-web/src/app/custom",
+    "db/seed"
+  ],
+  "readonly": [
+    "backend/tests",
+    "admin-web/e2e",
+    "mobile-web/e2e",
+    "spec"
+  ]
+}

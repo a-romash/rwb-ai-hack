@@ -1,0 +1,103 @@
+# Product stand. Images are built from the workspace without network: the sandbox restore step
+# (pack.json) has already fetched NuGet packages and node_modules. Events go through PostgreSQL
+# (R17), so there is no message broker. Host ports are ephemeral (127.0.0.1::<port>) so several
+# stands and the platform Studio never collide; `docker compose port backend 8080` shows them.
+# Local credentials only, not platform secrets. No variable interpolation: the sandbox rejects any dollar sign.
+
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  mock:
+    # Integration adapters talk to this mock instead of external providers.
+    image: wiremock/wiremock:3.13.1
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: api
+      network: none
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Database=app;Username=app;Password=app
+      ASPNETCORE_HTTP_PORTS: "8080"
+    ports:
+      - "127.0.0.1::8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "dotnet", "App.Api.dll", "--healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: worker
+      network: none
+    environment:
+      ConnectionStrings__Default: Host=db;Port=5432;Database=app;Username=app;Password=app
+    depends_on:
+      backend:
+        condition: service_healthy
+    # The worker has no HTTP port; liveness is its main process.
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: ../admin-web
+      network: none
+    ports:
+      - "127.0.0.1::80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  mobile:
+    build:
+      context: ../mobile-web
+      network: none
+    ports:
+      - "127.0.0.1::80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  db-data:
