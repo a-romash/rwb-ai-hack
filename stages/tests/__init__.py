@@ -33,7 +33,8 @@ def _hooks(workspace, artifacts):
     if not isinstance(hooks, list):
         raise ContractError('hooks.json должен быть массивом')
     for hook in hooks:
-        if not hook.get('method') or not hook.get('parameters'):
+        # A hook without inputs has an empty list; a missing key means an old scaffold.
+        if not hook.get('method') or 'parameters' not in hook:
             raise ContractError(f"В hooks.json нет method/parameters для {hook.get('id')}: обновите scaffold")
     return hooks
 

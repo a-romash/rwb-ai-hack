@@ -57,6 +57,16 @@ class HookCasesTest(unittest.TestCase):
         llm = FakeLLM({('qa', 'Allowed'): [BudgetExceeded('нет бюджета')]})
         self.assertEqual(hook_cases.build(self.hook, {}, analysis, llm), ([], 'budget'))
 
+    def test_hook_without_inputs_is_accepted(self):
+        from stages.tests import _hooks
+        with tempfile.TemporaryDirectory() as folder:
+            hooks = [{'id': 'PaymentUrl', 'method': 'Allow', 'parameters': []}]
+            (Path(folder) / 'hooks.json').write_text(json.dumps(hooks), encoding='utf-8')
+            self.assertEqual(_hooks(Path(folder), {'hooks': 'hooks.json'}), hooks)
+            (Path(folder) / 'hooks.json').write_text(json.dumps([{'id': 'Old', 'method': 'Allow'}]), encoding='utf-8')
+            with self.assertRaises(ContractError):
+                _hooks(Path(folder), {'hooks': 'hooks.json'})
+
 
 class TestsStageTest(unittest.TestCase):
     def test_cases_classes_and_red_proof_on_canonical_fixture(self):
