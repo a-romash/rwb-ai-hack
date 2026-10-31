@@ -133,6 +133,19 @@ class LadderTest(unittest.TestCase):
         self.assertNotIn("FAIL-20", retried)
         self.assertEqual(llm.replies, [])
 
+    def test_cut_off_answer_fails_only_that_attempt(self):
+        from contracts.stage import ContractError
+        chosen = hooks("SlaDeadline")
+        tmp, root = layout(chosen)
+        llm = FakeLLM([ContractError("Ответ модели обрезан после трёх продолжений"), "return 1;\n"])
+        try:
+            execute(None, root, llm, FakeSandbox())
+            hook = report_of(root)["hooks"][0]
+        finally:
+            tmp.cleanup()
+        self.assertEqual((hook["status"], hook["attempts"]), ("implemented", 2))
+        self.assertIn("обрезан", llm.calls[1]["user"])
+
     def test_all_attempts_restore_stub(self):
         bodies = [f"BODY-{i}\n" for i in range(6)]
         chosen = hooks("ResolutionRequired")

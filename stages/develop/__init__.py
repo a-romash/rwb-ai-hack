@@ -6,7 +6,7 @@ import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-from contracts.stage import BudgetExceeded, StageOutput
+from contracts.stage import BudgetExceeded, ContractError, StageOutput
 
 
 LADDER = ("hook_1", "hook_2", "hook_3", "hook_4")
@@ -60,6 +60,10 @@ def _one(hook, workspace, llm, sandbox, system, task_id):
         for _sample in range(samples):
             try:
                 raw = llm(task_class=task_class, system=system, user=user, output="code", task_id=task_id)
+            except ContractError as exc:
+                # An unusable answer (cut off, too long) fails this attempt of this hook, not the stage.
+                failures = f"Ответ не принят: {exc}"
+                continue
             except Exception as exc:
                 if not _is_budget(exc):
                     raise
